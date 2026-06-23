@@ -1,0 +1,56 @@
+[
+  {
+    "name": "Home",
+    "url": "/",
+    "category": "main",
+    "order": 1
+  },
+  {
+    "name": "About Us",
+    "url": "/about",
+    "category": "main",
+    "order": 2
+  },
+  {
+    "name": "Services",
+    "url": "/services",
+    "category": "main",
+    "order": 3
+  },
+  {
+    "name": "Projects",
+    "url": "/projects",
+    "category": "main",
+    "order": 4
+  },
+  {
+    "name": "Contact",
+    "url": "/contact",
+    "category": "main",
+    "order": 5
+  },
+  {
+    "name": "Privacy Policy",
+    "url": "/privacy",
+    "category": "legal",
+    "order": 1
+  },
+  {
+    "name": "Terms of Service",
+    "url": "/terms",
+    "category": "legal",
+    "order": 2
+  },
+  {
+    "name": "Solar Calculator",
+    "url": "/calculator",
+    "category": "tools",
+    "order": 1
+  },
+  {
+    "name": "Solar Guide",
+    "url": "/guide",
+    "category": "tools",
+    "order": 2
+  }
+]

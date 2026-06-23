@@ -1,0 +1,22 @@
+{
+  "name": "solar-shine",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "web",
+    "demo"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=web",
+    "dev:demo": "npm run dev --workspace=demo",
+    "dev": "concurrently --names \"web,demo\" --prefix-colors \"cyan,magenta\" \"npm run dev:web\" \"npm run dev:demo\"",
+    "build:web": "npm run build --workspace=web",
+    "build:demo": "npm run build --workspace=demo",
+    "build": "npm run build:web && npm run build:demo",
+    "preview:web": "npm run preview --workspace=web",
+    "preview:demo": "npm run preview --workspace=demo"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

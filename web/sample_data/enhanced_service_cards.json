@@ -1,0 +1,128 @@
+[
+  {
+    "title": "Residential Solar",
+    "description": "Custom solar solutions for homes that reduce electricity bills and environmental impact.",
+    "icon": "🏠",
+    "link_url": "/services/residential",
+    "order_index": 1,
+    "image": "https://images.unsplash.com/photo-1513694203232-719a280e022f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    "benefits": [
+      "Reduce or eliminate electricity bills",
+      "Increase home value",
+      "Energy independence",
+      "25+ year system lifespan",
+      "Low maintenance requirements"
+    ],
+    "features": [
+      "Rooftop Solar Panels: High-efficiency panels designed to maximize energy production in limited space.",
+      "Battery Storage: Store excess energy for use during nighttime or power outages.",
+      "Smart Monitoring: Track your system's performance and energy production from your smartphone."
+    ],
+    "service_type": "main"
+  },
+  {
+    "title": "Commercial Solar",
+    "description": "Scalable solar solutions for businesses that reduce operational costs and enhance sustainability credentials.",
+    "icon": "🏢",
+    "link_url": "/services/commercial",
+    "order_index": 2,
+    "image": "https://images.unsplash.com/photo-1605980413988-9dbeb137f3a7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    "benefits": [
+      "Significant reduction in operational costs",
+      "Enhanced corporate sustainability",
+      "Tax incentives and depreciation benefits",
+      "Predictable energy costs",
+      "Improved public image"
+    ],
+    "features": [
+      "Rooftop & Carport Systems: Utilize available space effectively with custom-designed installations.",
+      "Power Purchase Agreements: Zero upfront cost options with predictable energy rates.",
+      "Commercial Energy Storage: Reduce peak demand charges and ensure business continuity."
+    ],
+    "service_type": "main"
+  },
+  {
+    "title": "Industrial Solar",
+    "description": "Large-scale solar solutions for manufacturing and industrial facilities with high energy demands.",
+    "icon": "🏭",
+    "link_url": "/services/industrial",
+    "order_index": 3,
+    "image": "https://images.unsplash.com/photo-1562089339-a4c05b232349?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    "benefits": [
+      "Substantial reduction in energy costs",
+      "Meet sustainability targets",
+      "Reliable power for critical operations",
+      "Reduced carbon footprint",
+      "Protection against rising energy costs"
+    ],
+    "features": [
+      "Ground-Mounted Systems: Large-scale installations optimized for maximum energy production.",
+      "Custom Load Management: Intelligent systems that align with production schedules and energy demands.",
+      "Microgrid Solutions: Ensure operational continuity with integrated renewable energy systems."
+    ],
+    "service_type": "main"
+  },
+  {
+    "title": "Solar System Design",
+    "description": "Custom-designed solar systems that maximize energy production while considering aesthetic and space constraints.",
+    "icon": "☀️",
+    "link_url": "/services/design",
+    "order_index": 4,
+    "image": "https://images.unsplash.com/photo-1548868598-2cf4c6b1e983?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    "benefits": [
+      "Optimized energy production",
+      "Aesthetic integration",
+      "Space-efficient design",
+      "Custom solutions",
+      "Professional planning"
+    ],
+    "features": [
+      "3D Modeling: Advanced 3D modeling to visualize your solar installation before construction.",
+      "Shading Analysis: Comprehensive analysis to ensure optimal panel placement and efficiency.",
+      "Custom Mounting: Specialized mounting solutions for unique roof types and configurations."
+    ],
+    "service_type": "additional"
+  },
+  {
+    "title": "Battery Storage Solutions",
+    "description": "Advanced energy storage systems that provide power during outages and help manage energy consumption.",
+    "icon": "🔋",
+    "link_url": "/services/storage",
+    "order_index": 5,
+    "image": "https://images.unsplash.com/photo-1548868598-2cf4c6b1e983?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    "benefits": [
+      "Backup power during outages",
+      "Energy independence",
+      "Peak shaving",
+      "Grid stability",
+      "Increased solar utilization"
+    ],
+    "features": [
+      "Lithium-Ion Technology: High-performance batteries with long lifespan and fast charging capabilities.",
+      "Smart Energy Management: Intelligent systems that optimize energy usage and storage timing.",
+      "Scalable Solutions: Modular systems that can grow with your energy needs."
+    ],
+    "service_type": "additional"
+  },
+  {
+    "title": "Maintenance & Repairs",
+    "description": "Regular maintenance and prompt repairs to ensure your solar system operates at peak efficiency throughout its lifespan.",
+    "icon": "🔧",
+    "link_url": "/services/maintenance",
+    "order_index": 6,
+    "image": "https://images.unsplash.com/photo-1548868598-2cf4c6b1e983?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    "benefits": [
+      "Peak system performance",
+      "Extended system lifespan",
+      "Preventive maintenance",
+      "Quick issue resolution",
+      "Warranty protection"
+    ],
+    "features": [
+      "Annual Inspections: Comprehensive system checks to identify and prevent potential issues.",
+      "Performance Monitoring: Continuous monitoring to ensure optimal energy production.",
+      "Emergency Repairs: 24/7 support for urgent system issues and repairs."
+    ],
+    "service_type": "additional"
+  }
+]

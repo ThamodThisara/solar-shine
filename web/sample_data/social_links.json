@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Facebook",
+    "icon": "facebook",
+    "url": "https://facebook.com/solarshine",
+    "order": 1
+  },
+  {
+    "name": "Twitter",
+    "icon": "twitter",
+    "url": "https://twitter.com/solarshine",
+    "order": 2
+  },
+  {
+    "name": "LinkedIn",
+    "icon": "linkedin",
+    "url": "https://linkedin.com/company/solarshine",
+    "order": 3
+  },
+  {
+    "name": "Instagram",
+    "icon": "instagram",
+    "url": "https://instagram.com/solarshine",
+    "order": 4
+  }
+]

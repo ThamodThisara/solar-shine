@@ -1,0 +1,296 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl lg:text-5xl;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl lg:text-4xl;
+  }
+}
+
+@layer components {
+  .container-custom {
+    @apply max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-black px-6 py-3 rounded-md font-medium hover:bg-primary/90 transition-all;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-white px-6 py-3 rounded-md font-medium hover:bg-secondary/90 transition-all;
+  }
+
+  .btn-outline {
+    @apply border-2 border-primary bg-transparent text-black px-6 py-3 rounded-md font-medium hover:bg-primary/10 transition-all;
+  }
+
+  .section {
+    @apply py-12 md:py-20 px-4;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-4xl font-bold mb-6 text-center;
+  }
+
+  .section-subtitle {
+    @apply text-lg text-brand-gray max-w-3xl mx-auto text-center mb-12;
+  }
+
+  /* Line clamp utilities for blog cards */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Enhanced Prose Styles for Blog Content */
+  .prose {
+    @apply text-gray-800 leading-relaxed;
+  }
+
+  .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+    @apply text-gray-900 font-bold mb-4 mt-8;
+  }
+
+  .prose h1 {
+    @apply text-3xl;
+  }
+
+  .prose h2 {
+    @apply text-2xl;
+  }
+
+  .prose h3 {
+    @apply text-xl;
+  }
+
+  .prose h4 {
+    @apply text-lg;
+  }
+
+  .prose h5, .prose h6 {
+    @apply text-base;
+  }
+
+  .prose p {
+    @apply mb-6 text-gray-700 leading-7 text-base;
+  }
+
+  .prose ul, .prose ol {
+    @apply mb-6 ml-6;
+  }
+
+  .prose li {
+    @apply mb-2 text-gray-700 leading-6;
+  }
+
+  .prose ul li {
+    @apply list-disc;
+  }
+
+  .prose ol li {
+    @apply list-decimal;
+  }
+
+  .prose blockquote {
+    @apply border-l-4 border-primary bg-gray-50 pl-6 py-4 my-6 italic text-gray-700;
+  }
+
+  .prose strong {
+    @apply font-semibold text-gray-900;
+  }
+
+  .prose em {
+    @apply italic text-gray-700;
+  }
+
+  .prose code {
+    @apply bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800;
+  }
+
+  .prose pre {
+    @apply bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto my-6;
+  }
+
+  .prose pre code {
+    @apply bg-transparent text-inherit p-0;
+  }
+
+  .prose a {
+    @apply text-primary hover:text-primary/80 underline decoration-primary/30 hover:decoration-primary/60 transition-all duration-200;
+  }
+
+  .prose img {
+    @apply rounded-lg shadow-md my-6 max-w-full h-auto;
+  }
+
+  .prose hr {
+    @apply border-gray-200 my-8;
+  }
+
+  /* Blog Post Specific Styles */
+  .blog-content {
+    @apply max-w-4xl mx-auto;
+  }
+
+  .blog-content .prose {
+    @apply text-base sm:text-lg;
+  }
+
+  .blog-content .prose h1:first-child {
+    @apply mt-0;
+  }
+
+  .blog-content .prose p:first-of-type {
+    @apply text-lg text-gray-600 leading-8;
+  }
+
+  /* Responsive Typography */
+  @media (max-width: 640px) {
+    .prose h1 {
+      @apply text-2xl;
+    }
+    
+    .prose h2 {
+      @apply text-xl;
+    }
+    
+    .prose h3 {
+      @apply text-lg;
+    }
+    
+    .prose p {
+      @apply text-sm leading-6;
+    }
+    
+    .prose ul, .prose ol {
+      @apply ml-4;
+    }
+  }
+}
+
+/* Header and Navigation Spacing */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  padding-top: 0; /* Remove any default body padding */
+}
+
+/* Ensure content is properly spaced below fixed header */
+main {
+  position: relative;
+  z-index: 1;
+}
+
+/* Blog Post Specific Styles */
+.blog-content {
+  @apply max-w-4xl mx-auto;
+}
+
+.blog-content .prose {
+  @apply text-base sm:text-lg;
+}
+
+.blog-content .prose h1:first-child {
+  @apply mt-0;
+}
+
+.blog-content .prose p:first-of-type {
+  @apply text-lg text-gray-600 leading-8;
+}

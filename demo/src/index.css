@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 280 30% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 280 30% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 280 30% 10%;
+    --primary: 287 94% 16%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 280 10% 96%;
+    --secondary-foreground: 280 30% 10%;
+    --muted: 280 10% 96%;
+    --muted-foreground: 280 10% 45%;
+    --accent: 280 20% 94%;
+    --accent-foreground: 280 30% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 280 10% 90%;
+    --input: 280 10% 90%;
+    --ring: 287 94% 16%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 280 30% 5%;
+    --foreground: 280 10% 95%;
+    --card: 280 25% 8%;
+    --card-foreground: 280 10% 95%;
+    --popover: 280 25% 8%;
+    --popover-foreground: 280 10% 95%;
+    --primary: 287 70% 60%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 280 20% 14%;
+    --secondary-foreground: 280 10% 95%;
+    --muted: 280 20% 14%;
+    --muted-foreground: 280 10% 55%;
+    --accent: 280 20% 18%;
+    --accent-foreground: 280 10% 95%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 280 20% 18%;
+    --input: 280 20% 18%;
+    --ring: 287 70% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border box-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #root {
+    width: 100%;
+    min-height: 100vh;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.dark .glass {
+  background: rgba(30, 10, 40, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #41034F 0%, #a330be 50%, #d080e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Purple glow */
+.purple-glow {
+  box-shadow: 0 0 20px rgba(65, 3, 79, 0.25);
+}
+.dark .purple-glow {
+  box-shadow: 0 0 20px rgba(163, 48, 190, 0.3);
+}
+
+/* Animated workflow connector */
+@keyframes flow {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+.skeleton-loading {
+  position: relative;
+  overflow: hidden;
+  background: hsl(var(--muted));
+}
+.skeleton-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  animation: shimmer 2s infinite;
+}
+
+/* Sidebar active glow */
+.nav-active {
+  background: linear-gradient(90deg, rgba(65,3,79,0.15), rgba(65,3,79,0.05));
+  border-left: 3px solid #41034F;
+}
+.dark .nav-active {
+  background: linear-gradient(90deg, rgba(163,48,190,0.2), rgba(163,48,190,0.05));
+  border-left: 3px solid #a330be;
+}

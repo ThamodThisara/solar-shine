@@ -1,0 +1,1417 @@
+{
+  "projectId": "685bcfb7001103824569",
+  "functions": [
+    {
+      "$id": "team-management",
+      "name": "Team Management",
+      "runtime": "node-22",
+      "execute": ["users"],
+      "events": [],
+      "scopes": ["teams.read", "teams.write", "users.read", "users.write", "sessions.write"],
+      "timeout": 15,
+      "entrypoint": "src/main.js",
+      "commands": "npm install",
+      "path": "functions/team-management"
+    }
+  ],
+  "databases": [
+    {
+      "$id": "6873e910000dccd2a67e",
+      "name": "Solar Maps Database",
+      "enabled": true
+    }
+  ],
+  "collections": [
+    {
+      "$id": "global_settings",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Global Settings",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "site_title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "site_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "contact_email",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "contact_phone",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 50,
+          "default": null
+        },
+        {
+          "key": "address",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "hero_section",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Hero Section",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "subtitle",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "background_image",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "services_banner",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Services Banner",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "subtitle",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "background_image",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "service_cards",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Service Cards",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "icon",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "link_url",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "order_index",
+          "type": "integer",
+          "required": false,
+          "array": false,
+          "default": null
+        },
+        {
+          "key": "image",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "benefits",
+          "type": "string",
+          "required": false,
+          "array": true,
+          "size": 200,
+          "default": null
+        },
+        {
+          "key": "features",
+          "type": "string",
+          "required": false,
+          "array": true,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "service_type",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 20,
+          "default": "additional"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "portfolio_projects",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Portfolio Projects",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "image_url",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "category",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "completion_date",
+          "type": "datetime",
+          "required": false,
+          "array": false,
+          "default": null
+        },
+        {
+          "key": "featured",
+          "type": "boolean",
+          "required": false,
+          "array": false,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "blog_posts",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"any\")",
+        "update(\"any\")",
+        "delete(\"any\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Blog Posts",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "slug",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "excerpt",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "content",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 10000,
+          "default": null
+        },
+        {
+          "key": "featured_image",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "featured_image_id",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "published",
+          "type": "boolean",
+          "required": false,
+          "array": false,
+          "default": null
+        },
+        {
+          "key": "publishDate",
+          "type": "datetime",
+          "required": false,
+          "array": false,
+          "default": null
+        },
+        {
+          "key": "author",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "categories",
+          "type": "string",
+          "required": false,
+          "array": true,
+          "size": 50,
+          "default": null
+        },
+        {
+          "key": "tags",
+          "type": "string",
+          "required": false,
+          "array": true,
+          "size": 50,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "navigation_items",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Navigation Items",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "path",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "order",
+          "type": "integer",
+          "required": true,
+          "array": false,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "seo_settings",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "SEO Settings",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "site_title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "site_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "site_keywords",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "author",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "site_url",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "default_og_image",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "twitter_handle",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "facebook_app_id",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "google_analytics_id",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "google_search_console_id",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "robots_txt",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "sitemap_url",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "appointments",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Appointments",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "name", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "email", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "phone", "type": "string", "required": true, "array": false, "size": 50 },
+        { "key": "service", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "date", "type": "datetime", "required": true, "array": false },
+        { "key": "time_slot", "type": "string", "required": true, "array": false, "size": 100 },
+        { "key": "message", "type": "string", "required": false, "array": false, "size": 2000 },
+        { "key": "status", "type": "string", "required": false, "array": false, "size": 50, "default": "pending" }
+      ],
+      "indexes": [
+        { "key": "idx_date_status", "type": "key", "attributes": ["date", "status"], "orders": ["ASC", "ASC"] }
+      ]
+    },
+    {
+      "$id": "available_time_slots",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Available Time Slots",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "date", "type": "datetime", "required": true, "array": false },
+        { "key": "time_slot", "type": "string", "required": true, "array": false, "size": 100 },
+        { "key": "is_booked", "type": "boolean", "required": false, "array": false, "default": false }
+      ],
+      "indexes": [
+        { "key": "idx_date_booked", "type": "key", "attributes": ["date", "is_booked"], "orders": ["ASC", "ASC"] }
+      ]
+    },
+    {
+      "$id": "projects",
+      "$permissions": [
+        "read(\"users\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Project Execution",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "name", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "client", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "location", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "engineer", "type": "string", "required": false, "array": false, "size": 255 },
+        { "key": "sales_manager", "type": "string", "required": false, "array": false, "size": 255 },
+        {
+          "key": "status",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 30,
+          "format": "enum",
+          "elements": ["pending", "planning", "active", "on_hold", "completed", "cancelled"],
+          "default": "pending"
+        },
+        { "key": "system_size", "type": "double", "required": true, "array": false },
+        { "key": "contract_value", "type": "double", "required": true, "array": false },
+        { "key": "start_date", "type": "datetime", "required": true, "array": false },
+        { "key": "end_date", "type": "datetime", "required": true, "array": false },
+        { "key": "current_stage", "type": "string", "required": false, "array": false, "size": 255 }
+      ],
+      "indexes": [
+        { "key": "idx_status", "type": "key", "attributes": ["status"], "orders": ["ASC"] },
+        { "key": "idx_name_search", "type": "fulltext", "attributes": ["name"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "documents",
+      "$permissions": [
+        "read(\"users\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Documents",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "project_id", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "file_name", "type": "string", "required": true, "array": false, "size": 500 },
+        { "key": "file_path", "type": "string", "required": true, "array": false, "size": 1000 },
+        { "key": "file_id", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "file_size", "type": "integer", "required": true, "array": false },
+        { "key": "file_type", "type": "string", "required": true, "array": false, "size": 255 },
+        {
+          "key": "document_visibility",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 30,
+          "format": "enum",
+          "elements": ["internal", "client_facing"]
+        },
+        { "key": "department", "type": "string", "required": false, "array": false, "size": 50 },
+        { "key": "document_type", "type": "string", "required": true, "array": false, "size": 20 },
+        { "key": "document_type_name", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "uploaded_by", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "uploaded_at", "type": "datetime", "required": true, "array": false },
+        { "key": "updated_at", "type": "datetime", "required": false, "array": false },
+        { "key": "status", "type": "string", "required": false, "array": false, "size": 20, "default": "Active" }
+      ],
+      "indexes": [
+        { "key": "idx_project_id", "type": "key", "attributes": ["project_id"], "orders": ["ASC"] },
+        { "key": "idx_department", "type": "key", "attributes": ["department"], "orders": ["ASC"] },
+        { "key": "idx_document_type", "type": "key", "attributes": ["document_type"], "orders": ["ASC"] },
+        { "key": "idx_uploaded_at", "type": "key", "attributes": ["uploaded_at"], "orders": ["DESC"] }
+      ]
+    },
+    {
+      "$id": "page_seo",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Page SEO",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "page_path",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "page_title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "meta_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "meta_keywords",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "og_title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "og_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "og_image",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "canonical_url",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "testimonials",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Testimonials",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "text",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "author",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "position",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "company",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "rating",
+          "type": "integer",
+          "required": false,
+          "array": false,
+          "min": 1,
+          "max": 5,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "specialized_areas",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Specialized Areas",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "image",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "order",
+          "type": "integer",
+          "required": false,
+          "array": false,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "about_content",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "About Content",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "subtitle",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "content",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 5000,
+          "default": null
+        },
+        {
+          "key": "mission_statement",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "vision_statement",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "company_info",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Company Info",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "name",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "website",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "logo_url",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "business_hours",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "social_links",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Social Links",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "name",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "icon",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "url",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "order",
+          "type": "integer",
+          "required": false,
+          "array": false,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "footer_links",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Footer Links",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "name",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "url",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "category",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 100,
+          "default": null
+        },
+        {
+          "key": "order",
+          "type": "integer",
+          "required": false,
+          "array": false,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "what_we_do",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "What We Do",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "hero",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "approach",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "expertise",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "benefits",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "impact",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "about_page",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "About Page",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 200,
+          "default": "Who We Are"
+        },
+        {
+          "key": "subtitle",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "main_image",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "mission_statement",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "vision_statement",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "cta_title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 200,
+          "default": "Ready to Work With Us?"
+        },
+        {
+          "key": "cta_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 500,
+          "default": null
+        },
+        {
+          "key": "contact_button_text",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "default": "Contact Us"
+        },
+        {
+          "key": "projects_button_text",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "default": "View Our Projects"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "team_members",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Team Members",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "name",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 150,
+          "default": null
+        },
+        {
+          "key": "position",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 200,
+          "default": null
+        },
+        {
+          "key": "bio",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "image",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "default": null
+        },
+        {
+          "key": "order",
+          "type": "integer",
+          "required": true,
+          "array": false,
+          "min": 1,
+          "max": 100,
+          "default": 1
+        }
+      ],
+      "indexes": [
+        {
+          "key": "idx_order",
+          "type": "key",
+          "attributes": ["order"],
+          "orders": ["ASC"]
+        }
+      ]
+    },
+    {
+      "$id": "core_values",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Core Values",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 200,
+          "default": null
+        },
+        {
+          "key": "description",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "icon",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 50,
+          "default": "award"
+        },
+        {
+          "key": "order",
+          "type": "integer",
+          "required": true,
+          "array": false,
+          "min": 1,
+          "max": 100,
+          "default": 1
+        }
+      ],
+      "indexes": [
+        {
+          "key": "idx_order",
+          "type": "key",
+          "attributes": ["order"],
+          "orders": ["ASC"]
+        }
+      ]
+    },
+    {
+      "$id": "milestones",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Company Milestones",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "year",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 10,
+          "default": null
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 200,
+          "default": null
+        },
+        {
+          "key": "description",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 1000,
+          "default": null
+        },
+        {
+          "key": "order",
+          "type": "integer",
+          "required": true,
+          "array": false,
+          "min": 1,
+          "max": 100,
+          "default": 1
+        }
+      ],
+      "indexes": [
+        {
+          "key": "idx_order",
+          "type": "key",
+          "attributes": ["order"],
+          "orders": ["ASC"]
+        },
+        {
+          "key": "idx_year",
+          "type": "key",
+          "attributes": ["year"],
+          "orders": ["ASC"]
+        }
+      ]
+    }
+  ]
+}

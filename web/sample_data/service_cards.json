@@ -1,0 +1,30 @@
+[
+  {
+    "title": "Residential Solar Installation",
+    "description": "Complete solar panel installation for homes with expert consultation and maintenance",
+    "icon": "🏠",
+    "link_url": "/services/residential",
+    "order_index": 1
+  },
+  {
+    "title": "Commercial Solar Solutions",
+    "description": "Large-scale solar installations for businesses and commercial properties",
+    "icon": "🏢",
+    "link_url": "/services/commercial",
+    "order_index": 2
+  },
+  {
+    "title": "Solar Maintenance",
+    "description": "Regular maintenance and repair services to keep your solar system running efficiently",
+    "icon": "🔧",
+    "link_url": "/services/maintenance",
+    "order_index": 3
+  },
+  {
+    "title": "Energy Consultation",
+    "description": "Expert advice on energy efficiency and solar system optimization",
+    "icon": "💡",
+    "link_url": "/services/consultation",
+    "order_index": 4
+  }
+]
