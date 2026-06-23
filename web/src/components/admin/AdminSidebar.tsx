@@ -35,6 +35,10 @@ interface AdminSidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onLogout: () => void;
+  /** Whether the off-canvas drawer is open on mobile/tablet. */
+  isMobileOpen: boolean;
+  /** Close the off-canvas drawer (mobile/tablet). */
+  onMobileClose: () => void;
 }
 
 const sidebarItems = [
@@ -80,26 +84,58 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   onSectionChange,
   isCollapsed,
   onToggleCollapse,
-  onLogout
+  onLogout,
+  isMobileOpen,
+  onMobileClose
 }) => {
+  // On mobile the drawer is always full-width, so labels are shown regardless of
+  // the desktop collapse state. Collapse only hides labels on lg+ screens.
+  const showLabels = isMobileOpen || !isCollapsed;
+
   return (
-    <div className={cn(
-      "bg-white border-r border-gray-200 transition-all duration-300 flex flex-col",
-      isCollapsed ? "w-16" : "w-64"
-    )}>
+    <>
+      {/* Backdrop — mobile/tablet only */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={onMobileClose}
+          aria-hidden="true"
+        />
+      )}
+
+      <div className={cn(
+        "bg-white border-r border-gray-200 flex flex-col z-50",
+        // Mobile: fixed off-canvas drawer that slides in/out.
+        "fixed inset-y-0 left-0 w-64 max-w-[85vw] transform transition-transform duration-300",
+        isMobileOpen ? "translate-x-0" : "-translate-x-full",
+        // Desktop (lg+): static column that collapses in place.
+        "lg:static lg:translate-x-0 lg:max-w-none lg:transition-all",
+        isCollapsed ? "lg:w-16" : "lg:w-64"
+      )}>
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          {!isCollapsed && (
+          {showLabels && (
             <h2 className="text-lg font-semibold text-gray-900">Admin Panel</h2>
           )}
+          {/* Desktop: collapse toggle */}
           <Button
             variant="ghost"
             size="sm"
             onClick={onToggleCollapse}
-            className="p-1"
+            className="p-1 hidden lg:flex"
           >
             {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
+          </Button>
+          {/* Mobile: close drawer */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onMobileClose}
+            className="p-1 lg:hidden"
+            aria-label="Close menu"
+          >
+            <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -109,7 +145,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         <div className="space-y-6">
           {sidebarItems.map((category) => (
             <div key={category.category}>
-              {!isCollapsed && (
+              {showLabels && (
                 <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 px-3">
                   {category.category}
                 </h3>
@@ -125,19 +161,19 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                       variant={isActive ? "default" : "ghost"}
                       className={cn(
                         "w-full justify-start h-9",
-                        isCollapsed ? "px-2" : "px-3",
+                        showLabels ? "px-3" : "px-2",
                         isActive && "bg-primary text-primary-foreground"
                       )}
                       onClick={() => onSectionChange(item.id)}
-                      title={isCollapsed ? item.label : undefined}
+                      title={!showLabels ? item.label : undefined}
                     >
-                      <Icon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-                      {!isCollapsed && <span className="text-sm">{item.label}</span>}
+                      <Icon className={cn("h-4 w-4", showLabels && "mr-2")} />
+                      {showLabels && <span className="text-sm">{item.label}</span>}
                     </Button>
                   );
                 })}
               </div>
-              {!isCollapsed && <Separator className="my-3" />}
+              {showLabels && <Separator className="my-3" />}
             </div>
           ))}
         </div>
@@ -149,15 +185,16 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           variant="ghost"
           className={cn(
             "w-full justify-start h-9 text-red-600 hover:text-red-700 hover:bg-red-50",
-            isCollapsed ? "px-2" : "px-3"
+            showLabels ? "px-3" : "px-2"
           )}
           onClick={onLogout}
-          title={isCollapsed ? "Logout" : undefined}
+          title={!showLabels ? "Logout" : undefined}
         >
-          <LogOut className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-          {!isCollapsed && <span className="text-sm">Logout</span>}
+          <LogOut className={cn("h-4 w-4", showLabels && "mr-2")} />
+          {showLabels && <span className="text-sm">Logout</span>}
         </Button>
       </div>
-    </div>
+      </div>
+    </>
   );
 };

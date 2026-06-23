@@ -16,28 +16,37 @@ export const EngineerLayout: React.FC<EngineerLayoutProps> = ({
   onSectionChange,
 }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { user, logout } = useAuth();
 
   const handleToggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
+  // Selecting a section on mobile should dismiss the off-canvas drawer.
+  const handleSectionChange = (section: string) => {
+    onSectionChange(section);
+    setIsMobileSidebarOpen(false);
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       <EngineerSidebar
         activeSection={activeSection}
-        onSectionChange={onSectionChange}
+        onSectionChange={handleSectionChange}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebar}
         onLogout={logout}
+        isMobileOpen={isMobileSidebarOpen}
+        onMobileClose={() => setIsMobileSidebarOpen(false)}
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header */}
-        <EngineerHeader user={user} />
+        <EngineerHeader user={user} onMenuClick={() => setIsMobileSidebarOpen(true)} />
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-4 sm:p-6">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>
