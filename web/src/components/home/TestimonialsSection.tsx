@@ -12,24 +12,51 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
+  // Number of cards visible at once, matched to the responsive grid columns
+  // (1 on mobile, 2 on sm/md tablets, 3 on lg+ desktops).
+  const [visibleCount, setVisibleCount] = useState(1);
+
+  useEffect(() => {
+    const getVisibleCount = () => {
+      if (typeof window === 'undefined') return 1;
+      if (window.matchMedia('(min-width: 1024px)').matches) return 3;
+      if (window.matchMedia('(min-width: 640px)').matches) return 2;
+      return 1;
+    };
+
+    const updateVisibleCount = () => setVisibleCount(getVisibleCount());
+    updateVisibleCount();
+    window.addEventListener('resize', updateVisibleCount);
+    return () => window.removeEventListener('resize', updateVisibleCount);
+  }, []);
+
+  // Number of carousel "pages" given how many cards are shown at once.
+  const pageCount = Math.max(1, testimonials.length - visibleCount + 1);
+  const isCarousel = testimonials.length > visibleCount;
+
+  // Keep the active index in range when the visible count changes (e.g. on resize).
+  useEffect(() => {
+    setCurrentIndex((prev) => Math.min(prev, pageCount - 1));
+  }, [pageCount]);
+
   // Auto-play testimonials
   useEffect(() => {
-    if (!isAutoPlaying || testimonials.length <= 3) return;
+    if (!isAutoPlaying || !isCarousel) return;
 
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % Math.max(1, testimonials.length - 2));
+      setCurrentIndex((prev) => (prev + 1) % pageCount);
     }, 6000);
 
     return () => clearInterval(interval);
-  }, [isAutoPlaying, testimonials.length]);
+  }, [isAutoPlaying, isCarousel, pageCount]);
 
   const nextTestimonial = () => {
-    setCurrentIndex((prev) => (prev + 1) % Math.max(1, testimonials.length - 2));
+    setCurrentIndex((prev) => (prev + 1) % pageCount);
     setIsAutoPlaying(false);
   };
 
   const prevTestimonial = () => {
-    setCurrentIndex((prev) => (prev - 1 + Math.max(1, testimonials.length - 2)) % Math.max(1, testimonials.length - 2));
+    setCurrentIndex((prev) => (prev - 1 + pageCount) % pageCount);
     setIsAutoPlaying(false);
   };
 
@@ -46,8 +73,8 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
     prevTestimonial();
   };
 
-  // Show 3 testimonials at a time
-  const visibleTestimonials = testimonials.slice(currentIndex, currentIndex + 3);
+  // Show as many testimonials as fit at the current breakpoint.
+  const visibleTestimonials = testimonials.slice(currentIndex, currentIndex + visibleCount);
 
   return (
     <section className="relative py-16 md:py-24 overflow-hidden">
@@ -96,7 +123,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
         {/* Testimonials Carousel */}
         <div className="relative">
           {/* Slide Counter */}
-          {testimonials.length > 3 && (
+          {isCarousel && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -105,14 +132,14 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
             >
               <div className="px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full border border-slate-200/60 shadow-sm">
                 <span className="text-xs font-medium text-slate-700">
-                  {currentIndex + 1} of {Math.max(1, testimonials.length - 2)}
+                  {currentIndex + 1} of {pageCount}
                 </span>
               </div>
             </motion.div>
           )}
 
           {/* Navigation Arrows */}
-          {testimonials.length > 3 && (
+          {isCarousel && (
             <>
               <motion.button
                 initial={{ opacity: 0, x: -20 }}
@@ -170,9 +197,9 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
                     {/* Content */}
                     <div className="relative p-6 sm:p-8">
                       {/* Quote Icon */}
-                      <div className="absolute top-6 right-6">
-                        <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-gray-100 rounded-full flex items-center justify-center shadow-lg">
-                          <Quote className="w-8 h-8 text-slate-600" />
+                      <div className="absolute top-5 right-5 sm:top-6 sm:right-6">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-slate-100 to-gray-100 rounded-full flex items-center justify-center shadow-lg">
+                          <Quote className="w-6 h-6 sm:w-8 sm:h-8 text-slate-600" />
                         </div>
                       </div>
 
@@ -201,7 +228,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
-                        className="text-slate-700 mb-8 text-lg leading-relaxed italic font-medium"
+                        className="text-slate-700 mb-8 text-base sm:text-lg leading-relaxed italic font-medium break-words"
                       >
                         "{testimonial.text}"
                       </motion.blockquote>
@@ -215,17 +242,17 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
                       >
                         <div className="flex items-center">
                           {/* Avatar */}
-                          <div className="w-14 h-14 bg-gradient-to-br from-slate-600 to-gray-700 rounded-full flex items-center justify-center mr-4 shadow-lg">
+                          <div className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 bg-gradient-to-br from-slate-600 to-gray-700 rounded-full flex items-center justify-center mr-4 shadow-lg">
                             <span className="text-white font-bold text-lg">
                               {testimonial.author?.charAt(0) || '?'}
                             </span>
                           </div>
 
-                          <div className="flex-1">
-                            <p className="font-bold text-slate-900 text-lg">{testimonial.author}</p>
-                            <p className="text-slate-600 text-base">{testimonial.position}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-slate-900 text-base sm:text-lg break-words">{testimonial.author}</p>
+                            <p className="text-slate-600 text-sm sm:text-base break-words">{testimonial.position}</p>
                             {testimonial.company && (
-                              <p className="text-sm text-slate-500 font-medium">{testimonial.company}</p>
+                              <p className="text-sm text-slate-500 font-medium break-words">{testimonial.company}</p>
                             )}
                           </div>
                         </div>
@@ -238,8 +265,8 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
           </div>
 
           {/* Carousel Indicators and Mobile Navigation */}
-          {testimonials.length > 3 && (
-            <div className="mt-16">
+          {isCarousel && (
+            <div className="mt-10 md:mt-16">
               {/* Mobile Navigation Buttons */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -269,9 +296,9 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.8 }}
-                className="flex justify-center space-x-4"
+                className="flex flex-wrap justify-center gap-3 sm:gap-4"
               >
-                {Array.from({ length: Math.max(1, testimonials.length - 2) }).map((_, i) => (
+                {Array.from({ length: pageCount }).map((_, i) => (
                   <button
                     key={i}
                     onClick={() => {
