@@ -683,8 +683,7 @@
           "elements": ["internal", "client_facing"]
         },
         { "key": "department", "type": "string", "required": false, "array": false, "size": 50 },
-        { "key": "document_type", "type": "string", "required": true, "array": false, "size": 20 },
-        { "key": "document_type_name", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "document_type_id", "type": "string", "required": true, "array": false, "size": 255 },
         { "key": "uploaded_by", "type": "string", "required": true, "array": false, "size": 255 },
         { "key": "uploaded_at", "type": "datetime", "required": true, "array": false },
         { "key": "updated_at", "type": "datetime", "required": false, "array": false },
@@ -693,8 +692,29 @@
       "indexes": [
         { "key": "idx_project_id", "type": "key", "attributes": ["project_id"], "orders": ["ASC"] },
         { "key": "idx_department", "type": "key", "attributes": ["department"], "orders": ["ASC"] },
-        { "key": "idx_document_type", "type": "key", "attributes": ["document_type"], "orders": ["ASC"] },
+        { "key": "idx_document_type_id", "type": "key", "attributes": ["document_type_id"], "orders": ["ASC"] },
         { "key": "idx_uploaded_at", "type": "key", "attributes": ["uploaded_at"], "orders": ["DESC"] }
+      ]
+    },
+    {
+      "$id": "document_types",
+      "$permissions": [
+        "read(\"users\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Document Types",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "type", "type": "string", "required": true, "array": false, "size": 50 },
+        { "key": "name", "type": "string", "required": true, "array": false, "size": 255 }
+      ],
+      "indexes": [
+        { "key": "idx_type", "type": "key", "attributes": ["type"], "orders": ["ASC"] },
+        { "key": "idx_name", "type": "key", "attributes": ["name"], "orders": ["ASC"] }
       ]
     },
     {

@@ -6,8 +6,8 @@ import { Combobox } from '@/components/ui/combobox';
 import { Upload, UploadCloud, X, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, formatFileSize } from '@/lib/utils';
-import { DEPARTMENTS, DOCUMENT_TYPES, ALLOWED_FILE_EXTENSIONS, isAllowedFile } from '@/lib/documentTypes';
-import { Department, DocumentVisibility } from '@/types/payload-types';
+import { DEPARTMENTS, ALLOWED_FILE_EXTENSIONS, isAllowedFile } from '@/lib/documentTypes';
+import { Department, DocumentVisibility, DocumentType } from '@/types/payload-types';
 import { UploadDocumentsInput } from '@/services/documentService';
 
 interface ProjectOption {
@@ -20,6 +20,7 @@ interface DocumentUploadDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   projects: ProjectOption[];
+  documentTypes: DocumentType[];
   uploadedBy: string;
   onUpload: (input: UploadDocumentsInput) => void;
   isUploading: boolean;
@@ -29,7 +30,7 @@ const initialState = {
   projectId: '',
   visibility: '' as DocumentVisibility | '',
   department: '' as Department | '',
-  documentType: '',
+  documentTypeId: '',
   files: [] as File[],
 };
 
@@ -37,6 +38,7 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
   isOpen,
   setIsOpen,
   projects,
+  documentTypes,
   uploadedBy,
   onUpload,
   isUploading,
@@ -82,7 +84,7 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
       projectId: state.projectId,
       visibility: state.visibility as DocumentVisibility,
       department: state.visibility === 'internal' ? (state.department as Department) : undefined,
-      documentType: state.documentType,
+      documentTypeId: state.documentTypeId,
       uploadedBy,
     });
   };
@@ -91,7 +93,7 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
     !!state.projectId &&
     !!state.visibility &&
     (state.visibility !== 'internal' || !!state.department) &&
-    !!state.documentType &&
+    !!state.documentTypeId &&
     state.files.length > 0;
 
   return (
@@ -106,6 +108,7 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
             <Label htmlFor="upload-project">Project</Label>
             <Combobox
               id="upload-project"
+              modal
               value={state.projectId}
               onChange={(v) => setState((s) => ({ ...s, projectId: v }))}
               placeholder="Select a project"
@@ -139,6 +142,7 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
               <Label htmlFor="upload-department">Department</Label>
               <Combobox
                 id="upload-department"
+                modal
                 value={state.department}
                 onChange={(v) => setState((s) => ({ ...s, department: v as Department }))}
                 placeholder="Select a department"
@@ -153,12 +157,13 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
             <Label htmlFor="upload-document-type">Document Type</Label>
             <Combobox
               id="upload-document-type"
-              value={state.documentType}
-              onChange={(v) => setState((s) => ({ ...s, documentType: v }))}
+              modal
+              value={state.documentTypeId}
+              onChange={(v) => setState((s) => ({ ...s, documentTypeId: v }))}
               placeholder="Select a document type"
               searchPlaceholder="Search document types..."
               emptyText="No document types found."
-              options={DOCUMENT_TYPES.map((dt) => ({ value: dt.code, label: `${dt.name} (${dt.code})`, keywords: dt.code }))}
+              options={documentTypes.map((dt) => ({ value: dt.$id, label: `${dt.name} (${dt.type})`, keywords: dt.type }))}
             />
           </div>
 

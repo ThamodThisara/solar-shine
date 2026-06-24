@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatFileSize } from '@/lib/utils';
-import { DocumentRecord } from '@/types/payload-types';
+import { DocumentRecord, DocumentType } from '@/types/payload-types';
 import { getDocumentPreviewUrl, getDocumentDownloadUrl } from '@/services/documentService';
 
 const departmentStyles: Record<string, string> = {
@@ -18,11 +18,14 @@ const departmentStyles: Record<string, string> = {
 interface DocumentCardProps {
   doc: DocumentRecord;
   projectName: string;
+  documentType?: DocumentType;
   onDelete: (doc: DocumentRecord) => void;
 }
 
-const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, onDelete }) => {
+const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentType, onDelete }) => {
   const isImage = doc.file_type.startsWith('image/');
+  const typeCode = documentType?.type ?? 'Unknown';
+  const typeName = documentType?.name ?? 'Unknown Type';
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -33,12 +36,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, onDelete 
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-primary">{doc.document_type}</span>
+              <span className="text-xs font-bold text-primary">{typeCode}</span>
               <Badge variant={doc.document_visibility === 'internal' ? 'secondary' : 'outline'} className="text-[10px]">
                 {doc.document_visibility === 'internal' ? 'Internal' : 'Client Facing'}
               </Badge>
             </div>
-            <p className="text-sm font-semibold mt-1 truncate" title={doc.file_name}>{doc.document_type_name}</p>
+            <p className="text-sm font-semibold mt-1 truncate" title={doc.file_name}>{typeName}</p>
             <p className="text-xs text-muted-foreground truncate">{doc.file_name}</p>
           </div>
         </div>

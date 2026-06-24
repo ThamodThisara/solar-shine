@@ -105,6 +105,14 @@ export type DocumentVisibility = "internal" | "client_facing";
 export type DocumentStatus = "Active" | "Archived";
 export type Department = "Marketing" | "Sales" | "Finance" | "Engineering";
 
+export interface DocumentType {
+  $id: string;
+  /** Short type code/label, e.g. "D1". */
+  type: string;
+  /** Human-readable name, e.g. "Site Inspection Sheet". */
+  name: string;
+}
+
 export interface DocumentRecord {
   $id: string;
   project_id: string;
@@ -115,8 +123,8 @@ export interface DocumentRecord {
   file_type: string;
   document_visibility: DocumentVisibility;
   department: Department | null;
-  document_type: string;
-  document_type_name: string;
+  /** Foreign key referencing a DocumentType ($id). */
+  document_type_id: string;
   uploaded_by: string;
   uploaded_at: string;
   updated_at: string | null;

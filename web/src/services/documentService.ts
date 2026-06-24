@@ -1,7 +1,7 @@
 import { databases, storage, COLLECTIONS, DATABASE_ID, DOCUMENTS_BUCKET_ID } from '@/lib/appwrite';
 import { ID, Query } from 'appwrite';
 import { DocumentRecord, DocumentVisibility, Department } from '@/types/payload-types';
-import { getDocumentTypeName, isAllowedFile } from '@/lib/documentTypes';
+import { isAllowedFile } from '@/lib/documentTypes';
 
 const PAGE_SIZE = 9;
 const RECENT_LIMIT = 6;
@@ -11,7 +11,7 @@ export interface DocumentListParams {
   page?: number;
   projectId?: string;
   department?: Department | 'all';
-  documentType?: string | 'all';
+  documentTypeId?: string | 'all';
 }
 
 export interface DocumentListResult {
@@ -23,19 +23,19 @@ function buildFilterQueries(params: Omit<DocumentListParams, 'page'>) {
   const queries = [];
   if (params.projectId) queries.push(Query.equal('project_id', params.projectId));
   if (params.department && params.department !== 'all') queries.push(Query.equal('department', params.department));
-  if (params.documentType && params.documentType !== 'all') queries.push(Query.equal('document_type', params.documentType));
+  if (params.documentTypeId && params.documentTypeId !== 'all') queries.push(Query.equal('document_type_id', params.documentTypeId));
   return queries;
 }
 
 export async function fetchDocuments(
-  { page = 0, projectId, department, documentType }: DocumentListParams = {}
+  { page = 0, projectId, department, documentTypeId }: DocumentListParams = {}
 ): Promise<DocumentListResult> {
   try {
     const queries = [
       Query.orderDesc('uploaded_at'),
       Query.limit(PAGE_SIZE),
       Query.offset(page * PAGE_SIZE),
-      ...buildFilterQueries({ projectId, department, documentType }),
+      ...buildFilterQueries({ projectId, department, documentTypeId }),
     ];
 
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, queries);
@@ -57,13 +57,13 @@ export async function fetchDocuments(
  * so the matching is performed in the component over this result set.
  */
 export async function searchDocuments(
-  { projectId, department, documentType }: Omit<DocumentListParams, 'page'> = {}
+  { projectId, department, documentTypeId }: Omit<DocumentListParams, 'page'> = {}
 ): Promise<DocumentRecord[]> {
   try {
     const queries = [
       Query.orderDesc('uploaded_at'),
       Query.limit(SEARCH_LIMIT),
-      ...buildFilterQueries({ projectId, department, documentType }),
+      ...buildFilterQueries({ projectId, department, documentTypeId }),
     ];
 
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, queries);
@@ -92,7 +92,7 @@ export interface UploadDocumentInput {
   projectId: string;
   visibility: DocumentVisibility;
   department?: Department;
-  documentType: string;
+  documentTypeId: string;
   uploadedBy: string;
 }
 
@@ -109,14 +109,13 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Docume
     const response = await databases.createDocument(DATABASE_ID, COLLECTIONS.DOCUMENTS, ID.unique(), {
       project_id: input.projectId,
       file_name: input.file.name,
-      file_path: `projects/${input.projectId}/${input.documentType}/${input.file.name}`,
+      file_path: `projects/${input.projectId}/${input.documentTypeId}/${input.file.name}`,
       file_id: fileId,
       file_size: input.file.size,
       file_type: input.file.type,
       document_visibility: input.visibility,
       department: input.visibility === 'internal' ? input.department ?? null : null,
-      document_type: input.documentType,
-      document_type_name: getDocumentTypeName(input.documentType),
+      document_type_id: input.documentTypeId,
       uploaded_by: input.uploadedBy,
       uploaded_at: now,
       updated_at: now,
@@ -135,7 +134,7 @@ export interface UploadDocumentsInput {
   projectId: string;
   visibility: DocumentVisibility;
   department?: Department;
-  documentType: string;
+  documentTypeId: string;
   uploadedBy: string;
 }
 
@@ -155,7 +154,7 @@ export async function uploadDocuments(input: UploadDocumentsInput): Promise<Uplo
         projectId: input.projectId,
         visibility: input.visibility,
         department: input.department,
-        documentType: input.documentType,
+        documentTypeId: input.documentTypeId,
         uploadedBy: input.uploadedBy,
       });
       succeeded.push(doc);

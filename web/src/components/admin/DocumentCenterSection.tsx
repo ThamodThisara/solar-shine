@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Upload, Terminal, ChevronLeft, ChevronRight, FolderOpen, Search } from 'lucide-react';
+import { Upload, Terminal, ChevronLeft, ChevronRight, FolderOpen, Search, Tags } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/contexts/AuthContext';
 import { canAccessSection } from '@/config/roles';
 import { Department, DocumentRecord } from '@/types/payload-types';
-import { DEPARTMENTS, DOCUMENT_TYPES } from '@/lib/documentTypes';
+import { DEPARTMENTS } from '@/lib/documentTypes';
 import {
   fetchDocuments,
   fetchRecentDocuments,
@@ -20,12 +20,14 @@ import {
   deleteDocumentRecord,
   DOCUMENT_PAGE_SIZE,
 } from '@/services/documentService';
+import { fetchDocumentTypes } from '@/services/documentTypeService';
 import { fetchProjectExecutionOptions } from '@/services/projectExecutionService';
 import DocumentCard from './DocumentCard';
 import DocumentUploadDialog from './content-editors/document/DocumentUploadDialog';
+import ManageDocumentTypesDialog from './content-editors/document/ManageDocumentTypesDialog';
 
 const DocumentCenterSection: React.FC = () => {
-  const { role, isLoading: isAuthLoading, user } = useAuth();
+  const { role, isLoading: isAuthLoading, user, isAdmin } = useAuth();
   const canAccess = canAccessSection('document-center', role);
   const queryClient = useQueryClient();
 
@@ -36,6 +38,7 @@ const DocumentCenterSection: React.FC = () => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isManageTypesOpen, setIsManageTypesOpen] = useState(false);
 
   // Debounce the search input so we don't recompute on every keystroke.
   React.useEffect(() => {
@@ -55,6 +58,14 @@ const DocumentCenterSection: React.FC = () => {
     enabled: canAccess,
   });
 
+  const { data: documentTypes = [] } = useQuery({
+    queryKey: ['document-types'],
+    queryFn: fetchDocumentTypes,
+    enabled: canAccess,
+  });
+
+  const documentTypeById = (id: string) => documentTypes.find((dt) => dt.$id === id);
+
   const { data: recentDocuments, isLoading: isRecentLoading } = useQuery({
     queryKey: ['documents-recent'],
     queryFn: fetchRecentDocuments,
@@ -67,7 +78,7 @@ const DocumentCenterSection: React.FC = () => {
       page,
       projectId: projectFilter === 'all' ? undefined : projectFilter,
       department: departmentFilter,
-      documentType: documentTypeFilter,
+      documentTypeId: documentTypeFilter,
     }),
     enabled: canAccess && hasFilters && !isSearching,
   });
@@ -79,7 +90,7 @@ const DocumentCenterSection: React.FC = () => {
     queryFn: () => searchDocuments({
       projectId: projectFilter === 'all' ? undefined : projectFilter,
       department: departmentFilter,
-      documentType: documentTypeFilter,
+      documentTypeId: documentTypeFilter,
     }),
     enabled: canAccess && isSearching,
   });
@@ -173,9 +184,16 @@ const DocumentCenterSection: React.FC = () => {
             <CardTitle>Document Center</CardTitle>
             <CardDescription>Preview, download, and upload documents for your projects.</CardDescription>
           </div>
-          <Button onClick={() => setIsUploadOpen(true)}>
-            <Upload className="mr-2 h-4 w-4" /> Upload Document
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {isAdmin && (
+              <Button variant="outline" onClick={() => setIsManageTypesOpen(true)}>
+                <Tags className="mr-2 h-4 w-4" /> Add Document Types
+              </Button>
+            )}
+            <Button onClick={() => setIsUploadOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" /> Upload Document
+            </Button>
+          </div>
         </CardHeader>
       </Card>
 
@@ -215,8 +233,8 @@ const DocumentCenterSection: React.FC = () => {
           <SelectTrigger><SelectValue placeholder="All Document Types" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Document Types</SelectItem>
-            {DOCUMENT_TYPES.map((dt) => (
-              <SelectItem key={dt.code} value={dt.code}>{dt.name}</SelectItem>
+            {documentTypes.map((dt) => (
+              <SelectItem key={dt.$id} value={dt.$id}>{dt.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -253,6 +271,7 @@ const DocumentCenterSection: React.FC = () => {
               key={doc.$id}
               doc={doc}
               projectName={projectNameById(doc.project_id)}
+              documentType={documentTypeById(doc.document_type_id)}
               onDelete={(d) => deleteMutation.mutate({ id: d.$id, fileId: d.file_id })}
             />
           ))}
@@ -280,10 +299,18 @@ const DocumentCenterSection: React.FC = () => {
         isOpen={isUploadOpen}
         setIsOpen={setIsUploadOpen}
         projects={projects}
+        documentTypes={documentTypes}
         uploadedBy={user?.$id ?? ''}
         onUpload={(input) => uploadMutation.mutate(input)}
         isUploading={uploadMutation.isPending}
       />
+
+      {isAdmin && (
+        <ManageDocumentTypesDialog
+          isOpen={isManageTypesOpen}
+          setIsOpen={setIsManageTypesOpen}
+        />
+      )}
     </div>
   );
 };

@@ -57,6 +57,7 @@ export const COLLECTIONS = {
   WHAT_WE_DO: 'what_we_do',
   PROJECT_EXECUTIONS: 'projects',
   DOCUMENTS: 'documents',
+  DOCUMENT_TYPES: 'document_types',
 };
 
 export { client, account, databases, storage, teams, functions, Permission, Role, ID, Query };

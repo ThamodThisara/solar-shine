@@ -29,6 +29,12 @@ interface ComboboxProps {
   className?: string
   disabled?: boolean
   id?: string
+  /**
+   * Render the popover as modal. Needed when the combobox lives inside a modal
+   * dialog, otherwise the dialog's scroll-lock swallows wheel/touch events and
+   * the option list cannot be scrolled.
+   */
+  modal?: boolean
 }
 
 export function Combobox({
@@ -41,12 +47,13 @@ export function Combobox({
   className,
   disabled,
   id,
+  modal = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const selected = options.find((o) => o.value === value)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>
         <button
           id={id}
