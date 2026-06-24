@@ -109,6 +109,7 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
             <Combobox
               id="upload-project"
               modal
+              className="focus:ring-0 focus:ring-offset-0"
               value={state.projectId}
               onChange={(v) => setState((s) => ({ ...s, projectId: v }))}
               placeholder="Select a project"
@@ -143,6 +144,7 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
               <Combobox
                 id="upload-department"
                 modal
+                className="focus:ring-0 focus:ring-offset-0"
                 value={state.department}
                 onChange={(v) => setState((s) => ({ ...s, department: v as Department }))}
                 placeholder="Select a department"
@@ -158,6 +160,7 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
             <Combobox
               id="upload-document-type"
               modal
+              className="focus:ring-0 focus:ring-offset-0"
               value={state.documentTypeId}
               onChange={(v) => setState((s) => ({ ...s, documentTypeId: v }))}
               placeholder="Select a document type"

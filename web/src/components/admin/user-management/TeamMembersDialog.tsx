@@ -110,7 +110,7 @@ const TeamMembersDialog: React.FC<TeamMembersDialogProps> = ({ team, open, onOpe
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>{team.name} — Members</DialogTitle>
+          <DialogTitle>{team.name} - Members</DialogTitle>
           <DialogDescription>View, add, and remove members of this team.</DialogDescription>
         </DialogHeader>
 

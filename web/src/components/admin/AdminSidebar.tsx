@@ -113,7 +113,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         isCollapsed ? "lg:w-16" : "lg:w-64"
       )}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="py-3 px-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           {showLabels && (
             <h2 className="text-lg font-semibold text-gray-900">Admin Panel</h2>

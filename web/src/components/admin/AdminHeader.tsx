@@ -35,7 +35,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user, onMenuClick }) => {
             </div>
           </div>
           <Badge variant="secondary" className="bg-blue-500 text-white border-blue-400 hidden sm:inline-flex">
-            CMS
+            Admin
           </Badge>
         </div>
 
