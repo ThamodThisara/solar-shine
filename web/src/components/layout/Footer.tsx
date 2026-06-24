@@ -170,7 +170,7 @@ const Footer: React.FC = () => {
 
       <div className="relative">
         {/* Main Footer Content */}
-        <div className="container-custom py-16 px-4">
+        <div className="container-custom py-12 md:py-16 px-4">
           <motion.div
             className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12"
             variants={containerVariants}

@@ -127,7 +127,7 @@ const Header: React.FC = () => {
           <img
             src={logoUrl}
             alt={`${companyName} Logo`}
-            className={`w-auto h-12 bg-white rounded-sm transition-all duration-300 ${!scrolled ? 'drop-shadow-lg' : ''}`}
+            className={`w-auto h-10 sm:h-12 bg-white rounded-sm transition-all duration-300 ${!scrolled ? 'drop-shadow-lg' : ''}`}
             onError={(e) => {
               // If company logo fails to load, fallback to placeholder
               const target = e.target as HTMLImageElement;
@@ -137,7 +137,7 @@ const Header: React.FC = () => {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex space-x-6 items-center">
+        <nav className="hidden lg:flex space-x-4 xl:space-x-6 items-center">
           {menuItems.map((item) => (
             <Link
               key={item.title}
@@ -157,7 +157,7 @@ const Header: React.FC = () => {
 
         {/* Mobile Navigation Toggle */}
         <button
-          className={`md:hidden z-50 transition-colors ${scrolled ? 'text-brand-dark' : 'text-white'}`}
+          className={`lg:hidden z-50 transition-colors ${scrolled ? 'text-brand-dark' : 'text-white'}`}
           onClick={toggleMenu}
           aria-label="Toggle menu"
         >
@@ -166,8 +166,8 @@ const Header: React.FC = () => {
 
         {/* Mobile Navigation Menu */}
         <div
-          className={`fixed inset-0 bg-white p-6 transition-transform transform duration-300 ease-in-out md:hidden ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'
-            } z-40 flex flex-col`}
+          className={`fixed inset-0 bg-white p-6 transition-transform transform duration-300 ease-in-out lg:hidden ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+            } z-40 flex flex-col overflow-y-auto`}
         >
           <div className="mt-20 flex flex-col space-y-6">
             {menuItems.map((item) => (

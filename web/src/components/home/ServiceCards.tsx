@@ -58,7 +58,7 @@ const ServiceCards: React.FC<ServiceCardsProps> = ({ services }) => {
               return (
                 <motion.div
                   key={service.$id}
-                  className="min-w-[300px] max-w-[350px] bg-white rounded-lg shadow-lg p-6 flex flex-col h-[280px] snap-center"
+                  className="min-w-[260px] sm:min-w-[300px] max-w-[350px] bg-white rounded-lg shadow-lg p-6 flex flex-col h-[280px] snap-center"
                   whileHover={{ y: -10, transition: { duration: 0.3 } }}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}

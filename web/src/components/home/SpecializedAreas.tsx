@@ -33,9 +33,9 @@ const SpecializedAreas: React.FC = () => {
   };
 
   return (
-    <section className="py-20 px-4 bg-gradient-to-b from-white to-brand-light">
+    <section className="py-12 md:py-20 px-4 bg-gradient-to-b from-white to-brand-light">
       <div className="container-custom">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 md:mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             {defaultTitle}
           </h2>
@@ -44,7 +44,7 @@ const SpecializedAreas: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 mt-8 md:mt-12">
           {isLoading ? (
             // Loading skeletons
             Array(3).fill(null).map((_, idx) => (

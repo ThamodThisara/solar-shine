@@ -50,7 +50,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
   const visibleTestimonials = testimonials.slice(currentIndex, currentIndex + 3);
 
   return (
-    <section className="relative py-24 overflow-hidden">
+    <section className="relative py-16 md:py-24 overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100"></div>
       <div className="absolute top-0 left-0 w-full h-full">
@@ -60,7 +60,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
 
       <div className="container-custom relative z-10">
         {/* Section Header */}
-        <div className="text-center mb-20">
+        <div className="text-center mb-12 md:mb-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -147,7 +147,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
           )}
 
           {/* Testimonials Grid */}
-          <div className="grid md:grid-cols-3 gap-10 px-4 lg:px-20">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10 px-0 sm:px-4 lg:px-20">
             <AnimatePresence mode="wait">
               {visibleTestimonials.map((testimonial, index) => (
                 <motion.div
@@ -168,7 +168,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
                     <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-slate-500/5 via-gray-500/5 to-slate-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                     {/* Content */}
-                    <div className="relative p-8">
+                    <div className="relative p-6 sm:p-8">
                       {/* Quote Icon */}
                       <div className="absolute top-6 right-6">
                         <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-gray-100 rounded-full flex items-center justify-center shadow-lg">
@@ -296,7 +296,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.9 }}
-          className="text-center mt-20"
+          className="text-center mt-12 md:mt-20"
         >
           <div className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-slate-700 to-gray-800 text-white rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
             <Star className="w-6 h-6 fill-current" />

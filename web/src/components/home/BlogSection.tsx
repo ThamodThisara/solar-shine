@@ -32,7 +32,7 @@ const BlogSection: React.FC<BlogSectionProps> = ({ posts }) => {
   return (
     <section className="section bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="container-custom">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 md:mb-16">
           <div>
             <h2 className="section-title text-left text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">
               Latest <span className="text-primary">Insights</span>
@@ -70,7 +70,7 @@ const BlogSection: React.FC<BlogSectionProps> = ({ posts }) => {
             </div>
           </motion.div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {posts
               .filter(post => post.published) // Only show published posts
               .slice(0, 3)

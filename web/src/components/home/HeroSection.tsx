@@ -33,21 +33,21 @@ const HeroSection: React.FC<HeroSectionProps> = ({ data }) => {
         )}
       </div>
 
-      <div className="container-custom relative z-20 pt-20 md:pt-0">
+      <div className="container-custom relative z-20 pt-24 md:pt-0">
         <div className="max-w-3xl text-white">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
             {data.title}
           </h1>
-          <p className="text-xl md:text-2xl mb-3 text-white/90">
+          <p className="text-lg sm:text-xl md:text-2xl mb-3 text-white/90">
             {data.subtitle}
           </p>
           {data.description && (
-            <p className="text-base mb-8 text-white/80 max-w-2xl">
+            <p className="text-sm sm:text-base mb-8 text-white/80 max-w-2xl">
               {data.description}
             </p>
           )}
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button className="btn-primary flex items-center gap-2 text-lg" asChild>
+            <Button className="btn-primary flex items-center justify-center gap-2 text-base sm:text-lg w-full sm:w-auto" asChild>
               <a href={data.cta_url || '#'}>
                 {data.cta_text}
                 <ArrowRight size={18} />
