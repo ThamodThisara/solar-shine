@@ -20,7 +20,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
     const getVisibleCount = () => {
       if (typeof window === 'undefined') return 1;
       if (window.matchMedia('(min-width: 1024px)').matches) return 3;
-      if (window.matchMedia('(min-width: 640px)').matches) return 2;
+      if (window.matchMedia('(min-width: 768px)').matches) return 2;
       return 1;
     };
 
@@ -174,28 +174,27 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
           )}
 
           {/* Testimonials Grid */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10 px-0 sm:px-4 lg:px-20">
-            <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentIndex}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -30 }}
+              transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10 px-0 sm:px-4 lg:px-20"
+            >
               {visibleTestimonials.map((testimonial, index) => (
-                <motion.div
+                <div
                   key={testimonial.$id}
-                  initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -30, scale: 0.95 }}
-                  transition={{
-                    duration: 0.6,
-                    delay: index * 0.1,
-                    ease: [0.25, 0.46, 0.45, 0.94]
-                  }}
-                  className="group relative"
+                  className="group relative h-full"
                 >
                   {/* Card Background */}
-                  <div className="relative bg-white/95 backdrop-blur-sm rounded-3xl shadow-xl border border-slate-100/80 overflow-hidden transition-all duration-500 group-hover:shadow-2xl group-hover:scale-105 group-hover:bg-white group-hover:border-slate-200/60">
+                  <div className="relative h-full flex flex-col bg-white/95 backdrop-blur-sm rounded-3xl shadow-xl border border-slate-100/80 overflow-hidden transition-all duration-500 group-hover:shadow-2xl group-hover:scale-105 group-hover:bg-white group-hover:border-slate-200/60">
                     {/* Gradient Border Effect */}
                     <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-slate-500/5 via-gray-500/5 to-slate-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                     {/* Content */}
-                    <div className="relative p-6 sm:p-8">
+                    <div className="relative flex flex-1 flex-col p-6 sm:p-8">
                       {/* Quote Icon */}
                       <div className="absolute top-5 right-5 sm:top-6 sm:right-6">
                         <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-slate-100 to-gray-100 rounded-full flex items-center justify-center shadow-lg">
@@ -228,7 +227,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
-                        className="text-slate-700 mb-8 text-base sm:text-lg leading-relaxed italic font-medium break-words"
+                        className="text-slate-700 mb-8 flex-1 text-base sm:text-lg leading-relaxed italic font-medium break-words"
                       >
                         "{testimonial.text}"
                       </motion.blockquote>
@@ -259,10 +258,10 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
                       </motion.div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               ))}
-            </AnimatePresence>
-          </div>
+            </motion.div>
+          </AnimatePresence>
 
           {/* Carousel Indicators and Mobile Navigation */}
           {isCarousel && (
