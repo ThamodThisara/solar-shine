@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { EngineerLayout } from '@/components/engineer/EngineerLayout';
 import ProjectExecutionSection from '@/components/admin/ProjectExecutionSection';
+import SiteVisitsSection from '@/components/admin/SiteVisitsSection';
 import DocumentCenterSection from '@/components/admin/DocumentCenterSection';
 
 const Engineer: React.FC = () => {
@@ -13,6 +14,8 @@ const Engineer: React.FC = () => {
     switch (activeSection) {
       case 'project-execution':
         return <ProjectExecutionSection />;
+      case 'site-visits':
+        return <SiteVisitsSection />;
       case 'document-center':
         return <DocumentCenterSection />;
       default:

@@ -26,7 +26,8 @@ import {
   Link,
   BadgeCheck,
   Briefcase,
-  FolderOpen
+  FolderOpen,
+  ClipboardList
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -48,6 +49,7 @@ const sidebarItems = [
       { id: 'dashboard', label: 'Dashboard', icon: Home },
       { id: 'appointments', label: 'Appointments', icon: Calendar },
       { id: 'project-execution', label: 'Project Execution', icon: Briefcase },
+      { id: 'site-visits', label: 'Site Visits', icon: ClipboardList },
       { id: 'document-center', label: 'Document Center', icon: FolderOpen },
       { id: 'user-management', label: 'User Management', icon: Users },
     ]

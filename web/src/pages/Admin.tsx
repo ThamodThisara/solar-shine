@@ -6,6 +6,7 @@ import { Dashboard } from '@/components/admin/Dashboard';
 import { ContentManager } from '@/components/admin/content/ContentManager';
 import AppointmentsSection from '@/components/admin/AppointmentsSection';
 import ProjectExecutionSection from '@/components/admin/ProjectExecutionSection';
+import SiteVisitsSection from '@/components/admin/SiteVisitsSection';
 import DocumentCenterSection from '@/components/admin/DocumentCenterSection';
 import UserManagementSection from '@/components/admin/UserManagementSection';
 
@@ -21,6 +22,8 @@ const Admin: React.FC = () => {
         return <AppointmentsSection />;
       case 'project-execution':
         return <ProjectExecutionSection />;
+      case 'site-visits':
+        return <SiteVisitsSection />;
       case 'document-center':
         return <DocumentCenterSection />;
       case 'user-management':

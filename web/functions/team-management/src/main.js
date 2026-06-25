@@ -54,7 +54,33 @@ export default async ({ req, res, log, error }) => {
   const teams = new Teams(client);
   const account = new Account(client);
 
+  const ENGINEER_ROLES = ['project_engineer', 'planning_engineer'];
+
   try {
+    // List platform users, optionally filtered by role. Used by the Site Visits
+    // module so admins can assign a visit to a real engineer account.
+    // `?role=engineer` returns any engineer role; `?role=<specific>` matches exactly.
+    if (method === 'GET' && path === '/users') {
+      const roleFilter = query.role;
+      const result = await users.list(
+        [Query.limit(200)],
+        query.search || undefined
+      );
+      const mapped = result.users
+        .map((u) => ({
+          $id: u.$id,
+          name: u.name,
+          email: u.email,
+          role: u.prefs?.role ?? null,
+        }))
+        .filter((u) => {
+          if (!roleFilter) return true;
+          if (roleFilter === 'engineer') return ENGINEER_ROLES.includes(u.role);
+          return u.role === roleFilter;
+        });
+      return res.json({ users: mapped, total: mapped.length });
+    }
+
     if (method === 'GET' && path === '/teams') {
       const result = await teams.list(
         [Query.orderDesc('$createdAt'), Query.limit(100)],

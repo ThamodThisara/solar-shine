@@ -12,6 +12,8 @@ export interface DocumentListParams {
   projectId?: string;
   department?: Department | 'all';
   documentTypeId?: string | 'all';
+  /** When true, omit documents that belong to a site visit (shown separately). */
+  excludeSiteVisitDocs?: boolean;
 }
 
 export interface DocumentListResult {
@@ -24,18 +26,19 @@ function buildFilterQueries(params: Omit<DocumentListParams, 'page'>) {
   if (params.projectId) queries.push(Query.equal('project_id', params.projectId));
   if (params.department && params.department !== 'all') queries.push(Query.equal('department', params.department));
   if (params.documentTypeId && params.documentTypeId !== 'all') queries.push(Query.equal('document_type_id', params.documentTypeId));
+  if (params.excludeSiteVisitDocs) queries.push(Query.isNull('site_visit_id'));
   return queries;
 }
 
 export async function fetchDocuments(
-  { page = 0, projectId, department, documentTypeId }: DocumentListParams = {}
+  { page = 0, projectId, department, documentTypeId, excludeSiteVisitDocs }: DocumentListParams = {}
 ): Promise<DocumentListResult> {
   try {
     const queries = [
       Query.orderDesc('uploaded_at'),
       Query.limit(PAGE_SIZE),
       Query.offset(page * PAGE_SIZE),
-      ...buildFilterQueries({ projectId, department, documentTypeId }),
+      ...buildFilterQueries({ projectId, department, documentTypeId, excludeSiteVisitDocs }),
     ];
 
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, queries);
@@ -57,13 +60,13 @@ export async function fetchDocuments(
  * so the matching is performed in the component over this result set.
  */
 export async function searchDocuments(
-  { projectId, department, documentTypeId }: Omit<DocumentListParams, 'page'> = {}
+  { projectId, department, documentTypeId, excludeSiteVisitDocs }: Omit<DocumentListParams, 'page'> = {}
 ): Promise<DocumentRecord[]> {
   try {
     const queries = [
       Query.orderDesc('uploaded_at'),
       Query.limit(SEARCH_LIMIT),
-      ...buildFilterQueries({ projectId, department, documentTypeId }),
+      ...buildFilterQueries({ projectId, department, documentTypeId, excludeSiteVisitDocs }),
     ];
 
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, queries);
@@ -87,6 +90,21 @@ export async function fetchRecentDocuments(): Promise<DocumentRecord[]> {
   }
 }
 
+/** Fetches every document linked to a specific site visit. */
+export async function fetchDocumentsBySiteVisit(siteVisitId: string): Promise<DocumentRecord[]> {
+  try {
+    const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, [
+      Query.equal('site_visit_id', siteVisitId),
+      Query.orderDesc('uploaded_at'),
+      Query.limit(SEARCH_LIMIT),
+    ]);
+    return response.documents as unknown as DocumentRecord[];
+  } catch (error) {
+    console.error('Error fetching site visit documents:', error);
+    throw error;
+  }
+}
+
 export interface UploadDocumentInput {
   file: File;
   projectId: string;
@@ -94,6 +112,8 @@ export interface UploadDocumentInput {
   department?: Department;
   documentTypeId: string;
   uploadedBy: string;
+  /** When set, links the document to a site visit (still stored under the project). */
+  siteVisitId?: string;
 }
 
 export async function uploadDocument(input: UploadDocumentInput): Promise<DocumentRecord> {
@@ -109,13 +129,16 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Docume
     const response = await databases.createDocument(DATABASE_ID, COLLECTIONS.DOCUMENTS, ID.unique(), {
       project_id: input.projectId,
       file_name: input.file.name,
-      file_path: `projects/${input.projectId}/${input.documentTypeId}/${input.file.name}`,
+      file_path: input.siteVisitId
+        ? `projects/${input.projectId}/site-visits/${input.siteVisitId}/${input.file.name}`
+        : `projects/${input.projectId}/${input.documentTypeId}/${input.file.name}`,
       file_id: fileId,
       file_size: input.file.size,
       file_type: input.file.type,
       document_visibility: input.visibility,
       department: input.visibility === 'internal' ? input.department ?? null : null,
       document_type_id: input.documentTypeId,
+      site_visit_id: input.siteVisitId ?? null,
       uploaded_by: input.uploadedBy,
       uploaded_at: now,
       updated_at: now,
@@ -136,6 +159,8 @@ export interface UploadDocumentsInput {
   department?: Department;
   documentTypeId: string;
   uploadedBy: string;
+  /** When set, links every uploaded document to a site visit. */
+  siteVisitId?: string;
 }
 
 export interface UploadDocumentsResult {
@@ -156,6 +181,7 @@ export async function uploadDocuments(input: UploadDocumentsInput): Promise<Uplo
         department: input.department,
         documentTypeId: input.documentTypeId,
         uploadedBy: input.uploadedBy,
+        siteVisitId: input.siteVisitId,
       });
       succeeded.push(doc);
     } catch (error) {

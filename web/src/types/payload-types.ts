@@ -125,10 +125,83 @@ export interface DocumentRecord {
   department: Department | null;
   /** Foreign key referencing a DocumentType ($id). */
   document_type_id: string;
+  /**
+   * Optional foreign key referencing a SiteVisit ($id). Set when the document
+   * was uploaded through the Site Visits module; null/absent for ordinary
+   * project documents.
+   */
+  site_visit_id: string | null;
   uploaded_by: string;
   uploaded_at: string;
   updated_at: string | null;
   status: DocumentStatus;
+}
+
+/** Priority of a site visit / inspection. */
+export type SiteVisitPriority = "low" | "medium" | "high" | "critical";
+
+/** Lifecycle status of a site visit. */
+export type SiteVisitStatus =
+  | "scheduled"
+  | "in_progress"
+  | "on_hold"
+  | "completed"
+  | "cancelled";
+
+/**
+ * A site visit / inspection raised against a project. Admins create and assign
+ * them to an engineer; engineers record findings, progress, and documents.
+ */
+export interface SiteVisit {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  /** Foreign key referencing a project ($id) in the `projects` collection. */
+  project_id: string;
+  title: string;
+  /** Why the visit was raised (provided by the admin on creation). */
+  reason: string;
+  /** User $id of the engineer the visit is assigned to, or null when unassigned. */
+  assigned_engineer_id: string | null;
+  /** Denormalised engineer name for display without an extra lookup. */
+  assigned_engineer_name: string | null;
+  issue_observation: string | null;
+  description: string | null;
+  priority: SiteVisitPriority;
+  visit_date: string | null;
+  expected_completion_date: string | null;
+  location_details: string | null;
+  status: SiteVisitStatus;
+  additional_notes: string | null;
+  /** Engineer's consolidated findings / observations. */
+  findings: string | null;
+  /** User $id of the admin who created the visit. */
+  created_by: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/** Kind of activity entry recorded against a site visit. */
+export type SiteVisitUpdateType =
+  | "progress"
+  | "finding"
+  | "observation"
+  | "status_change"
+  | "note";
+
+/** A single entry in a site visit's activity / progress history. */
+export interface SiteVisitUpdate {
+  $id: string;
+  $createdAt: string;
+  /** Foreign key referencing a SiteVisit ($id). */
+  site_visit_id: string;
+  /** Denormalised project id for convenient cross-referencing. */
+  project_id: string | null;
+  author_id: string;
+  author_name: string | null;
+  update_type: SiteVisitUpdateType;
+  content: string;
+  created_at: string;
 }
 
 export interface Testimonial {

@@ -25,6 +25,7 @@ import { fetchProjectExecutionOptions } from '@/services/projectExecutionService
 import DocumentCard from './DocumentCard';
 import DocumentUploadDialog from './content-editors/document/DocumentUploadDialog';
 import ManageDocumentTypesDialog from './content-editors/document/ManageDocumentTypesDialog';
+import ProjectSiteVisitsPanel from './ProjectSiteVisitsPanel';
 
 const DocumentCenterSection: React.FC = () => {
   const { role, isLoading: isAuthLoading, user, isAdmin } = useAuth();
@@ -51,6 +52,9 @@ const DocumentCenterSection: React.FC = () => {
 
   const hasFilters = projectFilter !== 'all' || departmentFilter !== 'all' || documentTypeFilter !== 'all';
   const isSearching = search.length > 0;
+  // When a single project is in focus, its site-visit documents are shown in a
+  // dedicated panel, so they're excluded from the main grid to avoid duplication.
+  const isProjectSelected = projectFilter !== 'all';
 
   const { data: projects = [] } = useQuery({
     queryKey: ['project-execution-options'],
@@ -79,6 +83,7 @@ const DocumentCenterSection: React.FC = () => {
       projectId: projectFilter === 'all' ? undefined : projectFilter,
       department: departmentFilter,
       documentTypeId: documentTypeFilter,
+      excludeSiteVisitDocs: isProjectSelected,
     }),
     enabled: canAccess && hasFilters && !isSearching,
   });
@@ -91,6 +96,7 @@ const DocumentCenterSection: React.FC = () => {
       projectId: projectFilter === 'all' ? undefined : projectFilter,
       department: departmentFilter,
       documentTypeId: documentTypeFilter,
+      excludeSiteVisitDocs: isProjectSelected,
     }),
     enabled: canAccess && isSearching,
   });
@@ -293,6 +299,15 @@ const DocumentCenterSection: React.FC = () => {
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Site visit documents + history for the focused project, shown separately */}
+      {isProjectSelected && !isSearching && (
+        <ProjectSiteVisitsPanel
+          projectId={projectFilter}
+          projectName={projectNameById(projectFilter)}
+          documentTypes={documentTypes}
+        />
       )}
 
       <DocumentUploadDialog

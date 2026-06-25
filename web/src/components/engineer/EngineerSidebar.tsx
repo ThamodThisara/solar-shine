@@ -9,6 +9,7 @@ import {
   X,
   Briefcase,
   FolderOpen,
+  ClipboardList,
 } from 'lucide-react';
 
 interface EngineerSidebarProps {
@@ -30,6 +31,7 @@ const sidebarItems = [
     category: 'Dashboard',
     items: [
       { id: 'project-execution', label: 'Project Execution', icon: Briefcase },
+      { id: 'site-visits', label: 'Site Visits', icon: ClipboardList },
       { id: 'document-center', label: 'Document Center', icon: FolderOpen },
     ],
   },

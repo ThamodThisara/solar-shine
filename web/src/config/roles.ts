@@ -54,6 +54,7 @@ export const PANELS: Record<'admin' | 'engineer', PanelDefinition> = {
 export const SECTION_ACCESS: Record<string, AppRole[]> = {
   'project-execution': ['admin', ...ENGINEER_ROLES],
   'document-center': ['admin', ...ENGINEER_ROLES],
+  'site-visits': ['admin', ...ENGINEER_ROLES],
 };
 
 /** All roles that are allowed to authenticate into a panel at all. */

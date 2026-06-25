@@ -667,12 +667,12 @@
       "enabled": true,
       "documentSecurity": false,
       "attributes": [
-        { "key": "project_id", "type": "string", "required": true, "array": false, "size": 255 },
-        { "key": "file_name", "type": "string", "required": true, "array": false, "size": 500 },
-        { "key": "file_path", "type": "string", "required": true, "array": false, "size": 1000 },
-        { "key": "file_id", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "project_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "file_name", "type": "string", "required": true, "array": false, "size": 500, "encrypt": false },
+        { "key": "file_path", "type": "string", "required": true, "array": false, "size": 1000, "encrypt": false },
+        { "key": "file_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
         { "key": "file_size", "type": "integer", "required": true, "array": false },
-        { "key": "file_type", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "file_type", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
         {
           "key": "document_visibility",
           "type": "string",
@@ -682,17 +682,19 @@
           "format": "enum",
           "elements": ["internal", "client_facing"]
         },
-        { "key": "department", "type": "string", "required": false, "array": false, "size": 50 },
-        { "key": "document_type_id", "type": "string", "required": true, "array": false, "size": 255 },
-        { "key": "uploaded_by", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "department", "type": "string", "required": false, "array": false, "size": 50, "encrypt": false },
+        { "key": "document_type_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "site_visit_id", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        { "key": "uploaded_by", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
         { "key": "uploaded_at", "type": "datetime", "required": true, "array": false },
         { "key": "updated_at", "type": "datetime", "required": false, "array": false },
-        { "key": "status", "type": "string", "required": false, "array": false, "size": 20, "default": "Active" }
+        { "key": "status", "type": "string", "required": false, "array": false, "size": 20, "default": "Active", "encrypt": false }
       ],
       "indexes": [
         { "key": "idx_project_id", "type": "key", "attributes": ["project_id"], "orders": ["ASC"] },
         { "key": "idx_department", "type": "key", "attributes": ["department"], "orders": ["ASC"] },
         { "key": "idx_document_type_id", "type": "key", "attributes": ["document_type_id"], "orders": ["ASC"] },
+        { "key": "idx_site_visit_id", "type": "key", "attributes": ["site_visit_id"], "orders": ["ASC"] },
         { "key": "idx_uploaded_at", "type": "key", "attributes": ["uploaded_at"], "orders": ["DESC"] }
       ]
     },
@@ -715,6 +717,98 @@
       "indexes": [
         { "key": "idx_type", "type": "key", "attributes": ["type"], "orders": ["ASC"] },
         { "key": "idx_name", "type": "key", "attributes": ["name"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "site_visits",
+      "$permissions": [
+        "read(\"users\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Site Visits",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "project_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "title", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "reason", "type": "string", "required": true, "array": false, "size": 1000, "encrypt": false },
+        { "key": "assigned_engineer_id", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false, "default": null },
+        { "key": "assigned_engineer_name", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        { "key": "issue_observation", "type": "string", "required": false, "array": false, "size": 20000, "encrypt": false },
+        { "key": "description", "type": "string", "required": false, "array": false, "size": 20000, "encrypt": false },
+        {
+          "key": "priority",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 20,
+          "format": "enum",
+          "elements": ["low", "medium", "high", "critical"],
+          "default": "medium"
+        },
+        { "key": "visit_date", "type": "datetime", "required": false, "array": false },
+        { "key": "expected_completion_date", "type": "datetime", "required": false, "array": false },
+        { "key": "location_details", "type": "string", "required": false, "array": false, "size": 1000, "encrypt": false },
+        {
+          "key": "status",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 20,
+          "format": "enum",
+          "elements": ["scheduled", "in_progress", "on_hold", "completed", "cancelled"],
+          "default": "scheduled"
+        },
+        { "key": "additional_notes", "type": "string", "required": false, "array": false, "size": 20000, "encrypt": false },
+        { "key": "findings", "type": "string", "required": false, "array": false, "size": 20000, "encrypt": false },
+        { "key": "created_by", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "created_at", "type": "datetime", "required": true, "array": false },
+        { "key": "updated_at", "type": "datetime", "required": false, "array": false }
+      ],
+      "indexes": [
+        { "key": "idx_project_id", "type": "key", "attributes": ["project_id"], "orders": ["ASC"] },
+        { "key": "idx_assigned_engineer_id", "type": "key", "attributes": ["assigned_engineer_id"], "orders": ["ASC"] },
+        { "key": "idx_status", "type": "key", "attributes": ["status"], "orders": ["ASC"] },
+        { "key": "idx_created_at", "type": "key", "attributes": ["created_at"], "orders": ["DESC"] },
+        { "key": "idx_title_search", "type": "fulltext", "attributes": ["title"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "site_visit_updates",
+      "$permissions": [
+        "read(\"users\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Site Visit Updates",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "site_visit_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "project_id", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        { "key": "author_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "author_name", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        {
+          "key": "update_type",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 20,
+          "format": "enum",
+          "elements": ["progress", "finding", "observation", "status_change", "note"],
+          "default": "note"
+        },
+        { "key": "content", "type": "string", "required": true, "array": false, "size": 5000, "encrypt": false },
+        { "key": "created_at", "type": "datetime", "required": true, "array": false }
+      ],
+      "indexes": [
+        { "key": "idx_site_visit_id", "type": "key", "attributes": ["site_visit_id"], "orders": ["ASC"] },
+        { "key": "idx_created_at", "type": "key", "attributes": ["created_at"], "orders": ["DESC"] }
       ]
     },
     {
