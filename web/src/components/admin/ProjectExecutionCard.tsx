@@ -34,6 +34,11 @@ interface ProjectExecutionCardProps {
 const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({ project, onStatusChange, onDelete }) => {
   const [expanded, setExpanded] = useState(false);
 
+  const address = project.address || (project.location && project.location.includes('|||') ? project.location.split('|||')[0] : project.location || '');
+  const mapLink = project.latitude && project.longitude
+    ? `https://www.google.com/maps?q=${project.latitude},${project.longitude}`
+    : (project.location && project.location.includes('|||') ? project.location.split('|||')[1] : '');
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
@@ -47,7 +52,22 @@ const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({ project, on
             </div>
             <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><User className="h-3 w-3" /> {project.client}</span>
-              <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {project.location}</span>
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {mapLink ? (
+                  <a
+                    href={mapLink.trim()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline font-medium"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {address.trim()}
+                  </a>
+                ) : (
+                  address.trim()
+                )}
+              </span>
               <span>{project.system_size} kW</span>
             </div>
           </div>

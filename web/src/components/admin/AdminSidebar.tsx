@@ -6,7 +6,6 @@ import { Separator } from '@/components/ui/separator';
 import {
   Home,
   Calendar,
-  FileText,
   Users,
   Settings,
   Image,
@@ -14,8 +13,6 @@ import {
   BarChart3,
   Globe,
   Building,
-  Mail,
-  Phone,
   ShoppingBag,
   Award,
   BookOpen,
@@ -48,6 +45,7 @@ const sidebarItems = [
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: Home },
       { id: 'appointments', label: 'Appointments', icon: Calendar },
+      { id: 'clients', label: 'Client Management', icon: Users },
       { id: 'project-execution', label: 'Project Execution', icon: Briefcase },
       { id: 'site-visits', label: 'Site Visits', icon: ClipboardList },
       { id: 'document-center', label: 'Document Center', icon: FolderOpen },

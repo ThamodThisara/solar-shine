@@ -983,5 +983,31 @@
       ],
       "indexes": []
     }
+    ,
+    {
+      "$id": "clients",
+      "$permissions": [
+        "read(\"users\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Clients",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "name", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "phone", "type": "string", "required": true, "array": false, "size": 50, "encrypt": false },
+        { "key": "email", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "channels", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "address", "type": "string", "required": false, "array": false, "size": 500, "encrypt": false },
+        { "key": "latitude", "type": "double", "required": false, "array": false },
+        { "key": "longitude", "type": "double", "required": false, "array": false }
+      ],
+      "indexes": [
+        { "key": "idx_name", "type": "key", "attributes": ["name"], "orders": ["ASC"] }
+      ]
+    }
   ]
 }

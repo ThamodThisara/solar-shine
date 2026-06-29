@@ -8,6 +8,7 @@ import { fetchProjects, updateProject, addProject, deleteProject } from '@/servi
 import { Project } from '@/types/payload-types';
 import ProjectsTable from './project/ProjectsTable';
 import ProjectFormDialog from './project/ProjectFormDialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -17,6 +18,8 @@ const ProjectsEditor: React.FC = () => {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<{ id: string; title: string } | null>(null);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],
@@ -56,6 +59,8 @@ const ProjectsEditor: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       toast.success('Project deleted successfully');
+      setIsDeleteConfirmOpen(false);
+      setProjectToDelete(null);
     },
     onError: () => toast.error('Failed to delete project'),
   });
@@ -122,7 +127,17 @@ const ProjectsEditor: React.FC = () => {
             <Skeleton className="h-12 w-full" />
           </div>
         ) : (
-          <ProjectsTable projects={projects} onEdit={handleEdit} onDelete={(id: string) => deleteMutation.mutate(id)} />
+          <ProjectsTable
+            projects={projects}
+            onEdit={handleEdit}
+            onDelete={(id: string) => {
+              const project = projects.find((p) => p.id === id);
+              if (project) {
+                setProjectToDelete({ id, title: project.title });
+                setIsDeleteConfirmOpen(true);
+              }
+            }}
+          />
         )}
         <ProjectFormDialog
           isOpen={isDialogOpen}
@@ -130,6 +145,21 @@ const ProjectsEditor: React.FC = () => {
           project={selectedProject}
           onSave={handleSave}
           isSaving={addMutation.isPending || updateMutation.isPending}
+        />
+
+        <ConfirmDialog
+          open={isDeleteConfirmOpen}
+          onOpenChange={setIsDeleteConfirmOpen}
+          title="Delete Showcase Project"
+          description={projectToDelete ? `Are you sure you want to delete "${projectToDelete.title}"? This action cannot be undone.` : ''}
+          confirmText="Delete"
+          variant="destructive"
+          isLoading={deleteMutation.isPending}
+          onConfirm={() => {
+            if (projectToDelete) {
+              deleteMutation.mutate(projectToDelete.id);
+            }
+          }}
         />
       </CardContent>
     </Card>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Terminal, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Plus, Terminal, Search } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,8 @@ import {
 } from '@/services/projectExecutionService';
 import ProjectExecutionCard from './ProjectExecutionCard';
 import ProjectExecutionFormDialog from './content-editors/project-execution/ProjectExecutionFormDialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { SimplePagination } from '@/components/ui/simple-pagination';
 
 const filterOptions: Array<{ id: ProjectExecutionStatus | 'all'; label: string }> = [
   { id: 'all', label: 'All' },
@@ -50,6 +52,8 @@ const ProjectExecutionSection: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
 
   // Debounce the search input so we don't query on every keystroke.
   React.useEffect(() => {
@@ -105,6 +109,8 @@ const ProjectExecutionSection: React.FC = () => {
     onSuccess: () => {
       invalidate();
       toast.success('Project deleted');
+      setIsDeleteConfirmOpen(false);
+      setProjectToDelete(null);
     },
     onError: () => toast.error('Failed to delete project'),
   });
@@ -213,34 +219,44 @@ const ProjectExecutionSection: React.FC = () => {
               key={project.$id}
               project={project}
               onStatusChange={(id, status) => statusMutation.mutate({ id, status })}
-              onDelete={(id) => deleteMutation.mutate(id)}
+              onDelete={(id) => {
+                setProjectToDelete({ id, name: project.name });
+                setIsDeleteConfirmOpen(true);
+              }}
             />
           ))}
         </div>
       )}
 
-      {/* Pagination */}
-      {total > PROJECT_EXECUTION_PAGE_SIZE && (
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            Page {page + 1} of {totalPages} ({total} projects)
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-              <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Previous
-            </Button>
-            <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
-              Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <SimplePagination
+        page={page}
+        totalPages={totalPages}
+        totalItems={total}
+        pageSize={PROJECT_EXECUTION_PAGE_SIZE}
+        onPageChange={setPage}
+        label="projects"
+      />
 
       <ProjectExecutionFormDialog
         isOpen={isDialogOpen}
         setIsOpen={setIsDialogOpen}
         onSave={(input) => createMutation.mutate(input)}
         isSaving={createMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        title="Delete Project Execution"
+        description={projectToDelete ? `Are you sure you want to delete the project "${projectToDelete.name}"? This action cannot be undone.` : ''}
+        confirmText="Delete"
+        variant="destructive"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (projectToDelete) {
+            deleteMutation.mutate(projectToDelete.id);
+          }
+        }}
       />
     </div>
   );

@@ -21,17 +21,11 @@ export async function fetchProjectExecutions(
   try {
     const queries = [
       Query.orderDesc('$createdAt'),
-      Query.limit(PAGE_SIZE),
-      Query.offset(page * PAGE_SIZE),
+      Query.limit(100),
     ];
 
     if (status !== 'all') {
       queries.push(Query.equal('status', status));
-    }
-
-    const trimmedSearch = search.trim();
-    if (trimmedSearch) {
-      queries.push(Query.search('name', trimmedSearch));
     }
 
     const response = await databases.listDocuments(
@@ -40,9 +34,51 @@ export async function fetchProjectExecutions(
       queries
     );
 
+    let documents = response.documents.map((doc: any) => {
+      const hasDirectFields = doc.address !== undefined && doc.address !== null;
+      let address = doc.address;
+      let latitude = doc.latitude;
+      let longitude = doc.longitude;
+      
+      if (!hasDirectFields && doc.location) {
+        const parts = doc.location.split('|||');
+        address = parts[0]?.trim() || '';
+        const mapLink = parts[1]?.trim() || '';
+        const match = mapLink.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) || mapLink.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+        if (match) {
+          latitude = parseFloat(match[1]);
+          longitude = parseFloat(match[2]);
+        }
+      }
+      
+      return {
+        ...doc,
+        address: address || null,
+        latitude: latitude !== undefined ? latitude : null,
+        longitude: longitude !== undefined ? longitude : null
+      };
+    }) as unknown as ProjectExecution[];
+
+    const trimmedSearch = search.trim();
+    if (trimmedSearch) {
+      const searchLower = trimmedSearch.toLowerCase();
+      documents = documents.filter((p) => {
+        const nameMatch = p.name?.toLowerCase().includes(searchLower);
+        const clientMatch = p.client?.toLowerCase().includes(searchLower);
+        const addrVal = p.address || (p.location?.includes('|||') ? p.location.split('|||')[0] : p.location);
+        const locationMatch = addrVal?.toLowerCase().includes(searchLower);
+
+        return nameMatch || clientMatch || locationMatch;
+      });
+    }
+
+    const total = documents.length;
+    const offset = page * PAGE_SIZE;
+    const paginatedDocuments = documents.slice(offset, offset + PAGE_SIZE);
+
     return {
-      documents: response.documents as unknown as ProjectExecution[],
-      total: response.total,
+      documents: paginatedDocuments,
+      total: total,
     };
   } catch (error) {
     console.error('Error fetching project executions:', error);
@@ -54,6 +90,9 @@ export interface CreateProjectExecutionInput {
   name: string;
   client: string;
   location: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
   status: ProjectExecutionStatus;
   engineer?: string;
   sales_manager?: string;

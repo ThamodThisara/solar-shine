@@ -55,6 +55,7 @@ export const COLLECTIONS = {
   SEO_SETTINGS: 'seo_settings',
   PAGE_SEO: 'page_seo',
   WHAT_WE_DO: 'what_we_do',
+  CLIENTS: 'clients',
   PROJECT_EXECUTIONS: 'projects',
   DOCUMENTS: 'documents',
   DOCUMENT_TYPES: 'document_types',

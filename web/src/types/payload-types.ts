@@ -91,6 +91,9 @@ export interface ProjectExecution {
   name: string;
   client: string;
   location: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   engineer: string | null;
   sales_manager: string | null;
   status: ProjectExecutionStatus;

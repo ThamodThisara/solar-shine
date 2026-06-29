@@ -104,7 +104,7 @@ const ProjectFormDialog: React.FC<ProjectFormDialogProps> = ({ isOpen, setIsOpen
             <Textarea id="description" name="description" defaultValue={project?.description || ''} rows={4} required />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSaving}>Cancel</Button>
             <Button type="submit" disabled={isSaving}>
               <Save className="mr-2 h-4 w-4" /> {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>

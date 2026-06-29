@@ -9,6 +9,7 @@ import ProjectExecutionSection from '@/components/admin/ProjectExecutionSection'
 import SiteVisitsSection from '@/components/admin/SiteVisitsSection';
 import DocumentCenterSection from '@/components/admin/DocumentCenterSection';
 import UserManagementSection from '@/components/admin/UserManagementSection';
+import { ClientsSection } from '@/components/admin/ClientsSection';
 
 const Admin: React.FC = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -28,6 +29,8 @@ const Admin: React.FC = () => {
         return <DocumentCenterSection />;
       case 'user-management':
         return <UserManagementSection />;
+      case 'clients':
+        return <ClientsSection />;
       case 'hero':
       case 'services':
       case 'specialized-areas':
