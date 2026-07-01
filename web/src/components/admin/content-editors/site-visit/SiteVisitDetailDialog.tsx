@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { Combobox } from '@/components/ui/combobox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Pencil, Save, X, Send, UploadCloud, FileText, Clock } from 'lucide-react';
+import { Pencil, Save, X, Send, UploadCloud, FileText, Clock, Camera } from 'lucide-react';
 import { cn, formatFileSize } from '@/lib/utils';
-import { DocumentType, DocumentVisibility, SiteVisit, SiteVisitUpdateType } from '@/types/payload-types';
+import { DocumentType, DocumentVisibility, SiteVisit, SiteVisitUpdateType, ProjectExecution } from '@/types/payload-types';
 import {
   PRIORITY_OPTIONS, STATUS_OPTIONS, UPDATE_TYPE_OPTIONS,
   priorityStyles, statusStyles, priorityLabel, statusLabel, updateTypeLabel,
@@ -29,6 +29,8 @@ import {
 } from '@/services/documentService';
 import { isAllowedFile, ALLOWED_FILE_EXTENSIONS } from '@/lib/documentTypes';
 import DocumentCard from '@/components/admin/DocumentCard';
+import { PlatformUser, fetchEngineers } from '@/services/userService';
+import { MultiSelectPopover } from '@/components/ui/multi-select-popover';
 
 interface CurrentUser {
   $id: string;
@@ -44,9 +46,17 @@ interface SiteVisitDetailDialogProps {
   currentUser: CurrentUser;
   /** Whether the current user may edit / add updates / upload (admin or assignee). */
   canEdit: boolean;
+  users?: PlatformUser[];
+  projects?: Pick<ProjectExecution, '$id' | 'name' | 'client' | 'engineer' | 'planning_engineer'>[];
+  defaultTab?: 'details' | 'activity' | 'documents';
+  hideTabs?: boolean;
 }
 
 interface EditState {
+  title: string;
+  reason: string;
+  assigned_engineer_id: string;
+  assigned_engineer_name: string;
   status: SiteVisit['status'];
   priority: SiteVisit['priority'];
   issue_observation: string;
@@ -61,6 +71,10 @@ interface EditState {
 const toDateInput = (iso: string | null) => (iso ? iso.slice(0, 10) : '');
 
 const buildEditState = (v: SiteVisit): EditState => ({
+  title: v.title ?? '',
+  reason: v.reason ?? '',
+  assigned_engineer_id: v.assigned_engineer_id ?? '',
+  assigned_engineer_name: v.assigned_engineer_name ?? '',
   status: v.status,
   priority: v.priority,
   issue_observation: v.issue_observation ?? '',
@@ -80,7 +94,7 @@ const DetailRow: React.FC<{ label: string; value?: React.ReactNode }> = ({ label
 );
 
 const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
-  visit, isOpen, setIsOpen, projectName, documentTypes, currentUser, canEdit,
+  visit, isOpen, setIsOpen, projectName, documentTypes, currentUser, canEdit, users = [], projects = [], defaultTab = 'details', hideTabs = false,
 }) => {
   const queryClient = useQueryClient();
   // Local copy so the open dialog reflects saves without depending on the list
@@ -88,6 +102,7 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
   const [current, setCurrent] = useState<SiteVisit>(visit);
   const [isEditing, setIsEditing] = useState(false);
   const [edit, setEdit] = useState<EditState>(buildEditState(visit));
+  const [activeTab, setActiveTab] = useState<string>('details');
 
   // Activity form
   const [updateType, setUpdateType] = useState<SiteVisitUpdateType>('progress');
@@ -98,6 +113,7 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
   const [visibility, setVisibility] = useState<DocumentVisibility>('internal');
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -109,6 +125,7 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
       setDocTypeId('');
       setVisibility('internal');
       setFiles([]);
+      setActiveTab('details');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, visit.$id]);
@@ -205,8 +222,37 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
     onError: () => toast.error('Failed to delete document'),
   });
 
+  const { data: engineers = [], isLoading: isEngineersLoading } = useQuery({
+    queryKey: ['engineers'],
+    queryFn: () => fetchEngineers(),
+    enabled: isOpen && isEditing,
+  });
+
+  const selectedProject = projects.find((p) => p.$id === visit.project_id);
+  const projectEmails = new Set<string>();
+  if (selectedProject) {
+    if (selectedProject.engineer) {
+      selectedProject.engineer.split(',').forEach((email) => projectEmails.add(email.trim().toLowerCase()));
+    }
+    if (selectedProject.planning_engineer) {
+      selectedProject.planning_engineer.split(',').forEach((email) => projectEmails.add(email.trim().toLowerCase()));
+    }
+  }
+
+  const filteredEngineers = engineers.filter((eng) => projectEmails.has(eng.email.toLowerCase()));
+  const engineerOptions = filteredEngineers.map((eng) => ({
+    value: eng.$id,
+    label: eng.name || eng.email,
+    keywords: eng.email,
+    group: eng.role === 'planning_engineer' ? 'Planning Engineers' : 'Project Engineers',
+  }));
+
   const handleSave = () => {
     saveMutation.mutate({
+      title: edit.title.trim() || undefined,
+      reason: edit.reason.trim() || undefined,
+      assigned_engineer_id: edit.assigned_engineer_id || undefined,
+      assigned_engineer_name: edit.assigned_engineer_name || null,
       status: edit.status,
       priority: edit.priority,
       issue_observation: edit.issue_observation.trim() || null,
@@ -227,34 +273,119 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
     setFiles((prev) => [...prev, ...accepted]);
   };
 
+  const renderEngineersDetails = () => {
+    if (!current.assigned_engineer_id) {
+      return <DetailRow label="Assigned Engineers" value="Unassigned" />;
+    }
+
+    const ids = current.assigned_engineer_id.split(',').map((s) => s.trim()).filter(Boolean);
+    const names = current.assigned_engineer_name ? current.assigned_engineer_name.split(',').map((s) => s.trim()) : [];
+
+    const projectEngineers: string[] = [];
+    const planningEngineers: string[] = [];
+
+    ids.forEach((id, idx) => {
+      const u = users.find((user) => user.$id === id);
+      const name = names[idx] || u?.name || u?.email || id;
+      if (u?.role === 'planning_engineer') {
+        planningEngineers.push(name);
+      } else {
+        projectEngineers.push(name);
+      }
+    });
+
+    return (
+      <>
+        {projectEngineers.length > 0 && (
+          <DetailRow
+            label="Project Engineer"
+            value={
+              <div className="space-y-0.5 font-semibold text-foreground">
+                {projectEngineers.map((name, i) => <p key={i}>{name}</p>)}
+              </div>
+            }
+          />
+        )}
+        {planningEngineers.length > 0 && (
+          <DetailRow
+            label="Planning Engineer"
+            value={
+              <div className="space-y-0.5 font-semibold text-foreground">
+                {planningEngineers.map((name, i) => <p key={i}>{name}</p>)}
+              </div>
+            }
+          />
+        )}
+      </>
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[720px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 flex-wrap pr-6">
+          <DialogTitle className="flex items-center justify-between gap-4 pr-6">
             <span className="truncate">{current.title}</span>
-            <Badge className={priorityStyles[current.priority]}>{priorityLabel(current.priority)}</Badge>
-            <Badge className={statusStyles[current.status]}>{statusLabel(current.status)}</Badge>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Badge className={statusStyles[current.status]}>{statusLabel(current.status)}</Badge>
+              <Badge variant="outline" className={priorityStyles[current.priority]}>{priorityLabel(current.priority)}</Badge>
+            </div>
           </DialogTitle>
-          <DialogDescription>
-            {projectName} · Assigned to {current.assigned_engineer_name || 'Unassigned'}
-          </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="activity">Activity ({updates.length})</TabsTrigger>
-            <TabsTrigger value="documents">Documents ({documents.length})</TabsTrigger>
-          </TabsList>
+         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          {/* Mobile-only view: Custom Button-style triggers to avoid squishing */}
+          {!hideTabs && (
+            <div className="grid grid-cols-3 sm:hidden gap-1 p-1 bg-muted rounded-lg border border-border/40 mb-3">
+              <button
+                type="button"
+                onClick={() => setActiveTab('details')}
+                className={cn(
+                  "rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition-all text-center truncate",
+                  activeTab === 'details' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Details
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('activity')}
+                className={cn(
+                  "rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition-all text-center truncate",
+                  activeTab === 'activity' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Activity ({updates.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('documents')}
+                className={cn(
+                  "rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition-all text-center truncate",
+                  activeTab === 'documents' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Docs ({documents.length})
+              </button>
+            </div>
+          )}
+
+          {/* Desktop-only view: Standard TabsList */}
+          {!hideTabs && (
+            <TabsList className="hidden sm:grid w-full grid-cols-3">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="activity">Activity ({updates.length})</TabsTrigger>
+              <TabsTrigger value="documents">Documents ({documents.length})</TabsTrigger>
+            </TabsList>
+          )}
 
           {/* DETAILS */}
           <TabsContent value="details" className="max-h-[60vh] overflow-y-auto pr-1">
             {!isEditing ? (
               <div className="space-y-4 py-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DetailRow label="Project" value={projectName} />
                   <DetailRow label="Reason for Visit" value={current.reason} />
-                  <DetailRow label="Location Details" value={current.location_details} />
                   <DetailRow
                     label="Visit Date"
                     value={current.visit_date ? format(new Date(current.visit_date), 'MMM d, yyyy') : undefined}
@@ -263,6 +394,7 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
                     label="Expected Completion"
                     value={current.expected_completion_date ? format(new Date(current.expected_completion_date), 'MMM d, yyyy') : undefined}
                   />
+                  {renderEngineersDetails()}
                 </div>
                 <DetailRow label="Issue / Observation" value={current.issue_observation} />
                 <DetailRow label="Description" value={current.description} />
@@ -280,6 +412,13 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
             ) : (
               <div className="space-y-4 py-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-title">Site Visit Title</Label>
+                    <Input
+                      id="edit-title" value={edit.title}
+                      onChange={(e) => setEdit((s) => ({ ...s, title: e.target.value }))}
+                    />
+                  </div>
                   <div>
                     <Label htmlFor="edit-status">Status</Label>
                     <select
@@ -310,12 +449,41 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-completion">Expected Completion</Label>
+                    <Label htmlFor="edit-completion">Expected Completion Date</Label>
                     <Input
                       id="edit-completion" type="date" value={edit.expected_completion_date}
                       onChange={(e) => setEdit((s) => ({ ...s, expected_completion_date: e.target.value }))}
                     />
                   </div>
+                  {canEdit && (
+                    <div>
+                      <MultiSelectPopover
+                        label="Assigned Engineers"
+                        placeholder={isEngineersLoading ? 'Loading engineers...' : 'Unassigned (visible to all engineers)'}
+                        emptyText="No engineers found."
+                        options={engineerOptions}
+                        selectedValues={edit.assigned_engineer_id ? edit.assigned_engineer_id.split(',').filter(Boolean) : []}
+                        onChange={(vals) => {
+                          const selectedNames = vals.map(val => {
+                            const eng = engineers.find(e => e.$id === val);
+                            return eng?.name || eng?.email || val;
+                          });
+                          setEdit(s => ({
+                            ...s,
+                            assigned_engineer_id: vals.join(','),
+                            assigned_engineer_name: selectedNames.join(','),
+                          }));
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="edit-reason">Reason for Visit</Label>
+                  <Textarea
+                    id="edit-reason" rows={2} value={edit.reason}
+                    onChange={(e) => setEdit((s) => ({ ...s, reason: e.target.value }))}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="edit-location">Location Details</Label>
@@ -463,16 +631,31 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
                     </div>
                   </div>
 
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center gap-1 border-2 border-dashed rounded-md py-5 cursor-pointer hover:bg-accent/50 transition-colors"
-                  >
-                    <UploadCloud className="h-6 w-6 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Click to browse files</span>
-                    <span className="text-[10px] text-muted-foreground">{ALLOWED_FILE_EXTENSIONS.join(', ')}</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center gap-1 border-2 border-dashed rounded-md py-5 cursor-pointer hover:bg-accent/50 transition-colors"
+                    >
+                      <UploadCloud className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground font-semibold">Select File(s)</span>
+                      <span className="text-[10px] text-muted-foreground">{ALLOWED_FILE_EXTENSIONS.join(', ')}</span>
+                    </div>
+
+                    <div
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="flex flex-col items-center justify-center gap-1 border-2 border-dashed rounded-md py-5 cursor-pointer hover:bg-accent/50 transition-colors"
+                    >
+                      <Camera className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground font-semibold">Take Photo (Camera)</span>
+                      <span className="text-[10px] text-muted-foreground">Mobile Camera Capture</span>
+                    </div>
                   </div>
                   <input
                     ref={fileInputRef} type="file" multiple className="hidden"
+                    onChange={(e) => { if (e.target.files?.length) addFiles(e.target.files); e.target.value = ''; }}
+                  />
+                  <input
+                    ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
                     onChange={(e) => { if (e.target.files?.length) addFiles(e.target.files); e.target.value = ''; }}
                   />
 

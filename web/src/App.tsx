@@ -56,6 +56,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/sales"
+              element={
+                <ProtectedRoute allowedRoles={PANELS.sales.roles}>
+                  <Engineer />
+                </ProtectedRoute>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

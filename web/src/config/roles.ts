@@ -14,6 +14,7 @@ export type AppRole =
   | 'admin'
   | 'project_engineer'
   | 'planning_engineer'
+  | 'sales_manager'
   | (string & {});
 
 /** A logical feature/section inside a panel. */
@@ -32,9 +33,9 @@ export interface PanelDefinition {
   roles: AppRole[];
 }
 
-export const ENGINEER_ROLES: AppRole[] = ['project_engineer', 'planning_engineer'];
+export const ENGINEER_ROLES: AppRole[] = ['project_engineer', 'planning_engineer', 'sales_manager'];
 
-export const PANELS: Record<'admin' | 'engineer', PanelDefinition> = {
+export const PANELS: Record<'admin' | 'engineer' | 'sales', PanelDefinition> = {
   admin: {
     id: 'admin',
     path: '/admin',
@@ -43,7 +44,12 @@ export const PANELS: Record<'admin' | 'engineer', PanelDefinition> = {
   engineer: {
     id: 'engineer',
     path: '/engineer',
-    roles: ENGINEER_ROLES,
+    roles: ['project_engineer', 'planning_engineer'],
+  },
+  sales: {
+    id: 'sales',
+    path: '/sales',
+    roles: ['sales_manager'],
   },
 };
 
@@ -75,9 +81,9 @@ export function getHomeRoute(role?: string | null): string | null {
   return getPanelForRole(role)?.path ?? null;
 }
 
-/** Whether a role may access a specific panel ('admin' | 'engineer'). */
+/** Whether a role may access a specific panel ('admin' | 'engineer' | 'sales'). */
 export function canAccessPanel(
-  panel: 'admin' | 'engineer',
+  panel: 'admin' | 'engineer' | 'sales',
   role?: string | null,
 ): boolean {
   if (!role) return false;

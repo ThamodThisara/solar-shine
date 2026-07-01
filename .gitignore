@@ -33,3 +33,6 @@ pnpm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Local Appwrite credentials
+appwrite/.env

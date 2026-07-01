@@ -95,6 +95,7 @@ export interface ProjectExecution {
   latitude: number | null;
   longitude: number | null;
   engineer: string | null;
+  planning_engineer: string | null;
   sales_manager: string | null;
   status: ProjectExecutionStatus;
   system_size: number;
@@ -291,4 +292,14 @@ export interface SEO {
   twitter_title: string;
   twitter_description: string;
   twitter_image: string;
+}
+
+export interface Notification {
+  $id: string;
+  $createdAt: string;
+  user_id: string;
+  title: string;
+  content: string;
+  read: boolean;
+  link: string;
 }

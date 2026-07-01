@@ -8,15 +8,19 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { canAccessSection } from '@/config/roles';
 import { cn } from '@/lib/utils';
-import { ProjectExecutionStatus } from '@/types/payload-types';
+import { ProjectExecution, ProjectExecutionStatus } from '@/types/payload-types';
+import { fetchUsers } from '@/services/userService';
 import {
   fetchProjectExecutions,
   fetchProjectExecutionStats,
   createProjectExecution,
   updateProjectExecutionStatus,
   deleteProjectExecution,
+  updateProjectExecution,
+  notifyAssignees,
   PROJECT_EXECUTION_PAGE_SIZE,
 } from '@/services/projectExecutionService';
 import ProjectExecutionCard from './ProjectExecutionCard';
@@ -43,17 +47,19 @@ const statCards: Array<{ key: keyof Awaited<ReturnType<typeof fetchProjectExecut
 ];
 
 const ProjectExecutionSection: React.FC = () => {
-  const { role, isLoading: isAuthLoading } = useAuth();
+  const { role, user, isLoading: isAuthLoading } = useAuth();
   const canAccess = canAccessSection('project-execution', role);
   const queryClient = useQueryClient();
 
   const [filter, setFilter] = useState<ProjectExecutionStatus | 'all'>('all');
+  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'me'>('all');
   const [page, setPage] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [projectToEdit, setProjectToEdit] = useState<ProjectExecution | null>(null);
 
   // Debounce the search input so we don't query on every keystroke.
   React.useEffect(() => {
@@ -65,8 +71,13 @@ const ProjectExecutionSection: React.FC = () => {
   }, [searchInput]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['project-executions', filter, page, search],
-    queryFn: () => fetchProjectExecutions({ page, status: filter, search }),
+    queryKey: ['project-executions', filter, page, search, assignmentFilter, user?.email],
+    queryFn: () => fetchProjectExecutions({
+      page,
+      status: filter,
+      search,
+      assignedEmail: assignmentFilter === 'me' ? user?.email : undefined
+    }),
     enabled: canAccess,
     meta: {
       onError: (error: Error) => toast.error(`Failed to load projects: ${error.message}`),
@@ -79,6 +90,13 @@ const ProjectExecutionSection: React.FC = () => {
     enabled: canAccess,
   });
 
+  const { data: usersResponse } = useQuery({
+    queryKey: ['platform-users'],
+    queryFn: () => fetchUsers(),
+    enabled: canAccess,
+  });
+  const usersList = usersResponse ?? [];
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['project-executions'] });
     queryClient.invalidateQueries({ queryKey: ['project-executions-stats'] });
@@ -86,12 +104,54 @@ const ProjectExecutionSection: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: createProjectExecution,
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       invalidate();
       setIsDialogOpen(false);
       toast.success('Project created');
+
+      // Send emails and create database notifications for all assignees
+      const emails: string[] = [];
+      if (variables.engineer) {
+        emails.push(...variables.engineer.split(',').map((s) => s.trim()).filter(Boolean));
+      }
+      if (variables.planning_engineer) {
+        emails.push(...variables.planning_engineer.split(',').map((s) => s.trim()).filter(Boolean));
+      }
+      if (variables.sales_manager) {
+        emails.push(...variables.sales_manager.split(',').map((s) => s.trim()).filter(Boolean));
+      }
+      if (emails.length > 0) {
+        notifyAssignees(emails, data.name || variables.name);
+      }
     },
     onError: () => toast.error('Failed to create project'),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<CreateProjectExecutionInput> }) =>
+      updateProjectExecution(id, input),
+    onSuccess: (data, variables) => {
+      invalidate();
+      setIsDialogOpen(false);
+      setProjectToEdit(null);
+      toast.success('Project updated');
+
+      // Send emails/notifications to newly added assignees if applicable
+      const emails: string[] = [];
+      if (variables.input.engineer) {
+        emails.push(...variables.input.engineer.split(',').map((s) => s.trim()).filter(Boolean));
+      }
+      if (variables.input.planning_engineer) {
+        emails.push(...variables.input.planning_engineer.split(',').map((s) => s.trim()).filter(Boolean));
+      }
+      if (variables.input.sales_manager) {
+        emails.push(...variables.input.sales_manager.split(',').map((s) => s.trim()).filter(Boolean));
+      }
+      if (emails.length > 0) {
+        notifyAssignees(emails, data.name || variables.input.name || '');
+      }
+    },
+    onError: () => toast.error('Failed to update project'),
   });
 
   const statusMutation = useMutation({
@@ -171,33 +231,91 @@ const ProjectExecutionSection: React.FC = () => {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Search projects by name..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      {/* Search & Filters */}
+      {role === 'admin' ? (
+        <div className="flex justify-between items-center gap-4 flex-wrap">
+          <div className="relative max-w-sm flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search projects by name..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-9"
+            />
+          </div>
 
-      {/* Filter */}
-      <div className="flex gap-2 flex-wrap">
-        {filterOptions.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => { setFilter(f.id); setPage(0); }}
-            className={cn(
-              "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-              filter === f.id ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-accent text-muted-foreground"
-            )}
+          <Select
+            value={filter}
+            onValueChange={(val) => { setFilter(val as ProjectExecutionStatus | 'all'); setPage(0); }}
           >
-            {f.label}
-          </button>
-        ))}
-      </div>
+            <SelectTrigger className="w-[180px] bg-background">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              {filterOptions.map((f) => (
+                <SelectItem key={f.id} value={f.id}>
+                  {f.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search projects by name..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <div className="flex justify-between items-center gap-2 flex-wrap">
+            <div className="flex gap-1 bg-muted p-1 rounded-lg">
+              <button
+                type="button"
+                onClick={() => { setAssignmentFilter('all'); setPage(0); }}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                  assignmentFilter === 'all' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAssignmentFilter('me'); setPage(0); }}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                  assignmentFilter === 'me' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Assigned to me
+              </button>
+            </div>
+
+            <Select
+              value={filter}
+              onValueChange={(val) => { setFilter(val as ProjectExecutionStatus | 'all'); setPage(0); }}
+            >
+              <SelectTrigger className="w-[180px] bg-background">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                {filterOptions.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       {/* Projects */}
       {isLoading ? (
@@ -218,10 +336,15 @@ const ProjectExecutionSection: React.FC = () => {
             <ProjectExecutionCard
               key={project.$id}
               project={project}
+              users={usersList}
               onStatusChange={(id, status) => statusMutation.mutate({ id, status })}
               onDelete={(id) => {
                 setProjectToDelete({ id, name: project.name });
                 setIsDeleteConfirmOpen(true);
+              }}
+              onEdit={(proj) => {
+                setProjectToEdit(proj);
+                setIsDialogOpen(true);
               }}
             />
           ))}
@@ -239,9 +362,19 @@ const ProjectExecutionSection: React.FC = () => {
 
       <ProjectExecutionFormDialog
         isOpen={isDialogOpen}
-        setIsOpen={setIsDialogOpen}
-        onSave={(input) => createMutation.mutate(input)}
-        isSaving={createMutation.isPending}
+        setIsOpen={(open) => {
+          setIsDialogOpen(open);
+          if (!open) setProjectToEdit(null);
+        }}
+        project={projectToEdit || undefined}
+        onSave={(input) => {
+          if (projectToEdit) {
+            editMutation.mutate({ id: projectToEdit.$id, input });
+          } else {
+            createMutation.mutate(input);
+          }
+        }}
+        isSaving={createMutation.isPending || editMutation.isPending}
       />
 
       <ConfirmDialog

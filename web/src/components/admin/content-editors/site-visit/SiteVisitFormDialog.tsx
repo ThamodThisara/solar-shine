@@ -11,11 +11,14 @@ import { CreateSiteVisitInput } from '@/services/siteVisitService';
 import { fetchEngineers } from '@/services/userService';
 import { SiteVisitPriority, SiteVisitStatus } from '@/types/payload-types';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '@/lib/siteVisits';
+import { MultiSelectPopover } from '@/components/ui/multi-select-popover';
 
 interface ProjectOption {
   $id: string;
   name: string;
   client: string;
+  engineer?: string;
+  planning_engineer?: string;
 }
 
 interface SiteVisitFormDialogProps {
@@ -100,6 +103,25 @@ const SiteVisitFormDialog: React.FC<SiteVisitFormDialogProps> = ({
     enabled: isOpen && canAssignEngineer,
   });
 
+  const selectedProject = projects.find((p) => p.$id === form.project_id);
+  const projectEmails = new Set<string>();
+  if (selectedProject) {
+    if (selectedProject.engineer) {
+      selectedProject.engineer.split(',').forEach((email) => projectEmails.add(email.trim().toLowerCase()));
+    }
+    if (selectedProject.planning_engineer) {
+      selectedProject.planning_engineer.split(',').forEach((email) => projectEmails.add(email.trim().toLowerCase()));
+    }
+  }
+
+  const filteredEngineers = engineers.filter((eng) => projectEmails.has(eng.email.toLowerCase()));
+  const engineerOptions = filteredEngineers.map((eng) => ({
+    value: eng.$id,
+    label: eng.name || eng.email,
+    keywords: eng.email,
+    group: eng.role === 'planning_engineer' ? 'Planning Engineers' : 'Project Engineers',
+  }));
+
   useEffect(() => {
     if (isOpen) {
       setForm(buildInitialState(lockedProjectId));
@@ -125,14 +147,23 @@ const SiteVisitFormDialog: React.FC<SiteVisitFormDialogProps> = ({
       return;
     }
 
-    // Admins may assign an engineer or leave it unassigned; engineers always
+    // Admins may assign multiple engineers or leave it unassigned; engineers always
     // create visits assigned to themselves (they have no engineer picker).
-    const assignedId = canAssignEngineer
-      ? form.assigned_engineer_id || undefined
-      : currentUser.$id;
-    const assignedName = canAssignEngineer
-      ? engineers.find((eng) => eng.$id === form.assigned_engineer_id)?.name
-      : currentUser.name;
+    let assignedId = undefined;
+    let assignedName = undefined;
+    if (canAssignEngineer) {
+      const ids = form.assigned_engineer_id ? form.assigned_engineer_id.split(',').filter(Boolean) : [];
+      if (ids.length > 0) {
+        assignedId = ids.join(',');
+        assignedName = ids.map((id) => {
+          const eng = engineers.find((e) => e.$id === id);
+          return eng ? (eng.name || eng.email) : id;
+        }).join(',');
+      }
+    } else {
+      assignedId = currentUser.$id;
+      assignedName = currentUser.name;
+    }
 
     onSave({
       project_id: form.project_id,
@@ -177,31 +208,28 @@ const SiteVisitFormDialog: React.FC<SiteVisitFormDialogProps> = ({
                 id="sv-project"
                 modal
                 value={form.project_id}
-                onChange={(v) => setField('project_id', v)}
+                onChange={(v) => {
+                  setField('project_id', v);
+                  setField('assigned_engineer_id', ''); // Clear engineers on project change
+                }}
                 disabled={!!lockedProjectId}
                 placeholder="Select a project"
                 searchPlaceholder="Search projects..."
                 emptyText="No projects found."
                 className={errorClass('project_id')}
-                options={projects.map((p) => ({ value: p.$id, label: `${p.name} — ${p.client}`, keywords: p.client }))}
+                options={projects.map((p) => ({ value: p.$id, label: p.name, keywords: `${p.name} ${p.client || ''}` }))}
               />
               <FieldError field="project_id" />
             </div>
             {canAssignEngineer && (
-              <div>
-                <Label htmlFor="sv-engineer">Assigned Engineer <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                <Combobox
-                  id="sv-engineer"
-                  modal
-                  value={form.assigned_engineer_id}
-                  onChange={(v) => setField('assigned_engineer_id', v)}
-                  placeholder={isEngineersLoading ? 'Loading engineers...' : 'Unassigned'}
-                  searchPlaceholder="Search engineers..."
+              <div className="col-span-1 md:col-span-2">
+                <MultiSelectPopover
+                  label="Assigned Engineers"
+                  placeholder={isEngineersLoading ? 'Loading engineers...' : 'Unassigned (visible to all engineers)'}
                   emptyText="No engineers found."
-                  options={[
-                    { value: '', label: 'Unassigned (visible to all engineers)' },
-                    ...engineers.map((eng) => ({ value: eng.$id, label: eng.name || eng.email, keywords: eng.email })),
-                  ]}
+                  options={engineerOptions}
+                  selectedValues={form.assigned_engineer_id ? form.assigned_engineer_id.split(',').filter(Boolean) : []}
+                  onChange={(vals) => setField('assigned_engineer_id', vals.join(','))}
                 />
               </div>
             )}
@@ -303,25 +331,14 @@ const SiteVisitFormDialog: React.FC<SiteVisitFormDialogProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="sv-location">Location Details</Label>
-              <Input
-                id="sv-location"
-                value={form.location_details}
-                onChange={(e) => setField('location_details', e.target.value)}
-                placeholder="Site address / area / block"
-              />
-            </div>
-            <div>
-              <Label htmlFor="sv-notes">Additional Notes</Label>
-              <Input
-                id="sv-notes"
-                value={form.additional_notes}
-                onChange={(e) => setField('additional_notes', e.target.value)}
-                placeholder="Anything else the engineer should know"
-              />
-            </div>
+          <div>
+            <Label htmlFor="sv-notes">Additional Notes</Label>
+            <Input
+              id="sv-notes"
+              value={form.additional_notes}
+              onChange={(e) => setField('additional_notes', e.target.value)}
+              placeholder="Anything else the engineer should know"
+            />
           </div>
 
           <DialogFooter>

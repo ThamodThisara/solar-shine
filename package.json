@@ -14,7 +14,8 @@
     "build:demo": "npm run build --workspace=demo",
     "build": "npm run build:web && npm run build:demo",
     "preview:web": "npm run preview --workspace=web",
-    "preview:demo": "npm run preview --workspace=demo"
+    "preview:demo": "npm run preview --workspace=demo",
+    "dev:runner": "npm run dev:runner --workspace=web"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

@@ -39,6 +39,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { fetchTeams, createTeam, deleteTeam } from '@/services/teamService';
 import type { Models } from 'appwrite';
 import TeamMembersDialog from './user-management/TeamMembersDialog';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+const TEAM_ROLE_OPTIONS = [
+  { value: 'project_engineer', label: 'Project Engineer' },
+  { value: 'planning_engineer', label: 'Planning Engineer' },
+  { value: 'sales_manager', label: 'Sales Manager' },
+  { value: 'admin', label: 'Administrator' },
+];
 
 const UserManagementSection: React.FC = () => {
   const { isAdmin, isLoading: isAuthLoading } = useAuth();
@@ -47,6 +62,7 @@ const UserManagementSection: React.FC = () => {
   const [search, setSearch] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamRole, setNewTeamRole] = useState('project_engineer');
   const [selectedTeam, setSelectedTeam] = useState<Models.Team<Models.Preferences> | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -59,11 +75,12 @@ const UserManagementSection: React.FC = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: createTeam,
+    mutationFn: ({ name, role }: { name: string; role: string }) => createTeam(name, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] });
       setIsCreateOpen(false);
       setNewTeamName('');
+      setNewTeamRole('project_engineer');
       toast.success('Team created');
     },
     onError: () => toast.error('Failed to create team'),
@@ -143,6 +160,7 @@ const UserManagementSection: React.FC = () => {
             <TableHeader>
               <TableRow>
                 <TableHead className="whitespace-nowrap">Name</TableHead>
+                <TableHead className="whitespace-nowrap">Role</TableHead>
                 <TableHead className="whitespace-nowrap">Members</TableHead>
                 <TableHead className="whitespace-nowrap">Created</TableHead>
                 <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
@@ -152,6 +170,15 @@ const UserManagementSection: React.FC = () => {
               {teamList.map((team) => (
                 <TableRow key={team.$id}>
                   <TableCell className="font-medium">{team.name}</TableCell>
+                  <TableCell>
+                    {team.prefs?.role ? (
+                      <Badge variant="outline" className="capitalize">
+                        {team.prefs.role.replace('_', ' ')}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">No role</span>
+                    )}
+                  </TableCell>
                   <TableCell>{team.total}</TableCell>
                   <TableCell>{new Date(team.$createdAt).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
@@ -196,20 +223,37 @@ const UserManagementSection: React.FC = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Team</DialogTitle>
-            <DialogDescription>Give your new team a name. You'll be added as its owner.</DialogDescription>
+            <DialogDescription>Give your new team a name and select the default role for its members.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="team-name">Team Name</Label>
-            <Input
-              id="team-name"
-              value={newTeamName}
-              onChange={(e) => setNewTeamName(e.target.value)}
-              placeholder="e.g. Installation Crew"
-            />
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="team-name">Team Name</Label>
+              <Input
+                id="team-name"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                placeholder="e.g. Installation Crew"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="team-role">Default Member Role</Label>
+              <Select value={newTeamRole} onValueChange={setNewTeamRole}>
+                <SelectTrigger id="team-role">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TEAM_ROLE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button
-              onClick={() => createMutation.mutate(newTeamName)}
+              onClick={() => createMutation.mutate({ name: newTeamName, role: newTeamRole })}
               disabled={!newTeamName.trim() || createMutation.isPending}
             >
               {createMutation.isPending ? 'Creating...' : 'Create'}

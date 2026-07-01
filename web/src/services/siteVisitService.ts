@@ -31,39 +31,54 @@ export interface SiteVisitListResult {
   total: number;
 }
 
-function buildFilterQueries(params: Omit<SiteVisitListParams, 'page' | 'search'>) {
-  const queries = [];
-  if (params.projectId) queries.push(Query.equal('project_id', params.projectId));
-  if (params.assignedEngineerId) queries.push(Query.equal('assigned_engineer_id', params.assignedEngineerId));
-  if (params.assignment === 'mine' && params.userId) {
-    queries.push(Query.equal('assigned_engineer_id', params.userId));
-  } else if (params.assignment === 'unassigned') {
-    queries.push(Query.isNull('assigned_engineer_id'));
-  }
-  if (params.status && params.status !== 'all') queries.push(Query.equal('status', params.status));
-  return queries;
-}
-
 export async function fetchSiteVisits(
   { page = 0, projectId, assignedEngineerId, assignment = 'all', userId, status = 'all', search = '' }: SiteVisitListParams = {}
 ): Promise<SiteVisitListResult> {
   try {
     const queries = [
       Query.orderDesc('created_at'),
-      Query.limit(PAGE_SIZE),
-      Query.offset(page * PAGE_SIZE),
-      ...buildFilterQueries({ projectId, assignedEngineerId, assignment, userId, status }),
+      Query.limit(100),
     ];
-
-    const trimmedSearch = search.trim();
-    if (trimmedSearch) {
-      queries.push(Query.search('title', trimmedSearch));
-    }
+    if (projectId) queries.push(Query.equal('project_id', projectId));
+    if (status && status !== 'all') queries.push(Query.equal('status', status));
 
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.SITE_VISITS, queries);
+    let documents = response.documents as unknown as SiteVisit[];
+
+    // In-memory filter for assignment
+    if (assignment === 'mine' && userId) {
+      documents = documents.filter((doc) => {
+        const ids = doc.assigned_engineer_id
+          ? doc.assigned_engineer_id.split(',').map((s) => s.trim())
+          : [];
+        return ids.includes(userId);
+      });
+    } else if (assignment === 'unassigned') {
+      documents = documents.filter((doc) => !doc.assigned_engineer_id);
+    }
+
+    if (assignedEngineerId) {
+      documents = documents.filter((doc) => {
+        const ids = doc.assigned_engineer_id
+          ? doc.assigned_engineer_id.split(',').map((s) => s.trim())
+          : [];
+        return ids.includes(assignedEngineerId);
+      });
+    }
+
+    // In-memory filter for search (on title)
+    const trimmedSearch = search.trim().toLowerCase();
+    if (trimmedSearch) {
+      documents = documents.filter((doc) => doc.title?.toLowerCase().includes(trimmedSearch));
+    }
+
+    const total = documents.length;
+    const offset = page * PAGE_SIZE;
+    const paginatedDocuments = documents.slice(offset, offset + PAGE_SIZE);
+
     return {
-      documents: response.documents as unknown as SiteVisit[],
-      total: response.total,
+      documents: paginatedDocuments,
+      total,
     };
   } catch (error) {
     console.error('Error fetching site visits:', error);

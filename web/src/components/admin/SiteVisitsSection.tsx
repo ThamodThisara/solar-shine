@@ -20,8 +20,10 @@ import {
   deleteSiteVisit,
   SITE_VISIT_PAGE_SIZE,
 } from '@/services/siteVisitService';
-import { fetchProjectExecutionOptions } from '@/services/projectExecutionService';
+import { fetchProjectExecutionOptions, notifyAssignees } from '@/services/projectExecutionService';
 import { fetchDocumentTypes } from '@/services/documentTypeService';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { fetchEngineers, fetchUsers } from '@/services/userService';
 import SiteVisitCard from './SiteVisitCard';
 import SiteVisitFormDialog from './content-editors/site-visit/SiteVisitFormDialog';
 import SiteVisitDetailDialog from './content-editors/site-visit/SiteVisitDetailDialog';
@@ -31,11 +33,7 @@ const filterOptions: Array<{ id: SiteVisitStatus | 'all'; label: string }> = [
   ...STATUS_OPTIONS.map((s) => ({ id: s.value, label: s.label })),
 ];
 
-const assignmentFilterOptions: Array<{ id: 'all' | 'mine' | 'unassigned'; label: string }> = [
-  { id: 'all', label: 'All assignments' },
-  { id: 'mine', label: 'Assigned to me' },
-  { id: 'unassigned', label: 'Unassigned' },
-];
+
 
 const statCards: Array<{ key: SiteVisitStatus; label: string; color: string }> = [
   { key: 'scheduled', label: 'Scheduled', color: 'text-gray-600 bg-gray-50 dark:bg-gray-950/30' },
@@ -56,12 +54,27 @@ const SiteVisitsSection: React.FC = () => {
   const [page, setPage] = useState(0);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<SiteVisit | null>(null);
+  const [selectedVisitTab, setSelectedVisitTab] = useState<'details' | 'activity' | 'documents'>('details');
+  const [hideDialogTabs, setHideDialogTabs] = useState<boolean>(false);
 
   const { data: projects = [] } = useQuery({
     queryKey: ['project-execution-options'],
     queryFn: fetchProjectExecutionOptions,
     enabled: canAccess,
   });
+
+  const { data: engineers = [] } = useQuery({
+    queryKey: ['engineers'],
+    queryFn: () => fetchEngineers(),
+    enabled: canAccess,
+  });
+
+  const { data: usersResponse } = useQuery({
+    queryKey: ['platform-users'],
+    queryFn: () => fetchUsers(),
+    enabled: canAccess,
+  });
+  const usersList = usersResponse ?? [];
 
   const { data: documentTypes = [] } = useQuery({
     queryKey: ['document-types'],
@@ -95,10 +108,24 @@ const SiteVisitsSection: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: createSiteVisit,
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       invalidate();
       setIsCreateOpen(false);
       toast.success('Site visit created');
+
+      // Send emails/notifications to assigned engineers
+      if (variables.assigned_engineer_id) {
+        const ids = variables.assigned_engineer_id.split(',').map(s => s.trim()).filter(Boolean);
+        const emails = ids.map(id => {
+          const eng = engineers.find(e => e.$id === id);
+          return eng?.email;
+        }).filter(Boolean) as string[];
+        
+        if (emails.length > 0) {
+          const projName = projects.find(p => p.$id === variables.project_id)?.name || 'Project';
+          notifyAssignees(emails, `Site Visit "**${variables.title}**" (Project: **${projName}**)`);
+        }
+      }
     },
     onError: () => toast.error('Failed to create site visit'),
   });
@@ -140,10 +167,9 @@ const SiteVisitsSection: React.FC = () => {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / SITE_VISIT_PAGE_SIZE));
 
-  // Admins manage everything; engineers manage unassigned (pool) visits and
-  // any visit assigned to them. Visits assigned to another engineer are view-only.
-  const canEditVisit = (visit: SiteVisit) =>
-    isAdmin || !visit.assigned_engineer_id || (!!user && visit.assigned_engineer_id === user.$id);
+  // Admins and engineers manage everything; sales managers have read-only access.
+  const isEngineer = role === 'project_engineer' || role === 'planning_engineer';
+  const canEditVisit = (_visit: SiteVisit) => isAdmin || isEngineer;
 
   return (
     <div className="space-y-5">
@@ -175,58 +201,120 @@ const SiteVisitsSection: React.FC = () => {
             </CardContent>
           </Card>
         ))}
-      </div>
+      </div>      {/* Filters (Combobox & Status Dropdown) */}
+      {role === 'admin' ? (
+        <div className="flex justify-between items-center gap-4 flex-wrap">
+          <div className="flex-1 min-w-[250px] max-w-md">
+            <Label htmlFor="sv-project-filter" className="text-xs text-muted-foreground">Filter by project</Label>
+            <Combobox
+              id="sv-project-filter"
+              value={projectFilter}
+              onChange={(v) => { setProjectFilter(v); setPage(0); }}
+              placeholder="Search and select a project..."
+              searchPlaceholder="Search projects by name..."
+              emptyText="No projects found."
+              options={[
+                { value: '', label: 'All Projects' },
+                ...projects.map((p) => ({ value: p.$id, label: `${p.name} — ${p.client}`, keywords: p.client })),
+              ]}
+            />
+          </div>
 
-      {/* Project search */}
-      <div className="max-w-md">
-        <Label htmlFor="sv-project-filter" className="text-xs text-muted-foreground">Filter by project</Label>
-        <Combobox
-          id="sv-project-filter"
-          value={projectFilter}
-          onChange={(v) => { setProjectFilter(v); setPage(0); }}
-          placeholder="Search and select a project..."
-          searchPlaceholder="Search projects by name..."
-          emptyText="No projects found."
-          options={[
-            { value: '', label: 'All Projects' },
-            ...projects.map((p) => ({ value: p.$id, label: `${p.name} — ${p.client}`, keywords: p.client })),
-          ]}
-        />
-      </div>
+          <div className="flex flex-col gap-1.5 self-end">
+            <Label className="text-xs text-muted-foreground">Status</Label>
+            <Select
+              value={filter}
+              onValueChange={(val) => { setFilter(val as SiteVisitStatus | 'all'); setPage(0); }}
+            >
+              <SelectTrigger className="w-[180px] bg-background">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                {filterOptions.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="max-w-md">
+            <Label htmlFor="sv-project-filter" className="text-xs text-muted-foreground">Filter by project</Label>
+            <Combobox
+              id="sv-project-filter"
+              value={projectFilter}
+              onChange={(v) => { setProjectFilter(v); setPage(0); }}
+              placeholder="Search and select a project..."
+              searchPlaceholder="Search projects by name..."
+              emptyText="No projects found."
+              options={[
+                { value: '', label: 'All Projects' },
+                ...projects.map((p) => ({ value: p.$id, label: `${p.name} — ${p.client}`, keywords: p.client })),
+              ]}
+            />
+          </div>
 
-      {/* Status filter */}
-      <div className="flex gap-2 flex-wrap">
-        {filterOptions.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => { setFilter(f.id); setPage(0); }}
-            className={cn(
-              'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-              filter === f.id ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-accent text-muted-foreground'
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+          <div className="flex justify-between items-end gap-4 flex-wrap">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground">Assignment</Label>
+              <div className="flex gap-1 bg-muted p-1 rounded-lg border border-border/40">
+                <button
+                  type="button"
+                  onClick={() => { setAssignmentFilter('all'); setPage(0); }}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                    assignmentFilter === 'all' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAssignmentFilter('mine'); setPage(0); }}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                    assignmentFilter === 'mine' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Assigned to me
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAssignmentFilter('unassigned'); setPage(0); }}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                    assignmentFilter === 'unassigned' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Unassigned
+                </button>
+              </div>
+            </div>
 
-      {/* Assignment filter */}
-      <div className="flex gap-2 flex-wrap">
-        {assignmentFilterOptions.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => { setAssignmentFilter(f.id); setPage(0); }}
-            className={cn(
-              'px-3 py-1.5 rounded-md text-xs font-medium transition-colors border',
-              assignmentFilter === f.id
-                ? 'bg-accent text-accent-foreground border-primary'
-                : 'bg-background hover:bg-accent text-muted-foreground border-input'
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground">Status</Label>
+              <Select
+                value={filter}
+                onValueChange={(val) => { setFilter(val as SiteVisitStatus | 'all'); setPage(0); }}
+              >
+                <SelectTrigger className="w-[180px] bg-background">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Visits */}
       {isLoading ? (
@@ -242,15 +330,20 @@ const SiteVisitsSection: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="space-y-3">
           {visits.map((visit) => (
             <SiteVisitCard
               key={visit.$id}
               visit={visit}
               projectName={projectNameById(visit.project_id)}
               currentUserId={user?.$id ?? ''}
-              onOpen={setSelectedVisit}
+              onOpen={(visit, tab, hideTabs) => {
+                setSelectedVisit(visit);
+                setSelectedVisitTab(tab ?? 'details');
+                setHideDialogTabs(!!hideTabs);
+              }}
               onDelete={isAdmin ? (v) => deleteMutation.mutate(v.$id) : undefined}
+              users={usersList}
             />
           ))}
         </div>
@@ -294,6 +387,10 @@ const SiteVisitsSection: React.FC = () => {
           documentTypes={documentTypes}
           currentUser={{ $id: user?.$id ?? '', name: user?.name ?? 'User' }}
           canEdit={canEditVisit(selectedVisit)}
+          users={usersList}
+          projects={projects}
+          defaultTab={selectedVisitTab}
+          hideTabs={hideDialogTabs}
         />
       )}
     </div>

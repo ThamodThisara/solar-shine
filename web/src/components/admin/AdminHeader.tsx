@@ -4,6 +4,7 @@ import {  Sun, Home, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AuthUser } from '@/services/authService';
 import { Badge } from '@/components/ui/badge';
+import NotificationBell from '../layout/NotificationBell';
 
 interface AdminHeaderProps {
   user: AuthUser | null;
@@ -49,6 +50,8 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user, onMenuClick }) => {
             <Home size={16} className="sm:mr-2" />
             <span className="hidden sm:inline">View Site</span>
           </Button>
+
+          <NotificationBell />
           
           <div className="flex items-center gap-3 border-l border-blue-400 pl-4">
             <div className="text-right hidden md:block">

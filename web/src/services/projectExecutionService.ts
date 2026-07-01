@@ -1,6 +1,7 @@
 import { databases, COLLECTIONS, DATABASE_ID } from '@/lib/appwrite';
-import { ID, Query } from 'appwrite';
+import { ID, Query, ExecutionMethod } from 'appwrite';
 import { ProjectExecution, ProjectExecutionStatus } from '@/types/payload-types';
+import { callTeamFunction } from './teamService';
 
 const PAGE_SIZE = 9;
 
@@ -8,6 +9,7 @@ export interface ProjectExecutionListParams {
   page?: number;
   status?: ProjectExecutionStatus | 'all';
   search?: string;
+  assignedEmail?: string;
 }
 
 export interface ProjectExecutionListResult {
@@ -16,7 +18,7 @@ export interface ProjectExecutionListResult {
 }
 
 export async function fetchProjectExecutions(
-  { page = 0, status = 'all', search = '' }: ProjectExecutionListParams = {}
+  { page = 0, status = 'all', search = '', assignedEmail }: ProjectExecutionListParams = {}
 ): Promise<ProjectExecutionListResult> {
   try {
     const queries = [
@@ -72,6 +74,16 @@ export async function fetchProjectExecutions(
       });
     }
 
+    if (assignedEmail) {
+      const emailLower = assignedEmail.toLowerCase();
+      documents = documents.filter((p) => {
+        const eng = p.engineer ? p.engineer.split(',').map((s) => s.trim().toLowerCase()) : [];
+        const plan = p.planning_engineer ? p.planning_engineer.split(',').map((s) => s.trim().toLowerCase()) : [];
+        const sales = p.sales_manager ? p.sales_manager.split(',').map((s) => s.trim().toLowerCase()) : [];
+        return eng.includes(emailLower) || plan.includes(emailLower) || sales.includes(emailLower);
+      });
+    }
+
     const total = documents.length;
     const offset = page * PAGE_SIZE;
     const paginatedDocuments = documents.slice(offset, offset + PAGE_SIZE);
@@ -95,6 +107,7 @@ export interface CreateProjectExecutionInput {
   longitude?: number;
   status: ProjectExecutionStatus;
   engineer?: string;
+  planning_engineer?: string;
   sales_manager?: string;
   system_size: number;
   contract_value: number;
@@ -147,6 +160,28 @@ export async function deleteProjectExecution(id: string): Promise<boolean> {
   }
 }
 
+export async function updateProjectExecution(
+  id: string,
+  input: Partial<CreateProjectExecutionInput>
+): Promise<ProjectExecution> {
+  try {
+    const payload: Record<string, any> = { ...input };
+    if (input.start_date) payload.start_date = new Date(input.start_date).toISOString();
+    if (input.end_date) payload.end_date = new Date(input.end_date).toISOString();
+    
+    const response = await databases.updateDocument(
+      DATABASE_ID,
+      COLLECTIONS.PROJECT_EXECUTIONS,
+      id,
+      payload
+    );
+    return response as unknown as ProjectExecution;
+  } catch (error) {
+    console.error('Error updating project execution:', error);
+    throw error;
+  }
+}
+
 export interface ProjectExecutionStats {
   pending: number;
   planning: number;
@@ -174,16 +209,37 @@ export async function fetchProjectExecutionStats(): Promise<ProjectExecutionStat
   }, {} as ProjectExecutionStats);
 }
 
-export async function fetchProjectExecutionOptions(): Promise<Pick<ProjectExecution, '$id' | 'name' | 'client'>[]> {
+export async function fetchProjectExecutionOptions(): Promise<Pick<ProjectExecution, '$id' | 'name' | 'client' | 'engineer' | 'planning_engineer'>[]> {
   try {
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.PROJECT_EXECUTIONS, [
       Query.orderAsc('name'),
       Query.limit(100),
     ]);
-    return response.documents.map((doc) => ({ $id: doc.$id, name: doc.name, client: doc.client }));
+    return response.documents.map((doc) => ({
+      $id: doc.$id,
+      name: doc.name,
+      client: doc.client,
+      engineer: doc.engineer || '',
+      planning_engineer: doc.planning_engineer || '',
+    }));
   } catch (error) {
     console.error('Error fetching project execution options:', error);
     throw error;
+  }
+}
+
+export async function notifyAssignees(emails: string[], projectName: string) {
+  if (emails.length === 0) return;
+  try {
+    const origin = window.location.origin;
+    const projectLink = `${origin}/admin?tab=projects`;
+    await callTeamFunction('/projects/assign', ExecutionMethod.POST, {
+      assignees: emails,
+      projectName,
+      projectLink
+    });
+  } catch (err) {
+    console.error('Failed to notify project assignees:', err);
   }
 }
 

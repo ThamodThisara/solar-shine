@@ -1,7 +1,7 @@
 import { functions, TEAM_MANAGEMENT_FUNCTION_ID } from '@/lib/appwrite';
 import { ExecutionMethod, type Models } from 'appwrite';
 
-async function callTeamFunction<T>(path: string, method: ExecutionMethod, body?: unknown): Promise<T> {
+export async function callTeamFunction<T>(path: string, method: ExecutionMethod, body?: unknown): Promise<T> {
   const execution = await functions.createExecution(
     TEAM_MANAGEMENT_FUNCTION_ID,
     body !== undefined ? JSON.stringify(body) : undefined,
@@ -34,9 +34,12 @@ export async function fetchTeams(search?: string): Promise<TeamListResult> {
   }
 }
 
-export async function createTeam(name: string): Promise<Models.Team<Models.Preferences>> {
+export async function createTeam(
+  name: string,
+  role?: string
+): Promise<Models.Team<Models.Preferences>> {
   try {
-    return await callTeamFunction('/teams', ExecutionMethod.POST, { name });
+    return await callTeamFunction('/teams', ExecutionMethod.POST, { name, role });
   } catch (error) {
     console.error('Error creating team:', error);
     throw error;

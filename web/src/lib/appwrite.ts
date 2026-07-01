@@ -22,6 +22,60 @@ const storage = new Storage(client);
 const teams = new Teams(client);
 const functions = new Functions(client);
 
+// Intercept all function executions in development mode for hot-reload
+if (import.meta.env.DEV) {
+  const originalCreateExecution = functions.createExecution.bind(functions);
+  functions.createExecution = async function (
+    functionId: string,
+    body?: string,
+    async?: boolean,
+    path?: string,
+    method?: string,
+    headers?: any
+  ) {
+    console.log(`[Dev Interceptor] Intercepting execution for function: ${functionId}`);
+    try {
+      // Get the currently authenticated user's ID
+      let callerUserId = '';
+      try {
+        const user = await account.get();
+        callerUserId = user.$id;
+      } catch (err) {
+        // User not logged in, ignore
+      }
+
+      const localRunnerUrl = 'http://localhost:4002/execute';
+      const response = await fetch(localRunnerUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          functionId,
+          body,
+          async,
+          path,
+          method,
+          headers: {
+            ...headers,
+            'x-appwrite-user-id': callerUserId,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Local runner returned status ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (err) {
+      console.warn(`[Dev Interceptor] Local execution runner failed. Falling back to real Appwrite:`, err);
+      return originalCreateExecution(functionId, body, async, path, method, headers);
+    }
+  } as any;
+}
+
 export const TEAM_MANAGEMENT_FUNCTION_ID = 'team-management';
 
 // In Appwrite v18+, methods are on the prototype, not as direct properties
@@ -61,6 +115,7 @@ export const COLLECTIONS = {
   DOCUMENT_TYPES: 'document_types',
   SITE_VISITS: 'site_visits',
   SITE_VISIT_UPDATES: 'site_visit_updates',
+  NOTIFICATIONS: 'notifications',
 };
 
 export { client, account, databases, storage, teams, functions, Permission, Role, ID, Query };

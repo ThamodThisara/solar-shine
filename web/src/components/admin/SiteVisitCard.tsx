@@ -1,83 +1,249 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { Calendar, User, MapPin, Building2, Trash2 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { ChevronDown, ChevronRight, Trash2, ClipboardList } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SiteVisit } from '@/types/payload-types';
 import { priorityStyles, statusStyles, priorityLabel, statusLabel } from '@/lib/siteVisits';
+import { PlatformUser } from '@/services/userService';
+import { cn } from '@/lib/utils';
 
 interface SiteVisitCardProps {
   visit: SiteVisit;
   projectName: string;
   /** The current user's $id, used to flag "Assigned to you". */
   currentUserId: string;
-  onOpen: (visit: SiteVisit) => void;
+  onOpen: (visit: SiteVisit, tab?: 'details' | 'activity' | 'documents', hideTabs?: boolean) => void;
   /** Provided only for users allowed to delete (admins). */
   onDelete?: (visit: SiteVisit) => void;
+  users?: PlatformUser[];
 }
 
-const SiteVisitCard: React.FC<SiteVisitCardProps> = ({ visit, projectName, currentUserId, onOpen, onDelete }) => {
-  const assignment = !visit.assigned_engineer_id
-    ? { label: 'Unassigned', className: 'bg-orange-100 text-orange-700' }
-    : visit.assigned_engineer_id === currentUserId
-      ? { label: 'Assigned to you', className: 'bg-emerald-100 text-emerald-700' }
-      : { label: `Assigned: ${visit.assigned_engineer_name || 'Engineer'}`, className: 'bg-slate-100 text-slate-700' };
+const SiteVisitCard: React.FC<SiteVisitCardProps> = ({
+  visit,
+  projectName,
+  currentUserId,
+  onOpen,
+  onDelete,
+  users = [],
+}) => {
+  const [expanded, setExpanded] = useState(false);
+
+  const isAssignedToMe = visit.assigned_engineer_id && visit.assigned_engineer_id.split(',').map(s => s.trim()).includes(currentUserId);
+
+  const renderEngineers = () => {
+    if (!visit.assigned_engineer_id) {
+      return (
+        <div>
+          <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Assigned Engineer</p>
+          <p className="text-sm font-semibold mt-1 text-foreground">Unassigned</p>
+        </div>
+      );
+    }
+
+    const ids = visit.assigned_engineer_id.split(',').map((s) => s.trim()).filter(Boolean);
+    const names = visit.assigned_engineer_name ? visit.assigned_engineer_name.split(',').map((s) => s.trim()) : [];
+
+    const projectEngineers: string[] = [];
+    const planningEngineers: string[] = [];
+
+    ids.forEach((id, index) => {
+      const u = users.find((user) => user.$id === id);
+      const name = names[index] || u?.name || u?.email || id;
+      if (u?.role === 'planning_engineer') {
+        planningEngineers.push(name);
+      } else {
+        projectEngineers.push(name);
+      }
+    });
+
+    const blocks: React.ReactNode[] = [];
+
+    if (projectEngineers.length > 0) {
+      blocks.push(
+        <div key="sv-eng-role-col">
+          <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Project Engineer</p>
+          <div className="text-sm font-semibold mt-1 text-foreground space-y-0.5">
+            {projectEngineers.map((name, idx) => <p key={idx}>{name}</p>)}
+          </div>
+        </div>
+      );
+    }
+    if (planningEngineers.length > 0) {
+      blocks.push(
+        <div key="sv-plan-role-col">
+          <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Planning Engineer</p>
+          <div className="text-sm font-semibold mt-1 text-foreground space-y-0.5">
+            {planningEngineers.map((name, idx) => <p key={idx}>{name}</p>)}
+          </div>
+        </div>
+      );
+    }
+
+    return blocks;
+  };
 
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <button type="button" onClick={() => onOpen(visit)} className="w-full text-left">
-          <div className="flex items-start justify-between gap-2 flex-wrap">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate" title={visit.title}>{visit.title}</p>
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                <Building2 className="h-3 w-3 flex-shrink-0" /> <span className="truncate">{projectName}</span>
+      <CardHeader className="pb-3 sm:pb-4 cursor-pointer p-4 sm:p-6" onClick={() => setExpanded(!expanded)}>
+        <div className="flex flex-col gap-3">
+          {/* Row 1: Title and Status/Priority Badges */}
+          <div className="flex items-start justify-between gap-4">
+            <CardTitle className="text-base font-bold text-foreground">{visit.title}</CardTitle>
+            <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+              <Badge className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold capitalize", statusStyles[visit.status])}>
+                {statusLabel(visit.status)}
+              </Badge>
+              <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold capitalize", priorityStyles[visit.priority])}>
+                {priorityLabel(visit.priority)}
+              </Badge>
+            </div>
+          </div>
+          
+          {/* Row 2: Details Grid and Assignment Badge + Chevron */}
+          <div className="flex items-end justify-between gap-4 border-t border-border/40 pt-3">
+            <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-xs text-muted-foreground w-full">
+              <div className="flex items-center min-w-0">
+                <span className="break-words">
+                  Project: <strong className="text-foreground font-semibold">{projectName}</strong>
+                </span>
+              </div>
+              <div className="flex items-center min-w-0">
+                <span className="break-words">
+                  Dates: <strong className="text-foreground font-semibold">
+                    {visit.visit_date ? format(new Date(visit.visit_date), 'MMM d, yyyy') : '—'}
+                    {visit.expected_completion_date ? ` — ${format(new Date(visit.expected_completion_date), 'MMM d, yyyy')}` : ''}
+                  </strong>
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-muted/50 transition-colors">
+                {expanded ? <ChevronDown className="h-5 w-5 text-muted-foreground/60" /> : <ChevronRight className="h-5 w-5 text-muted-foreground/60" />}
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+
+      {expanded && (
+        <CardContent className="pt-0 pb-4 px-4 sm:px-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+          {/* Details Inset Block */}
+          <div className="bg-muted/30 dark:bg-muted/5 rounded-lg p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 border border-border/40 text-xs">
+            {renderEngineers()}
+            <div>
+              <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Visit Date</p>
+              <p className="font-semibold text-foreground mt-1">
+                {visit.visit_date ? format(new Date(visit.visit_date), 'MMM d, yyyy') : '—'}
               </p>
             </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <Badge className={assignment.className}>{assignment.label}</Badge>
-              <Badge className={priorityStyles[visit.priority]}>{priorityLabel(visit.priority)}</Badge>
-              <Badge className={statusStyles[visit.status]}>{statusLabel(visit.status)}</Badge>
+            <div>
+              <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Expected Completion</p>
+              <p className="font-semibold text-foreground mt-1">
+                {visit.expected_completion_date ? format(new Date(visit.expected_completion_date), 'MMM d, yyyy') : '—'}
+              </p>
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs text-muted-foreground">
-            {visit.assigned_engineer_name && (
-              <span className="flex items-center gap-1 truncate">
-                <User className="h-3 w-3 flex-shrink-0" /> {visit.assigned_engineer_name}
-              </span>
+          {/* Reason & Description full-width inline blocks */}
+          <div className="space-y-3">
+            {visit.reason && (
+              <div className="border border-border/30 rounded-lg p-3 bg-muted/10">
+                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Reason for Visit</p>
+                <p className="text-sm mt-1 text-foreground whitespace-pre-wrap">{visit.reason}</p>
+              </div>
             )}
-            {visit.visit_date && (
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3 w-3 flex-shrink-0" /> {format(new Date(visit.visit_date), 'MMM d, yyyy')}
-              </span>
+            {visit.description && (
+              <div className="border border-border/30 rounded-lg p-3 bg-muted/10">
+                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Description of Work</p>
+                <p className="text-sm mt-1 text-foreground whitespace-pre-wrap">{visit.description}</p>
+              </div>
             )}
-            {visit.location_details && (
-              <span className="flex items-center gap-1 truncate sm:col-span-2">
-                <MapPin className="h-3 w-3 flex-shrink-0" /> <span className="truncate">{visit.location_details}</span>
-              </span>
+            {visit.issue_observation && (
+              <div className="border border-border/30 rounded-lg p-3 bg-muted/10">
+                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Initial Observation / Issues</p>
+                <p className="text-sm mt-1 text-foreground whitespace-pre-wrap">{visit.issue_observation}</p>
+              </div>
+            )}
+            {visit.additional_notes && (
+              <div className="border border-border/30 rounded-lg p-3 bg-muted/10">
+                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Additional Notes</p>
+                <p className="text-sm mt-1 text-foreground whitespace-pre-wrap">{visit.additional_notes}</p>
+              </div>
             )}
           </div>
 
-          {visit.reason && (
-            <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{visit.reason}</p>
-          )}
-        </button>
+          {/* Expanded Action Footer */}
+          <div className="flex items-center justify-between gap-4 pt-4 border-t border-border/40 flex-wrap">
+            <div className="text-xs text-muted-foreground">
+              Created: {visit.created_at ? format(new Date(visit.created_at), 'MMM d, yyyy h:mm a') : '—'}
+            </div>
 
-        {onDelete && (
-          <div className="mt-3 flex justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7"
-              onClick={() => onDelete(visit)}
-            >
-              <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
-            </Button>
+            {/* Desktop Action Trigger (single button) */}
+            <div className="hidden sm:flex items-center gap-2 justify-end w-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpen(visit, 'details', false)}
+              >
+                <ClipboardList className="h-3.5 w-3.5 mr-1" /> View Updates & Comments
+              </Button>
+              {onDelete && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 border-red-200 hover:border-red-400 hover:bg-red-50/50"
+                  onClick={() => onDelete(visit)}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                </Button>
+              )}
+            </div>
+
+            {/* Mobile Action Triggers (three separate buttons) */}
+            <div className="flex sm:hidden flex-col gap-2 w-full">
+              <div className="grid grid-cols-3 gap-1.5 w-full">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-[11px] h-8 px-1.5"
+                  onClick={() => onOpen(visit, 'details', true)}
+                >
+                  Details
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-[11px] h-8 px-1.5"
+                  onClick={() => onOpen(visit, 'activity', true)}
+                >
+                  Activity
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-[11px] h-8 px-1.5"
+                  onClick={() => onOpen(visit, 'documents', true)}
+                >
+                  Docs
+                </Button>
+              </div>
+              {onDelete && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 border-red-200 hover:border-red-400 hover:bg-red-50/50 w-full text-[11px] h-8"
+                  onClick={() => onDelete(visit)}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                </Button>
+              )}
+            </div>
           </div>
-        )}
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   );
 };

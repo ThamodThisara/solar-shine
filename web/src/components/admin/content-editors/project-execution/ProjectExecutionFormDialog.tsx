@@ -8,7 +8,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { Save, Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { CreateProjectExecutionInput } from '@/services/projectExecutionService';
-import { ProjectExecutionStatus } from '@/types/payload-types';
+import { ProjectExecution, ProjectExecutionStatus } from '@/types/payload-types';
+import { MultiSelectPopover } from '@/components/ui/multi-select-popover';
 import { Combobox } from '@/components/ui/combobox';
 import { fetchClients, registerClient, ClientRecord } from '@/services/clientService';
 import { fetchUsers, fetchEngineers, PlatformUser } from '@/services/userService';
@@ -21,6 +22,7 @@ interface ProjectExecutionFormDialogProps {
   setIsOpen: (isOpen: boolean) => void;
   onSave: (input: CreateProjectExecutionInput) => void;
   isSaving: boolean;
+  project?: ProjectExecution;
 }
 
 const statusOptions: Array<{ value: ProjectExecutionStatus; label: string }> = [
@@ -42,6 +44,7 @@ interface FormState {
   contract_value: string;
   current_stage: string;
   engineer: string;
+  planning_engineer: string;
   sales_manager: string;
   start_date: string;
   end_date: string;
@@ -57,6 +60,7 @@ const initialState: FormState = {
   contract_value: '',
   current_stage: '',
   engineer: '',
+  planning_engineer: '',
   sales_manager: '',
   start_date: '',
   end_date: '',
@@ -132,11 +136,14 @@ const parseCoordinatesFromMapLink = (link?: string): { lat: number; lng: number 
   return null;
 };
 
+
+
 const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
   isOpen,
   setIsOpen,
   onSave,
   isSaving,
+  project,
 }) => {
   const [form, setForm] = useState<FormState>(initialState);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -153,14 +160,39 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
   // Reset the form each time the dialog is opened.
   useEffect(() => {
     if (isOpen) {
-      setForm(initialState);
-      setErrors({});
-      setMapCenter({ lat: 6.9271, lng: 79.8612 });
       fetchClients().then(setClientsList).catch(console.error);
       fetchEngineers().then(setEngineersList).catch(console.error);
       fetchUsers().then(setUsersList).catch(console.error);
+
+      if (project) {
+        setForm({
+          name: project.name || '',
+          client: project.client || '',
+          address: project.address || '',
+          google_maps_link: project.location || '',
+          status: project.status || '',
+          system_size: formatNumberWithCommas(String(project.system_size || '')),
+          contract_value: formatNumberWithCommas(String(project.contract_value || '')),
+          current_stage: project.current_stage || '',
+          engineer: project.engineer || '',
+          planning_engineer: project.planning_engineer || '',
+          sales_manager: project.sales_manager || '',
+          start_date: project.start_date ? project.start_date.split('T')[0] : '',
+          end_date: project.end_date ? project.end_date.split('T')[0] : '',
+        });
+        const coords = parseCoordinatesFromMapLink(project.location || undefined);
+        if (coords) {
+          setMapCenter(coords);
+        } else {
+          setMapCenter({ lat: 6.9271, lng: 79.8612 });
+        }
+      } else {
+        setForm(initialState);
+        setMapCenter({ lat: 6.9271, lng: 79.8612 });
+      }
+      setErrors({});
     }
-  }, [isOpen]);
+  }, [isOpen, project]);
 
   const handleOpenRegChange = (open: boolean) => {
     setIsRegOpen(open);
@@ -259,25 +291,21 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
     keywords: `${c.name} ${c.phone}`,
   }));
 
-  const engineerOptions = [
-    { value: '', label: 'Select engineer...' },
-    ...engineersList.map((e) => ({
-      value: e.name || e.email,
-      label: e.name ? `${e.name} (${e.email})` : e.email,
+  const engineerOptions = engineersList
+    .map((e) => ({
+      value: e.email,
+      label: e.name || e.email,
       keywords: `${e.name || ''} ${e.email}`,
-    })),
-  ];
+      group: e.role === 'planning_engineer' ? 'Planning Engineers' : 'Project Engineers',
+    }));
 
-  const salesManagerOptions = [
-    { value: '', label: 'Select sales manager...' },
-    ...usersList
-      .filter((u) => u.role?.toLowerCase().includes('sales') || u.role === 'admin')
-      .map((u) => ({
-        value: u.name || u.email,
-        label: u.name ? `${u.name} (${u.email})` : u.email,
-        keywords: `${u.name || ''} ${u.email}`,
-      })),
-  ];
+  const salesManagerOptions = usersList
+    .filter((u) => u.role === 'sales_manager')
+    .map((u) => ({
+      value: u.email,
+      label: u.name || u.email,
+      keywords: `${u.name || ''} ${u.email}`,
+    }));
 
   const setField = (key: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -345,6 +373,7 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
       longitude: coords ? coords.lng : undefined,
       status: form.status as ProjectExecutionStatus,
       engineer: form.engineer.trim() || undefined,
+      planning_engineer: form.planning_engineer.trim() || undefined,
       sales_manager: form.sales_manager.trim() || undefined,
       system_size: Number(form.system_size.replace(/,/g, '')),
       contract_value: Number(form.contract_value.replace(/,/g, '')),
@@ -364,7 +393,7 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Create Project</DialogTitle>
+          <DialogTitle>{project ? 'Edit Project' : 'Create Project'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4" noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -558,32 +587,36 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
                 placeholder="e.g. Site Survey"
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="engineer">Engineer</Label>
-              <Combobox
-                id="engineer"
-                options={engineerOptions}
-                value={form.engineer}
-                onChange={(val) => setField('engineer', val)}
-                placeholder="Select engineer..."
-                searchPlaceholder="Search engineers..."
-                emptyText="No engineers found."
-                modal={true}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="sales_manager">Sales Manager</Label>
-              <Combobox
-                id="sales_manager"
-                options={salesManagerOptions}
-                value={form.sales_manager}
-                onChange={(val) => setField('sales_manager', val)}
-                placeholder="Select sales manager..."
-                searchPlaceholder="Search sales managers..."
-                emptyText="No users found."
-                modal={true}
-              />
-            </div>
+            <MultiSelectPopover
+              label="Engineers"
+              placeholder="No engineers assigned"
+              emptyText="No engineers found."
+              options={engineerOptions}
+              selectedValues={[
+                ...(form.engineer ? form.engineer.split(',').filter(Boolean) : []),
+                ...(form.planning_engineer ? form.planning_engineer.split(',').filter(Boolean) : [])
+              ]}
+              onChange={(vals) => {
+                const projectEmails = vals.filter(email => {
+                  const eng = engineersList.find(e => e.email === email);
+                  return eng?.role === 'project_engineer';
+                });
+                const planningEmails = vals.filter(email => {
+                  const eng = engineersList.find(e => e.email === email);
+                  return eng?.role === 'planning_engineer';
+                });
+                setField('engineer', projectEmails.join(','));
+                setField('planning_engineer', planningEmails.join(','));
+              }}
+            />
+            <MultiSelectPopover
+              label="Sales Managers"
+              placeholder="No sales managers assigned"
+              emptyText="No sales managers found."
+              options={salesManagerOptions}
+              selectedValues={form.sales_manager ? form.sales_manager.split(',').filter(Boolean) : []}
+              onChange={(vals) => setField('sales_manager', vals.join(','))}
+            />
             <div>
               <Label htmlFor="start_date">Start Date</Label>
               <Input
@@ -612,7 +645,7 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSaving}>Cancel</Button>
             <Button type="submit" disabled={isSaving}>
-              <Save className="mr-2 h-4 w-4" /> {isSaving ? 'Creating...' : 'Create Project'}
+              <Save className="mr-2 h-4 w-4" /> {isSaving ? (project ? 'Saving...' : 'Creating...') : (project ? 'Save Changes' : 'Create Project')}
             </Button>
           </DialogFooter>
         </form>

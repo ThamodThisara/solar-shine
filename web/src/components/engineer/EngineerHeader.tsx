@@ -3,6 +3,7 @@ import React from 'react';
 import { Sun, Home, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import NotificationBell from '../layout/NotificationBell';
 
 interface EngineerUser {
   name?: string;
@@ -61,6 +62,8 @@ const EngineerHeader: React.FC<EngineerHeaderProps> = ({ user, onMenuClick }) =>
             <Home size={16} className="sm:mr-2" />
             <span className="hidden sm:inline">View Site</span>
           </Button>
+
+          <NotificationBell />
 
           <div className="flex items-center gap-3 border-l border-emerald-400 pl-4">
             <div className="text-right hidden md:block">
