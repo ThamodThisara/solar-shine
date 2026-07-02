@@ -29,7 +29,7 @@ const formatRole = (role?: string) =>
 const EngineerHeader: React.FC<EngineerHeaderProps> = ({ user, onMenuClick }) => {
   return (
     <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 shadow-lg py-3 px-4">
-      <div className="container-custom flex justify-between items-center gap-2">
+      <div className="w-full max-w-[1440px] mx-auto flex justify-between items-center gap-2">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           {/* Mobile/tablet: open navigation drawer */}
           <Button

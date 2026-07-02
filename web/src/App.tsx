@@ -16,9 +16,10 @@ import Engineer from "./pages/Engineer";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
+import ProjectSummary from "./pages/ProjectSummary";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-import { PANELS } from "./config/roles";
+import { PANELS, LOGIN_ALLOWED_ROLES } from "./config/roles";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={PANELS.sales.roles}>
                   <Engineer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/project-summary/:projectId"
+              element={
+                <ProtectedRoute allowedRoles={LOGIN_ALLOWED_ROLES}>
+                  <ProjectSummary />
                 </ProtectedRoute>
               }
             />

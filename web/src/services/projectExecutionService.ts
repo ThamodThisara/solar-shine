@@ -228,15 +228,50 @@ export async function fetchProjectExecutionOptions(): Promise<Pick<ProjectExecut
   }
 }
 
+export async function fetchProjectExecution(id: string): Promise<ProjectExecution> {
+  try {
+    const doc = await databases.getDocument(
+      DATABASE_ID,
+      COLLECTIONS.PROJECT_EXECUTIONS,
+      id
+    );
+
+    const hasDirectFields = doc.address !== undefined && doc.address !== null;
+    let address = doc.address;
+    let latitude = doc.latitude;
+    let longitude = doc.longitude;
+
+    if (!hasDirectFields && doc.location) {
+      const parts = doc.location.split('|||');
+      address = parts[0]?.trim() || '';
+      const mapLink = parts[1]?.trim() || '';
+      const match = mapLink.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) || mapLink.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (match) {
+        latitude = parseFloat(match[1]);
+        longitude = parseFloat(match[2]);
+      }
+    }
+
+    return {
+      ...doc,
+      address: address || null,
+      latitude: latitude !== undefined ? latitude : null,
+      longitude: longitude !== undefined ? longitude : null
+    } as unknown as ProjectExecution;
+  } catch (error) {
+    console.error('Error fetching project execution:', error);
+    throw error;
+  }
+}
+
 export async function notifyAssignees(emails: string[], projectName: string) {
   if (emails.length === 0) return;
   try {
     const origin = window.location.origin;
-    const projectLink = `${origin}/admin?tab=projects`;
     await callTeamFunction('/projects/assign', ExecutionMethod.POST, {
       assignees: emails,
       projectName,
-      projectLink
+      origin
     });
   } catch (err) {
     console.error('Failed to notify project assignees:', err);

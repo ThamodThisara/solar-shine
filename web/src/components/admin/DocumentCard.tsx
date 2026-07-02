@@ -19,7 +19,7 @@ interface DocumentCardProps {
   doc: DocumentRecord;
   projectName: string;
   documentType?: DocumentType;
-  onDelete: (doc: DocumentRecord) => void;
+  onDelete?: (doc: DocumentRecord) => void;
 }
 
 const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentType, onDelete }) => {
@@ -80,9 +80,11 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentT
               <Download className="h-3.5 w-3.5 mr-1" /> Download
             </a>
           </Button>
-          <Button size="sm" variant="outline" className="text-red-600 border-red-600 hover:bg-red-50" onClick={() => onDelete(doc)}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {onDelete && (
+            <Button size="sm" variant="outline" className="text-red-600 border-red-600 hover:bg-red-50" onClick={() => onDelete(doc)}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

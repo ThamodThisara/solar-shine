@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ChevronDown, ChevronRight, Trash2, ClipboardList } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +19,7 @@ interface SiteVisitCardProps {
   /** Provided only for users allowed to delete (admins). */
   onDelete?: (visit: SiteVisit) => void;
   users?: PlatformUser[];
+  hideProjectSummaryLink?: boolean;
 }
 
 const SiteVisitCard: React.FC<SiteVisitCardProps> = ({
@@ -27,10 +29,9 @@ const SiteVisitCard: React.FC<SiteVisitCardProps> = ({
   onOpen,
   onDelete,
   users = [],
+  hideProjectSummaryLink = false,
 }) => {
   const [expanded, setExpanded] = useState(false);
-
-  const isAssignedToMe = visit.assigned_engineer_id && visit.assigned_engineer_id.split(',').map(s => s.trim()).includes(currentUserId);
 
   const renderEngineers = () => {
     if (!visit.assigned_engineer_id) {
@@ -92,10 +93,10 @@ const SiteVisitCard: React.FC<SiteVisitCardProps> = ({
           <div className="flex items-start justify-between gap-4">
             <CardTitle className="text-base font-bold text-foreground">{visit.title}</CardTitle>
             <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-              <Badge className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold capitalize", statusStyles[visit.status])}>
+              <Badge className={cn("text-[10px] px-2 py-0.5 font-semibold capitalize", statusStyles[visit.status])}>
                 {statusLabel(visit.status)}
               </Badge>
-              <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold capitalize", priorityStyles[visit.priority])}>
+              <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5 font-semibold capitalize", priorityStyles[visit.priority])}>
                 {priorityLabel(visit.priority)}
               </Badge>
             </div>
@@ -183,9 +184,22 @@ const SiteVisitCard: React.FC<SiteVisitCardProps> = ({
 
             {/* Desktop Action Trigger (single button) */}
             <div className="hidden sm:flex items-center gap-2 justify-end w-auto">
+              {!hideProjectSummaryLink && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="bg-primary text-black hover:bg-primary/90 font-semibold"
+                  asChild
+                >
+                  <Link to={`/project-summary/${visit.project_id}`}>
+                    Project Summary
+                  </Link>
+                </Button>
+              )}
               <Button
-                variant="outline"
+                variant="default"
                 size="sm"
+                className="bg-primary text-black hover:bg-primary/90 font-semibold"
                 onClick={() => onOpen(visit, 'details', false)}
               >
                 <ClipboardList className="h-3.5 w-3.5 mr-1" /> View Updates & Comments
@@ -206,30 +220,42 @@ const SiteVisitCard: React.FC<SiteVisitCardProps> = ({
             <div className="flex sm:hidden flex-col gap-2 w-full">
               <div className="grid grid-cols-3 gap-1.5 w-full">
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
-                  className="w-full text-[11px] h-8 px-1.5"
+                  className="w-full text-[11px] h-8 px-1.5 bg-primary text-black hover:bg-primary/90 font-semibold"
                   onClick={() => onOpen(visit, 'details', true)}
                 >
                   Details
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
-                  className="w-full text-[11px] h-8 px-1.5"
+                  className="w-full text-[11px] h-8 px-1.5 bg-primary text-black hover:bg-primary/90 font-semibold"
                   onClick={() => onOpen(visit, 'activity', true)}
                 >
                   Activity
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
-                  className="w-full text-[11px] h-8 px-1.5"
+                  className="w-full text-[11px] h-8 px-1.5 bg-primary text-black hover:bg-primary/90 font-semibold"
                   onClick={() => onOpen(visit, 'documents', true)}
                 >
                   Docs
                 </Button>
               </div>
+              {!hideProjectSummaryLink && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="w-full text-[11px] h-8 bg-primary text-black hover:bg-primary/90 font-semibold"
+                  asChild
+                >
+                  <Link to={`/project-summary/${visit.project_id}`}>
+                    Project Summary
+                  </Link>
+                </Button>
+              )}
               {onDelete && (
                 <Button
                   variant="outline"

@@ -31,6 +31,7 @@ import { isAllowedFile, ALLOWED_FILE_EXTENSIONS } from '@/lib/documentTypes';
 import DocumentCard from '@/components/admin/DocumentCard';
 import { PlatformUser, fetchEngineers } from '@/services/userService';
 import { MultiSelectPopover } from '@/components/ui/multi-select-popover';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface CurrentUser {
   $id: string;
@@ -46,6 +47,7 @@ interface SiteVisitDetailDialogProps {
   currentUser: CurrentUser;
   /** Whether the current user may edit / add updates / upload (admin or assignee). */
   canEdit: boolean;
+  isAdmin: boolean;
   users?: PlatformUser[];
   projects?: Pick<ProjectExecution, '$id' | 'name' | 'client' | 'engineer' | 'planning_engineer'>[];
   defaultTab?: 'details' | 'activity' | 'documents';
@@ -94,7 +96,7 @@ const DetailRow: React.FC<{ label: string; value?: React.ReactNode }> = ({ label
 );
 
 const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
-  visit, isOpen, setIsOpen, projectName, documentTypes, currentUser, canEdit, users = [], projects = [], defaultTab = 'details', hideTabs = false,
+  visit, isOpen, setIsOpen, projectName, documentTypes, currentUser, canEdit, isAdmin, users = [], projects = [], defaultTab = 'details', hideTabs = false,
 }) => {
   const queryClient = useQueryClient();
   // Local copy so the open dialog reflects saves without depending on the list
@@ -103,6 +105,30 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [edit, setEdit] = useState<EditState>(buildEditState(visit));
   const [activeTab, setActiveTab] = useState<string>('details');
+
+  const isLocked = current.status === 'completed' && !isAdmin;
+  const effectiveCanEdit = canEdit && !isLocked;
+
+  const [pendingStatus, setPendingStatus] = useState<SiteVisit['status'] | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [pendingSaveData, setPendingSaveData] = useState<UpdateSiteVisitInput | null>(null);
+
+  const triggerStatusChange = (newStatus: SiteVisit['status']) => {
+    if (newStatus === current.status) return;
+    setPendingStatus(newStatus);
+    setIsConfirmOpen(true);
+  };
+
+  const confirmStatusChange = () => {
+    if (pendingSaveData) {
+      saveMutation.mutate(pendingSaveData);
+      setPendingSaveData(null);
+    } else if (pendingStatus) {
+      saveMutation.mutate({ status: pendingStatus });
+    }
+    setIsConfirmOpen(false);
+    setPendingStatus(null);
+  };
 
   // Activity form
   const [updateType, setUpdateType] = useState<SiteVisitUpdateType>('progress');
@@ -125,10 +151,10 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
       setDocTypeId('');
       setVisibility('internal');
       setFiles([]);
-      setActiveTab('details');
+      setActiveTab(defaultTab || 'details');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, visit.$id]);
+  }, [isOpen, visit.$id, defaultTab]);
 
   const { data: updates = [], isLoading: isUpdatesLoading } = useQuery({
     queryKey: ['site-visit-updates', visit.$id],
@@ -248,7 +274,7 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
   }));
 
   const handleSave = () => {
-    saveMutation.mutate({
+    const saveData: UpdateSiteVisitInput = {
       title: edit.title.trim() || undefined,
       reason: edit.reason.trim() || undefined,
       assigned_engineer_id: edit.assigned_engineer_id || undefined,
@@ -262,7 +288,15 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
       findings: edit.findings.trim() || null,
       visit_date: edit.visit_date || null,
       expected_completion_date: edit.expected_completion_date || null,
-    });
+    };
+
+    if (edit.status !== current.status) {
+      setPendingStatus(edit.status);
+      setPendingSaveData(saveData);
+      setIsConfirmOpen(true);
+    } else {
+      saveMutation.mutate(saveData);
+    }
   };
 
   const addFiles = (incoming: FileList | File[]) => {
@@ -323,14 +357,14 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[720px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between gap-4 pr-6">
-            <span className="truncate">{current.title}</span>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Badge className={statusStyles[current.status]}>{statusLabel(current.status)}</Badge>
-              <Badge variant="outline" className={priorityStyles[current.priority]}>{priorityLabel(current.priority)}</Badge>
-            </div>
+        <DialogHeader className="space-y-1.5 text-left">
+          <DialogTitle className="text-lg font-bold pr-6 break-words">
+            {current.title}
           </DialogTitle>
+          <div className="flex items-center gap-1.5 pt-0.5">
+            <Badge className={statusStyles[current.status]}>{statusLabel(current.status)}</Badge>
+            <Badge variant="outline" className={priorityStyles[current.priority]}>{priorityLabel(current.priority)}</Badge>
+          </div>
         </DialogHeader>
 
          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -401,8 +435,26 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
                 <DetailRow label="Findings" value={current.findings} />
                 <DetailRow label="Additional Notes" value={current.additional_notes} />
 
-                {canEdit && (
-                  <div className="flex justify-end pt-2">
+                {effectiveCanEdit && (
+                  <div className="flex items-center justify-between border-t border-border/40 pt-3 mt-4">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="detail-status-select" className="text-xs text-muted-foreground font-semibold">Change Status:</Label>
+                      <select
+                        id="detail-status-select"
+                        value={current.status}
+                        onChange={(e) => triggerStatusChange(e.target.value as SiteVisit['status'])}
+                        className={cn(
+                          "h-8 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-semibold focus:ring-1 focus:ring-ring focus:outline-none cursor-pointer",
+                          statusStyles[current.status]
+                        )}
+                      >
+                        {STATUS_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value} className="bg-background text-foreground text-xs">
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     <Button size="sm" onClick={() => setIsEditing(true)}>
                       <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit Details
                     </Button>
@@ -536,7 +588,7 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
           {/* ACTIVITY */}
           <TabsContent value="activity" className="max-h-[60vh] overflow-y-auto pr-1">
             <div className="space-y-4 py-2">
-              {canEdit && (
+              {effectiveCanEdit && (
                 <div className="space-y-2 rounded-md border p-3 bg-muted/30">
                   <Label htmlFor="update-type">Add Progress Update</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-2">
@@ -601,7 +653,7 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
           {/* DOCUMENTS */}
           <TabsContent value="documents" className="max-h-[60vh] overflow-y-auto pr-1">
             <div className="space-y-4 py-2">
-              {canEdit && (
+              {effectiveCanEdit && (
                 <div className="space-y-3 rounded-md border p-3 bg-muted/30">
                   <Label>Upload Supporting Document</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -701,7 +753,7 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
                       doc={doc}
                       projectName={projectName}
                       documentType={documentTypeById(doc.document_type_id)}
-                      onDelete={canEdit ? (d) => deleteDocMutation.mutate({ id: d.$id, fileId: d.file_id }) : () => {}}
+                      onDelete={effectiveCanEdit ? (d) => deleteDocMutation.mutate({ id: d.$id, fileId: d.file_id }) : undefined}
                     />
                   ))}
                 </div>
@@ -710,6 +762,19 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
           </TabsContent>
         </Tabs>
       </DialogContent>
+      <ConfirmDialog
+        open={isConfirmOpen}
+        onOpenChange={setIsConfirmOpen}
+        title={pendingStatus === 'completed' ? 'Complete Site Visit?' : 'Change Status?'}
+        description={
+          pendingStatus === 'completed'
+            ? 'Are you sure you want to mark this site visit as completed? Once completed, details will be locked to engineers and sales managers (only admins can edit).'
+            : `Are you sure you want to change the status of this site visit to "${pendingStatus ? statusLabel(pendingStatus) : ''}"?`
+        }
+        onConfirm={confirmStatusChange}
+        confirmText="Confirm"
+        cancelText="Cancel"
+      />
     </Dialog>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { MapPin, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -164,9 +165,9 @@ const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({
               </div>
               {mapLink && (
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
-                  className="h-8 px-3 text-xs text-blue-600 border-blue-200 bg-blue-50/20 hover:bg-blue-50 hover:border-blue-300 flex items-center justify-center gap-1.5 shrink-0 w-full sm:w-auto self-start sm:self-center"
+                  className="h-8 px-3 text-xs flex items-center justify-center gap-1.5 shrink-0 w-full sm:w-auto self-start sm:self-center bg-primary text-black hover:bg-primary/90 font-semibold"
                   onClick={(e) => {
                     e.stopPropagation();
                     window.open(mapLink.trim(), '_blank');
@@ -202,6 +203,16 @@ const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({
               </select>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-primary text-black hover:bg-primary/90 font-semibold"
+                asChild
+              >
+                <Link to={`/project-summary/${project.$id}`}>
+                  View Summary
+                </Link>
+              </Button>
               {onEdit && (
                 <Button
                   variant="outline"

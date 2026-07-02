@@ -387,6 +387,7 @@ const SiteVisitsSection: React.FC = () => {
           documentTypes={documentTypes}
           currentUser={{ $id: user?.$id ?? '', name: user?.name ?? 'User' }}
           canEdit={canEditVisit(selectedVisit)}
+          isAdmin={isAdmin}
           users={usersList}
           projects={projects}
           defaultTab={selectedVisitTab}
