@@ -6,9 +6,19 @@ import ProjectExecutionSection from '@/components/admin/ProjectExecutionSection'
 import SiteVisitsSection from '@/components/admin/SiteVisitsSection';
 import DocumentCenterSection from '@/components/admin/DocumentCenterSection';
 
+import { useSearchParams } from 'react-router-dom';
+
 const Engineer: React.FC = () => {
-  const [activeSection, setActiveSection] = useState('project-execution');
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeSection, setActiveSection] = useState(tabParam || 'project-execution');
   const { user } = useAuth();
+
+  React.useEffect(() => {
+    if (tabParam) {
+      setActiveSection(tabParam);
+    }
+  }, [tabParam]);
 
   const renderContent = () => {
     switch (activeSection) {

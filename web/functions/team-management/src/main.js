@@ -227,7 +227,7 @@ export default async ({ req, res, log, error }) => {
     }
 
     if (method === 'POST' && path === '/projects/assign') {
-      const { assignees, projectName, origin } = parseBody();
+      const { assignees, projectName, origin, type, projectId, visitTitle } = parseBody();
       if (!assignees || !projectName) {
         return res.json({ error: 'Missing assignees or projectName' }, 400);
       }
@@ -295,47 +295,137 @@ export default async ({ req, res, log, error }) => {
           }
 
           // Choose correct path based on resolved role
-          let targetPath = '/admin?tab=projects';
+          let targetPath = '/admin';
           if (role === 'sales_manager') {
             targetPath = '/sales';
           } else if (role === 'project_engineer' || role === 'planning_engineer') {
             targetPath = '/engineer';
           }
 
-          const inAppLink = targetPath;
-          const emailLink = origin ? `${origin.replace(/\/$/, '')}${targetPath}` : '';
+          const isSiteVisit = type === 'site_visit';
+          let inAppLink = targetPath;
+          let emailLink = '';
+
+          if (isSiteVisit) {
+            const queryParams = `?tab=site-visits&project=${projectId || ''}&myVisits=true`;
+            inAppLink = `${targetPath}${queryParams}`;
+            emailLink = origin ? `${origin.replace(/\/$/, '')}${targetPath}${queryParams}` : '';
+          } else {
+            const queryParams = projectId ? `/project-summary/${projectId}` : targetPath;
+            inAppLink = queryParams;
+            emailLink = origin ? `${origin.replace(/\/$/, '')}${queryParams}` : '';
+          }
 
           // 2. Create database notification document with markdown bold for project name
+          const notifTitle = isSiteVisit ? 'New Site Visit Assignment' : 'New Project Assignment';
+          const notifContent = isSiteVisit
+            ? `You have been assigned to the site visit: **${visitTitle || projectName}** (Project: **${projectName}**)`
+            : `You have been assigned to the project: **${projectName}**`;
+
           await dbs.createDocument(
             databaseId,
             'notifications',
             ID.unique(),
             {
               user_id: userId,
-              title: 'New Project Assignment',
-              content: `You have been assigned to the project: **${projectName}**`,
+              title: notifTitle,
+              content: notifContent,
               read: false,
               link: inAppLink
             }
           );
 
           // 3. Send notification email
+          const mailSubject = isSiteVisit
+            ? `[Solar Shine] Assigned to Site Visit: ${visitTitle || projectName}`
+            : `[Solar Shine] Assigned to Project: ${projectName}`;
+
+          const mailHtml = isSiteVisit ? `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8F8F8; padding: 40px 20px; text-align: center; color: #333;">
+              <div style="max-width: 580px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); text-align: left;">
+                <div style="margin-bottom: 24px; border-bottom: 1px solid #F3F4F6; padding-bottom: 16px;">
+                  <span style="font-size: 24px; font-weight: bold; color: #000000; letter-spacing: -0.5px;">Solar <span style="color: #FEC105;">Maps</span></span>
+                </div>
+                
+                <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin-top: 0; margin-bottom: 12px; line-height: 1.25;">New Site Visit Assignment</h2>
+                <p style="font-size: 15px; color: #4B5563; margin-top: 0; margin-bottom: 20px; line-height: 1.5;">Hello <strong>${userName}</strong>,</p>
+                <p style="font-size: 15px; color: #4B5563; margin-top: 0; margin-bottom: 24px; line-height: 1.5;">You have been assigned to a new site visit: <strong style="color: #111827;">${visitTitle || projectName}</strong>.</p>
+                
+                <div style="background-color: #F9FAFB; border: 1px solid #F3F4F6; border-radius: 8px; padding: 16px; margin-bottom: 28px;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <tr>
+                      <td style="padding: 4px 0; color: #6B7280; width: 120px; font-weight: 500;">Site Visit:</td>
+                      <td style="padding: 4px 0; color: #111827; font-weight: 600;">${visitTitle || projectName}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; color: #6B7280; font-weight: 500;">Project:</td>
+                      <td style="padding: 4px 0; color: #111827; font-weight: 600;">${projectName}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; color: #6B7280; font-weight: 500;">Assigned To:</td>
+                      <td style="padding: 4px 0; color: #111827; font-weight: 600;">${userName}</td>
+                    </tr>
+                  </table>
+                </div>
+
+                ${emailLink ? `
+                <div style="text-align: center; margin-bottom: 28px;">
+                  <a href="${emailLink}" style="display: inline-block; padding: 12px 28px; background-color: #FEC105; color: #000000; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; transition: background-color 0.2s;">View Site Visit</a>
+                </div>
+                ` : ''}
+
+                <p style="font-size: 12px; color: #9CA3AF; margin: 0; border-top: 1px solid #F3F4F6; padding-top: 16px; line-height: 1.4;">
+                  This is an automated notification. Please do not reply directly to this email.<br/>
+                  &copy; ${new Date().getFullYear()} Solar Shine Team.
+                </p>
+              </div>
+            </div>
+          ` : `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8F8F8; padding: 40px 20px; text-align: center; color: #333;">
+              <div style="max-width: 580px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); text-align: left;">
+                <div style="margin-bottom: 24px; border-bottom: 1px solid #F3F4F6; padding-bottom: 16px;">
+                  <span style="font-size: 24px; font-weight: bold; color: #000000; letter-spacing: -0.5px;">Solar <span style="color: #FEC105;">Maps</span></span>
+                </div>
+                
+                <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin-top: 0; margin-bottom: 12px; line-height: 1.25;">New Project Assignment</h2>
+                <p style="font-size: 15px; color: #4B5563; margin-top: 0; margin-bottom: 20px; line-height: 1.5;">Hello <strong>${userName}</strong>,</p>
+                <p style="font-size: 15px; color: #4B5563; margin-top: 0; margin-bottom: 24px; line-height: 1.5;">You have been assigned to a new project: <strong style="color: #111827;">${projectName}</strong>.</p>
+                
+                <div style="background-color: #F9FAFB; border: 1px solid #F3F4F6; border-radius: 8px; padding: 16px; margin-bottom: 28px;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <tr>
+                      <td style="padding: 4px 0; color: #6B7280; width: 120px; font-weight: 500;">Project Name:</td>
+                      <td style="padding: 4px 0; color: #111827; font-weight: 600;">${projectName}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 4px 0; color: #6B7280; font-weight: 500;">Assigned To:</td>
+                      <td style="padding: 4px 0; color: #111827; font-weight: 600;">${userName}</td>
+                    </tr>
+                  </table>
+                </div>
+
+                ${emailLink ? `
+                <div style="text-align: center; margin-bottom: 28px;">
+                  <a href="${emailLink}" style="display: inline-block; padding: 12px 28px; background-color: #FEC105; color: #000000; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; transition: background-color 0.2s;">View Project Details</a>
+                </div>
+                ` : ''}
+
+                <p style="font-size: 12px; color: #9CA3AF; margin: 0; border-top: 1px solid #F3F4F6; padding-top: 16px; line-height: 1.4;">
+                  This is an automated notification. Please do not reply directly to this email.<br/>
+                  &copy; ${new Date().getFullYear()} Solar Shine Team.
+                </p>
+              </div>
+            </div>
+          `;
+
           const mailOptions = {
             from: `"Solar Shine" <helixz.heshan@gmail.com>`,
             to: email,
-            subject: `[Solar Shine] Assigned to Project: ${projectName}`,
-            text: `Hello ${userName},\n\nYou have been assigned to the project "${projectName}" on Solar Shine.\n\nYou can view and access the project execution details here: ${emailLink || 'in your dashboard'}\n\nBest regards,\nSolar Shine Team`,
-            html: `
-              <div style="font-family: sans-serif; padding: 20px; line-height: 1.6; color: #333;">
-                <h2 style="color: #2563eb; margin-top: 0;">Solar Shine Project Assignment</h2>
-                <p>Hello <strong>${userName}</strong>,</p>
-                <p>You have been assigned to a new project: <strong>${projectName}</strong>.</p>
-                ${emailLink ? `<p style="margin-top: 20px;"><a href="${emailLink}" style="display: inline-block; padding: 10px 20px; background-color: #2563eb; color: #fff; text-decoration: none; border-radius: 5px; font-weight: bold;">View Project Details</a></p>` : ''}
-                <p style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; font-size: 0.9em; color: #666;">
-                  Best regards,<br/>Solar Shine Team
-                </p>
-              </div>
-            `
+            subject: mailSubject,
+            text: isSiteVisit
+              ? `Hello ${userName},\n\nYou have been assigned to the site visit "${visitTitle || projectName}" (Project: "${projectName}") on Solar Shine.\n\nYou can view it here: ${emailLink || 'in your dashboard'}\n\nBest regards,\nSolar Shine Team`
+              : `Hello ${userName},\n\nYou have been assigned to the project "${projectName}" on Solar Shine.\n\nYou can view and access the project execution details here: ${emailLink || 'in your dashboard'}\n\nBest regards,\nSolar Shine Team`,
+            html: mailHtml
           };
 
           await transporter.sendMail(mailOptions);

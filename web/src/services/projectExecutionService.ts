@@ -264,14 +264,16 @@ export async function fetchProjectExecution(id: string): Promise<ProjectExecutio
   }
 }
 
-export async function notifyAssignees(emails: string[], projectName: string) {
+export async function notifyAssignees(emails: string[], projectName: string, projectId?: string) {
   if (emails.length === 0) return;
   try {
     const origin = window.location.origin;
     await callTeamFunction('/projects/assign', ExecutionMethod.POST, {
       assignees: emails,
       projectName,
-      origin
+      projectId,
+      origin,
+      type: 'project'
     });
   } catch (err) {
     console.error('Failed to notify project assignees:', err);

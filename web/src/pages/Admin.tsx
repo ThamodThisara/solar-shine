@@ -11,9 +11,19 @@ import DocumentCenterSection from '@/components/admin/DocumentCenterSection';
 import UserManagementSection from '@/components/admin/UserManagementSection';
 import { ClientsSection } from '@/components/admin/ClientsSection';
 
+import { useSearchParams } from 'react-router-dom';
+
 const Admin: React.FC = () => {
-  const [activeSection, setActiveSection] = useState('dashboard');
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeSection, setActiveSection] = useState(tabParam || 'dashboard');
   const { user } = useAuth();
+
+  React.useEffect(() => {
+    if (tabParam) {
+      setActiveSection(tabParam);
+    }
+  }, [tabParam]);
 
   const renderContent = () => {
     switch (activeSection) {

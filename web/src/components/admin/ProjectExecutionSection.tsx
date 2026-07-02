@@ -121,7 +121,7 @@ const ProjectExecutionSection: React.FC = () => {
         emails.push(...variables.sales_manager.split(',').map((s) => s.trim()).filter(Boolean));
       }
       if (emails.length > 0) {
-        notifyAssignees(emails, data.name || variables.name);
+        notifyAssignees(emails, data.name || variables.name, data.$id);
       }
     },
     onError: () => toast.error('Failed to create project'),
@@ -148,7 +148,7 @@ const ProjectExecutionSection: React.FC = () => {
         emails.push(...variables.input.sales_manager.split(',').map((s) => s.trim()).filter(Boolean));
       }
       if (emails.length > 0) {
-        notifyAssignees(emails, data.name || variables.input.name || '');
+        notifyAssignees(emails, data.name || variables.input.name || '', data.$id);
       }
     },
     onError: () => toast.error('Failed to update project'),

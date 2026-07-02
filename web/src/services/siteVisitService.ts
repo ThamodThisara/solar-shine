@@ -1,5 +1,6 @@
 import { databases, COLLECTIONS, DATABASE_ID } from '@/lib/appwrite';
-import { ID, Query } from 'appwrite';
+import { ID, Query, ExecutionMethod } from 'appwrite';
+import { callTeamFunction } from './teamService';
 import {
   SiteVisit,
   SiteVisitPriority,
@@ -275,6 +276,23 @@ export async function addSiteVisitUpdate(input: AddSiteVisitUpdateInput): Promis
   } catch (error) {
     console.error('Error adding site visit update:', error);
     throw error;
+  }
+}
+
+export async function notifySiteVisitAssignees(emails: string[], visitTitle: string, projectName: string, projectId: string) {
+  if (emails.length === 0) return;
+  try {
+    const origin = window.location.origin;
+    await callTeamFunction('/projects/assign', ExecutionMethod.POST, {
+      assignees: emails,
+      projectName,
+      visitTitle,
+      projectId,
+      origin,
+      type: 'site_visit'
+    });
+  } catch (err) {
+    console.error('Failed to notify site visit assignees:', err);
   }
 }
 

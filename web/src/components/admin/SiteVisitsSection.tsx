@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Plus, Terminal, ChevronLeft, ChevronRight, ClipboardList } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,8 +20,9 @@ import {
   createSiteVisit,
   deleteSiteVisit,
   SITE_VISIT_PAGE_SIZE,
+  notifySiteVisitAssignees,
 } from '@/services/siteVisitService';
-import { fetchProjectExecutionOptions, notifyAssignees } from '@/services/projectExecutionService';
+import { fetchProjectExecutionOptions } from '@/services/projectExecutionService';
 import { fetchDocumentTypes } from '@/services/documentTypeService';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fetchEngineers, fetchUsers } from '@/services/userService';
@@ -48,10 +50,27 @@ const SiteVisitsSection: React.FC = () => {
   const canAccess = canAccessSection('site-visits', role);
   const queryClient = useQueryClient();
 
-  const [projectFilter, setProjectFilter] = useState<string>('');
+  const [searchParams] = useSearchParams();
+  const paramProject = searchParams.get('project');
+  const paramMine = searchParams.get('myVisits');
+
+  const [projectFilter, setProjectFilter] = useState<string>(paramProject || '');
   const [filter, setFilter] = useState<SiteVisitStatus | 'all'>('all');
-  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'mine' | 'unassigned'>('all');
+  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'mine' | 'unassigned'>(
+    paramMine === 'true' ? 'mine' : 'all'
+  );
   const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    if (paramProject !== null) {
+      setProjectFilter(paramProject);
+      setPage(0);
+    }
+    if (paramMine === 'true') {
+      setAssignmentFilter('mine');
+      setPage(0);
+    }
+  }, [paramProject, paramMine]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<SiteVisit | null>(null);
   const [selectedVisitTab, setSelectedVisitTab] = useState<'details' | 'activity' | 'documents'>('details');
@@ -123,7 +142,7 @@ const SiteVisitsSection: React.FC = () => {
         
         if (emails.length > 0) {
           const projName = projects.find(p => p.$id === variables.project_id)?.name || 'Project';
-          notifyAssignees(emails, `Site Visit "**${variables.title}**" (Project: **${projName}**)`);
+          notifySiteVisitAssignees(emails, variables.title, projName, variables.project_id);
         }
       }
     },
