@@ -628,9 +628,11 @@
       "enabled": true,
       "documentSecurity": false,
       "attributes": [
-        { "key": "name", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "name", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
         { "key": "client", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
         { "key": "location", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "project_code", "type": "string", "required": false, "array": false, "size": 30, "encrypt": false },
+        { "key": "prefix_code", "type": "string", "required": false, "array": false, "size": 20, "encrypt": false },
         { "key": "address", "type": "string", "required": false, "array": false, "size": 500, "encrypt": false },
         { "key": "latitude", "type": "double", "required": false, "array": false },
         { "key": "longitude", "type": "double", "required": false, "array": false },
@@ -655,7 +657,8 @@
       ],
       "indexes": [
         { "key": "idx_status", "type": "key", "attributes": ["status"], "orders": ["ASC"] },
-        { "key": "idx_name_search", "type": "fulltext", "attributes": ["name"], "orders": ["ASC"] }
+        { "key": "idx_name_search", "type": "fulltext", "attributes": ["name"], "orders": ["ASC"] },
+        { "key": "idx_project_code_unique", "type": "unique", "attributes": ["project_code"], "orders": ["ASC"] }
       ]
     },
     {
@@ -721,6 +724,27 @@
       "indexes": [
         { "key": "idx_type", "type": "key", "attributes": ["type"], "orders": ["ASC"] },
         { "key": "idx_name", "type": "key", "attributes": ["name"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "project_types",
+      "$permissions": [
+        "read(\"users\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Project Types",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "prefix_code", "type": "string", "required": true, "array": false, "size": 20 },
+        { "key": "service_title", "type": "string", "required": true, "array": false, "size": 255 }
+      ],
+      "indexes": [
+        { "key": "idx_prefix_code", "type": "key", "attributes": ["prefix_code"], "orders": ["ASC"] },
+        { "key": "idx_service_title", "type": "key", "attributes": ["service_title"], "orders": ["ASC"] }
       ]
     },
     {

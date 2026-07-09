@@ -212,9 +212,14 @@ const ProjectSummary: React.FC = () => {
               </Badge>
             </div>
             <div className="h-4 w-px bg-border hidden sm:block" />
-            <h1 className="text-lg sm:text-xl font-bold text-foreground break-words">
-              {project.name}
-            </h1>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground break-words font-mono">
+                {project.project_code || project.name}
+              </h1>
+              {project.project_code && project.name && (
+                <p className="text-xs sm:text-sm text-muted-foreground break-words">{project.name}</p>
+              )}
+            </div>
           </div>
           <Badge className={cn("text-xs font-semibold capitalize hidden sm:inline-flex self-start sm:self-auto", projectStatusStyles[project.status])}>
             {project.status.replace('_', ' ')}
@@ -348,7 +353,7 @@ const ProjectSummary: React.FC = () => {
                 <SiteVisitCard
                   key={visit.$id}
                   visit={visit}
-                  projectName={project.name}
+                  projectName={project.project_code || project.name}
                   currentUserId={user?.$id ?? ''}
                   onOpen={(v, tab, hideTabs) => {
                     setSelectedVisit(v);
@@ -404,7 +409,7 @@ const ProjectSummary: React.FC = () => {
                 <div key={doc.$id} className="relative group flex flex-col">
                   <DocumentCard
                     doc={doc}
-                    projectName={project.name}
+                    projectName={project.project_code || project.name}
                     documentType={documentTypes.find((dt) => dt.$id === doc.document_type_id)}
                   />
                   {/* Uploader audit footer */}
@@ -425,7 +430,7 @@ const ProjectSummary: React.FC = () => {
           visit={selectedVisit}
           isOpen={!!selectedVisit}
           setIsOpen={(open) => { if (!open) setSelectedVisit(null); }}
-          projectName={project.name}
+          projectName={project.project_code || project.name}
           documentTypes={documentTypes}
           currentUser={{ $id: user?.$id ?? '', name: user?.name ?? 'User' }}
           canEdit={canEditVisit(selectedVisit)}

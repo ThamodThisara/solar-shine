@@ -113,6 +113,7 @@ export const COLLECTIONS = {
   PROJECT_EXECUTIONS: 'projects',
   DOCUMENTS: 'documents',
   DOCUMENT_TYPES: 'document_types',
+  PROJECT_TYPES: 'project_types',
   SITE_VISITS: 'site_visits',
   SITE_VISIT_UPDATES: 'site_visit_updates',
   NOTIFICATIONS: 'notifications',

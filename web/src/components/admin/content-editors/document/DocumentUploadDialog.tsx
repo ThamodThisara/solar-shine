@@ -115,7 +115,7 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
               placeholder="Select a project"
               searchPlaceholder="Search projects..."
               emptyText="No projects found."
-              options={projects.map((p) => ({ value: p.$id, label: `${p.name} — ${p.client}`, keywords: p.client }))}
+              options={projects.map((p) => ({ value: p.$id, label: `${p.project_code || p.name} — ${p.client}`, keywords: `${p.project_code || ''} ${p.name || ''} ${p.client}` }))}
             />
           </div>
 

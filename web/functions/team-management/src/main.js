@@ -1,6 +1,40 @@
 import { Client, Teams, Users, Account, Databases, ID, Query } from 'node-appwrite';
 import nodemailer from 'nodemailer';
 
+const PROJECTS_COLLECTION_ID = 'projects';
+
+/**
+ * Computes the next sequential project code for a given prefix in the CURRENT
+ * (server-clock) year, in the form `PREFIX-YYYY-0001`. The year is derived from
+ * the function host clock so it can't be skewed by a client's device clock.
+ *
+ * Because sequences are zero-padded to 4 digits, lexicographic ordering matches
+ * numeric ordering, so `orderDesc` + `limit(1)` yields the highest existing code.
+ */
+async function computeNextProjectCode(dbs, databaseId, prefixCode) {
+  const year = new Date().getFullYear();
+  const base = `${prefixCode}-${year}-`;
+
+  const existing = await dbs.listDocuments(databaseId, PROJECTS_COLLECTION_ID, [
+    Query.startsWith('project_code', base),
+    Query.orderDesc('project_code'),
+    Query.limit(1),
+  ]);
+
+  let seq = 1;
+  if (existing.documents.length > 0) {
+    const last = existing.documents[0].project_code || '';
+    const parsed = parseInt(last.slice(base.length), 10);
+    if (!Number.isNaN(parsed)) seq = parsed + 1;
+  }
+
+  if (seq > 9999) {
+    throw new Error(`Sequence limit reached for ${prefixCode}-${year} (max 9999).`);
+  }
+
+  return `${base}${String(seq).padStart(4, '0')}`;
+}
+
 export default async ({ req, res, log, error }) => {
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
@@ -48,7 +82,16 @@ export default async ({ req, res, log, error }) => {
     return res.json({ error: 'Unauthorized' }, 401);
   }
 
-  if (callerPrefs.role !== 'admin' && !(method === 'GET' && path === '/users') && !(method === 'POST' && path === '/projects/assign')) {
+  const isProjectIdRoute =
+    (method === 'GET' && path === '/projects/next-id') ||
+    (method === 'POST' && path === '/projects/create');
+
+  if (
+    callerPrefs.role !== 'admin' &&
+    !(method === 'GET' && path === '/users') &&
+    !(method === 'POST' && path === '/projects/assign') &&
+    !isProjectIdRoute
+  ) {
     return res.json({ error: 'Forbidden: admin role required' }, 403);
   }
 
@@ -224,6 +267,56 @@ export default async ({ req, res, log, error }) => {
     if (method === 'DELETE' && match) {
       await teams.deleteMembership(match[1], match[2]);
       return res.json({ success: true });
+    }
+
+    // Preview the next project code for a prefix. Non-authoritative: the final
+    // code is assigned atomically at creation time (POST /projects/create).
+    if (method === 'GET' && path === '/projects/next-id') {
+      const prefixCode = (query.prefix || '').trim();
+      if (!prefixCode) {
+        return res.json({ error: 'Missing prefix' }, 400);
+      }
+      const dbs = new Databases(client);
+      const databaseId = process.env.VITE_APPWRITE_DATABASE_ID || '6873ba790033a7d5cfdb';
+      const projectCode = await computeNextProjectCode(dbs, databaseId, prefixCode);
+      return res.json({ projectCode });
+    }
+
+    // Authoritatively generate a project code and create the project in one
+    // server-side step. The unique index on `project_code` rejects any colliding
+    // code produced by a concurrent create; on conflict we regenerate and retry.
+    if (method === 'POST' && path === '/projects/create') {
+      const body = parseBody();
+      const { prefixCode, ...projectData } = body;
+      if (!prefixCode) {
+        return res.json({ error: 'Missing prefixCode' }, 400);
+      }
+
+      const dbs = new Databases(client);
+      const databaseId = process.env.VITE_APPWRITE_DATABASE_ID || '6873ba790033a7d5cfdb';
+
+      const MAX_ATTEMPTS = 5;
+      let lastError;
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        const projectCode = await computeNextProjectCode(dbs, databaseId, prefixCode);
+        try {
+          const created = await dbs.createDocument(databaseId, PROJECTS_COLLECTION_ID, ID.unique(), {
+            ...projectData,
+            prefix_code: prefixCode,
+            project_code: projectCode,
+          });
+          return res.json(created);
+        } catch (e) {
+          // 409 = unique-index conflict from a concurrent create; regenerate + retry.
+          if (e.code === 409) {
+            lastError = e;
+            continue;
+          }
+          throw e;
+        }
+      }
+      error(`Failed to allocate a unique project code after ${MAX_ATTEMPTS} attempts: ${lastError?.message}`);
+      return res.json({ error: 'Could not allocate a unique project code, please retry.' }, 409);
     }
 
     if (method === 'POST' && path === '/projects/assign') {

@@ -110,7 +110,14 @@ const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({
         <div className="flex flex-col gap-3">
           {/* Row 1: Title and Status Badge */}
           <div className="flex items-start justify-between gap-4">
-            <CardTitle className="text-base font-bold text-foreground">{project.name}</CardTitle>
+            <div className="min-w-0">
+              <CardTitle className="text-base font-bold text-foreground font-mono">
+                {project.project_code || project.name}
+              </CardTitle>
+              {project.project_code && project.name && (
+                <p className="text-xs text-muted-foreground mt-0.5 break-words">{project.name}</p>
+              )}
+            </div>
             <Badge className={cn("text-[10px] px-2 py-0.5 rounded font-semibold capitalize shrink-0 mt-0.5", statusStyles[project.status])}>
               {project.status.replace('_', ' ')}
             </Badge>

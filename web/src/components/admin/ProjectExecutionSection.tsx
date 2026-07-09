@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Terminal, Search } from 'lucide-react';
+import { Plus, Terminal, Search, Tags } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import {
 } from '@/services/projectExecutionService';
 import ProjectExecutionCard from './ProjectExecutionCard';
 import ProjectExecutionFormDialog from './content-editors/project-execution/ProjectExecutionFormDialog';
+import ManageProjectTypesDialog from './content-editors/project-execution/ManageProjectTypesDialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { SimplePagination } from '@/components/ui/simple-pagination';
 
@@ -47,7 +48,7 @@ const statCards: Array<{ key: keyof Awaited<ReturnType<typeof fetchProjectExecut
 ];
 
 const ProjectExecutionSection: React.FC = () => {
-  const { role, user, isLoading: isAuthLoading } = useAuth();
+  const { role, user, isAdmin, isLoading: isAuthLoading } = useAuth();
   const canAccess = canAccessSection('project-execution', role);
   const queryClient = useQueryClient();
 
@@ -55,6 +56,7 @@ const ProjectExecutionSection: React.FC = () => {
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'me'>('all');
   const [page, setPage] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isManageTypesOpen, setIsManageTypesOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -121,7 +123,7 @@ const ProjectExecutionSection: React.FC = () => {
         emails.push(...variables.sales_manager.split(',').map((s) => s.trim()).filter(Boolean));
       }
       if (emails.length > 0) {
-        notifyAssignees(emails, data.name || variables.name, data.$id);
+        notifyAssignees(emails, data.project_code || data.name || variables.name || '', data.$id);
       }
     },
     onError: () => toast.error('Failed to create project'),
@@ -148,7 +150,7 @@ const ProjectExecutionSection: React.FC = () => {
         emails.push(...variables.input.sales_manager.split(',').map((s) => s.trim()).filter(Boolean));
       }
       if (emails.length > 0) {
-        notifyAssignees(emails, data.name || variables.input.name || '', data.$id);
+        notifyAssignees(emails, data.project_code || data.name || variables.input.name || '', data.$id);
       }
     },
     onError: () => toast.error('Failed to update project'),
@@ -211,9 +213,16 @@ const ProjectExecutionSection: React.FC = () => {
             <CardTitle>Project Execution</CardTitle>
             <CardDescription>Track and manage solar installation projects from kickoff to handover.</CardDescription>
           </div>
-          <Button onClick={() => setIsDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Create Project
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {isAdmin && (
+              <Button variant="outline" onClick={() => setIsManageTypesOpen(true)}>
+                <Tags className="mr-2 h-4 w-4" /> Add Project Types
+              </Button>
+            )}
+            <Button onClick={() => setIsDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Create Project
+            </Button>
+          </div>
         </CardHeader>
       </Card>
 
@@ -238,7 +247,7 @@ const ProjectExecutionSection: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search projects by name..."
+              placeholder="Search by project ID, name or client..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-9"
@@ -267,7 +276,7 @@ const ProjectExecutionSection: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search projects by name..."
+              placeholder="Search by project ID, name or client..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-9"
@@ -339,7 +348,7 @@ const ProjectExecutionSection: React.FC = () => {
               users={usersList}
               onStatusChange={(id, status) => statusMutation.mutate({ id, status })}
               onDelete={(id) => {
-                setProjectToDelete({ id, name: project.name });
+                setProjectToDelete({ id, name: project.project_code || project.name });
                 setIsDeleteConfirmOpen(true);
               }}
               onEdit={(proj) => {
@@ -376,6 +385,10 @@ const ProjectExecutionSection: React.FC = () => {
         }}
         isSaving={createMutation.isPending || editMutation.isPending}
       />
+
+      {isAdmin && (
+        <ManageProjectTypesDialog isOpen={isManageTypesOpen} setIsOpen={setIsManageTypesOpen} />
+      )}
 
       <ConfirmDialog
         open={isDeleteConfirmOpen}
