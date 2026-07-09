@@ -13,6 +13,7 @@ const departmentStyles: Record<string, string> = {
   Sales: 'text-blue-600 bg-blue-50',
   Engineering: 'text-emerald-600 bg-emerald-50',
   Finance: 'text-amber-600 bg-amber-50',
+  HR: 'text-purple-600 bg-purple-50',
 };
 
 interface DocumentCardProps {

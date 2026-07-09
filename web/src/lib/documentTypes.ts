@@ -1,6 +1,6 @@
 import { Department } from '@/types/payload-types';
 
-export const DEPARTMENTS: Department[] = ['Marketing', 'Sales', 'Finance', 'Engineering'];
+export const DEPARTMENTS: Department[] = ['Marketing', 'Sales', 'Finance', 'Engineering', 'HR'];
 
 export const ALLOWED_FILE_EXTENSIONS = [
   '.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.svg',

@@ -6,9 +6,10 @@ import { Combobox } from '@/components/ui/combobox';
 import { Upload, UploadCloud, X, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, formatFileSize } from '@/lib/utils';
-import { DEPARTMENTS, ALLOWED_FILE_EXTENSIONS, isAllowedFile } from '@/lib/documentTypes';
+import { ALLOWED_FILE_EXTENSIONS, isAllowedFile } from '@/lib/documentTypes';
 import { Department, DocumentVisibility, DocumentType } from '@/types/payload-types';
 import { UploadDocumentsInput } from '@/services/documentService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProjectOption {
   $id: string;
@@ -29,7 +30,6 @@ interface DocumentUploadDialogProps {
 const initialState = {
   projectId: '',
   visibility: '' as DocumentVisibility | '',
-  department: '' as Department | '',
   documentTypeId: '',
   files: [] as File[],
 };
@@ -43,9 +43,18 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
   onUpload,
   isUploading,
 }) => {
+  const { role, isAdmin } = useAuth();
   const [state, setState] = useState(initialState);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const allowedTypes = React.useMemo(() => {
+    if (isAdmin) return documentTypes;
+    const userDept = role === 'sales_manager' ? 'sales' : role === 'hr' ? 'hr' : 'engineer';
+    return documentTypes.filter(
+      (dt) => dt.department === userDept || dt.department === 'all' || !dt.department
+    );
+  }, [documentTypes, role, isAdmin]);
 
   const reset = () => setState(initialState);
 
@@ -79,11 +88,19 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
 
   const handleSubmit = () => {
     if (!isFormValid) return;
+    const selectedType = documentTypes.find((dt) => dt.$id === state.documentTypeId);
+    const derivedDept = selectedType?.department
+      ? (selectedType.department === 'engineer' ? 'Engineering' :
+         selectedType.department === 'sales' ? 'Sales' :
+         selectedType.department === 'hr' ? 'HR' :
+         selectedType.department === 'admin' ? 'Finance' : undefined)
+      : undefined;
+
     onUpload({
       files: state.files,
       projectId: state.projectId,
       visibility: state.visibility as DocumentVisibility,
-      department: state.visibility === 'internal' ? (state.department as Department) : undefined,
+      department: state.visibility === 'internal' ? (derivedDept as Department) : undefined,
       documentTypeId: state.documentTypeId,
       uploadedBy,
     });
@@ -92,7 +109,6 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
   const isFormValid =
     !!state.projectId &&
     !!state.visibility &&
-    (state.visibility !== 'internal' || !!state.department) &&
     !!state.documentTypeId &&
     state.files.length > 0;
 
@@ -126,7 +142,7 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
                 <button
                   key={v}
                   type="button"
-                  onClick={() => setState((s) => ({ ...s, visibility: v, department: '' }))}
+                  onClick={() => setState((s) => ({ ...s, visibility: v }))}
                   className={cn(
                     "rounded-md border px-3 py-2 text-sm font-medium transition-colors",
                     state.visibility === v ? "border-primary bg-primary/10 text-primary" : "border-input hover:bg-accent"
@@ -137,23 +153,6 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
               ))}
             </div>
           </div>
-
-          {state.visibility === 'internal' && (
-            <div>
-              <Label htmlFor="upload-department">Department</Label>
-              <Combobox
-                id="upload-department"
-                modal
-                className="focus:ring-0 focus:ring-offset-0"
-                value={state.department}
-                onChange={(v) => setState((s) => ({ ...s, department: v as Department }))}
-                placeholder="Select a department"
-                searchPlaceholder="Search departments..."
-                emptyText="No departments found."
-                options={DEPARTMENTS.map((d) => ({ value: d, label: d }))}
-              />
-            </div>
-          )}
 
           <div>
             <Label htmlFor="upload-document-type">Document Type</Label>
@@ -166,7 +165,15 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
               placeholder="Select a document type"
               searchPlaceholder="Search document types..."
               emptyText="No document types found."
-              options={documentTypes.map((dt) => ({ value: dt.$id, label: `${dt.name} (${dt.type})`, keywords: dt.type }))}
+              options={allowedTypes.map((dt) => ({
+                value: dt.$id,
+                label: `${dt.name} (${dt.type})`,
+                keywords: dt.type,
+                group: dt.department === 'engineer' ? 'Engineering' :
+                       dt.department === 'sales' ? 'Sales' :
+                       dt.department === 'hr' ? 'HR' :
+                       dt.department === 'admin' ? 'Admin' : 'All Departments'
+              }))}
             />
           </div>
 

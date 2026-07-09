@@ -3,6 +3,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/contexts/AuthContext';
+import { canAccessSection } from '@/config/roles';
 import {
   LogOut,
   Menu,
@@ -46,9 +48,17 @@ export const EngineerSidebar: React.FC<EngineerSidebarProps> = ({
   isMobileOpen,
   onMobileClose,
 }) => {
+  const { role } = useAuth();
   // On mobile the drawer is always full-width, so labels are shown regardless of
   // the desktop collapse state. Collapse only hides labels on lg+ screens.
   const showLabels = isMobileOpen || !isCollapsed;
+
+  const allowedItems = React.useMemo(() => {
+    return sidebarItems.map((category) => ({
+      ...category,
+      items: category.items.filter((item) => canAccessSection(item.id, role)),
+    })).filter((category) => category.items.length > 0);
+  }, [role]);
 
   return (
     <>
@@ -74,7 +84,9 @@ export const EngineerSidebar: React.FC<EngineerSidebarProps> = ({
       <div className="py-3 px-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           {showLabels && (
-            <h2 className="text-lg font-semibold text-gray-900">Engineer Panel</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {role === 'hr' ? 'HR Panel' : 'Engineer Panel'}
+            </h2>
           )}
           {/* Desktop: collapse toggle */}
           <Button
@@ -101,7 +113,7 @@ export const EngineerSidebar: React.FC<EngineerSidebarProps> = ({
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         <div className="space-y-6">
-          {sidebarItems.map((category) => (
+          {allowedItems.map((category) => (
             <div key={category.category}>
               {showLabels && (
                 <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 px-3">

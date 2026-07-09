@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Trash2, Edit, ShieldAlert, Eye } from 'lucide-react';
+import { Plus, Trash2, Edit, ShieldAlert, Eye, Clipboard } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,8 @@ import { fetchClients, registerClient, updateClient, deleteClient, ClientRecord 
 import { fetchProjectExecutionOptions } from '@/services/projectExecutionService';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { MapPicker } from '@/components/ui/map-picker';
+import { parseCoordinates } from '@/lib/utils';
+import { resolveGoogleMapsLink } from '@/services/teamService';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SimplePagination } from '@/components/ui/simple-pagination';
 
@@ -397,12 +399,19 @@ export const ClientsSection: React.FC = () => {
 
             <div className="space-y-2 border-t pt-3">
               <Label>Select Location on Map</Label>
-              <MapPicker
-                onLocationSelect={({ googleMapsLink }) => {
-                  setForm((prev) => ({ ...prev, googleMapsLink }));
-                  setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
-                }}
-              />
+              {(() => {
+                const coords = parseCoordinates(form.googleMapsLink);
+                return (
+                  <MapPicker
+                    initialLat={coords?.lat}
+                    initialLng={coords?.lng}
+                    onLocationSelect={({ googleMapsLink }) => {
+                      setForm((prev) => ({ ...prev, googleMapsLink }));
+                      setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                    }}
+                  />
+                );
+              })()}
             </div>
 
             <div className="space-y-1">
@@ -422,12 +431,66 @@ export const ClientsSection: React.FC = () => {
 
             <div className="space-y-1">
               <Label htmlFor="create_maps">Google Maps Location Link</Label>
-              <Input
-                id="create_maps"
-                value={form.googleMapsLink}
-                onChange={(e) => setForm((prev) => ({ ...prev, googleMapsLink: e.target.value }))}
-                placeholder="Google Maps URL"
-              />
+              <div className="relative">
+                <Input
+                  id="create_maps"
+                  value={form.googleMapsLink}
+                  onChange={(e) => {
+                    setForm((prev) => ({ ...prev, googleMapsLink: e.target.value }));
+                    setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                  }}
+                  placeholder="Google Maps URL"
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground hover:text-foreground"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (!text) {
+                        toast.error("Clipboard is empty.");
+                        return;
+                      }
+
+                      const coords = parseCoordinates(text);
+                      if (coords) {
+                        setForm((prev) => ({ ...prev, googleMapsLink: text }));
+                        setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                        toast.success("Location link pasted and validated successfully!");
+                        return;
+                      }
+
+                      if (text.startsWith("http") && (text.includes("maps.app.goo.gl") || text.includes("goo.gl/maps"))) {
+                        const loadingToast = toast.loading("Resolving shortened Google Maps link...");
+                        try {
+                          const result = await resolveGoogleMapsLink(text);
+                          toast.dismiss(loadingToast);
+                          if (result && result.lat && result.lng) {
+                            setForm((prev) => ({ ...prev, googleMapsLink: result.resolvedUrl }));
+                            setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                            toast.success("Location link resolved and validated successfully!");
+                          } else {
+                            toast.error("Could not extract coordinates from resolved URL.");
+                          }
+                        } catch (err: any) {
+                          toast.dismiss(loadingToast);
+                          toast.error(`Resolution failed: ${err.message || err}`);
+                        }
+                        return;
+                      }
+
+                      toast.error("Invalid Google Maps link format.");
+                    } catch (err) {
+                      toast.error("Failed to read from clipboard.");
+                    }
+                  }}
+                >
+                  <Clipboard className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <DialogFooter className="pt-2">
@@ -537,12 +600,19 @@ export const ClientsSection: React.FC = () => {
 
             <div className="space-y-2 border-t pt-3">
               <Label>Select Location on Map</Label>
-              <MapPicker
-                onLocationSelect={({ googleMapsLink }) => {
-                  setForm((prev) => ({ ...prev, googleMapsLink }));
-                  setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
-                }}
-              />
+              {(() => {
+                const coords = parseCoordinates(form.googleMapsLink);
+                return (
+                  <MapPicker
+                    initialLat={coords?.lat}
+                    initialLng={coords?.lng}
+                    onLocationSelect={({ googleMapsLink }) => {
+                      setForm((prev) => ({ ...prev, googleMapsLink }));
+                      setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                    }}
+                  />
+                );
+              })()}
             </div>
 
             <div className="space-y-1">
@@ -562,12 +632,66 @@ export const ClientsSection: React.FC = () => {
 
             <div className="space-y-1">
               <Label htmlFor="edit_maps">Google Maps Location Link</Label>
-              <Input
-                id="edit_maps"
-                value={form.googleMapsLink}
-                onChange={(e) => setForm((prev) => ({ ...prev, googleMapsLink: e.target.value }))}
-                placeholder="Google Maps URL"
-              />
+              <div className="relative">
+                <Input
+                  id="edit_maps"
+                  value={form.googleMapsLink}
+                  onChange={(e) => {
+                    setForm((prev) => ({ ...prev, googleMapsLink: e.target.value }));
+                    setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                  }}
+                  placeholder="Google Maps URL"
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground hover:text-foreground"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (!text) {
+                        toast.error("Clipboard is empty.");
+                        return;
+                      }
+
+                      const coords = parseCoordinates(text);
+                      if (coords) {
+                        setForm((prev) => ({ ...prev, googleMapsLink: text }));
+                        setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                        toast.success("Location link pasted and validated successfully!");
+                        return;
+                      }
+
+                      if (text.startsWith("http") && (text.includes("maps.app.goo.gl") || text.includes("goo.gl/maps"))) {
+                        const loadingToast = toast.loading("Resolving shortened Google Maps link...");
+                        try {
+                          const result = await resolveGoogleMapsLink(text);
+                          toast.dismiss(loadingToast);
+                          if (result && result.lat && result.lng) {
+                            setForm((prev) => ({ ...prev, googleMapsLink: result.resolvedUrl }));
+                            setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                            toast.success("Location link resolved and validated successfully!");
+                          } else {
+                            toast.error("Could not extract coordinates from resolved URL.");
+                          }
+                        } catch (err: any) {
+                          toast.dismiss(loadingToast);
+                          toast.error(`Resolution failed: ${err.message || err}`);
+                        }
+                        return;
+                      }
+
+                      toast.error("Invalid Google Maps link format.");
+                    } catch (err) {
+                      toast.error("Failed to read from clipboard.");
+                    }
+                  }}
+                >
+                  <Clipboard className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <DialogFooter className="pt-2">

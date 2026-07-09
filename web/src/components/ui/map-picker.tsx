@@ -100,6 +100,23 @@ export const MapPicker: React.FC<MapPickerProps> = ({
     };
   }, [leafletLoaded]);
 
+  // Update map center and marker when initialLat/initialLng props change (e.g. pasted URL)
+  useEffect(() => {
+    if (!leafletLoaded || !mapRef.current) return;
+    
+    // To prevent infinite update loops, check if the map is already centered near these coordinates
+    const center = mapRef.current.getCenter();
+    const latDiff = Math.abs(center.lat - initialLat);
+    const lngDiff = Math.abs(center.lng - initialLng);
+    
+    if (latDiff > 0.0001 || lngDiff > 0.0001) {
+      mapRef.current.setView([initialLat, initialLng], 15);
+      if (markerRef.current) {
+        markerRef.current.setLatLng([initialLat, initialLng]);
+      }
+    }
+  }, [initialLat, initialLng, leafletLoaded]);
+
   const handleLocationChange = async (lat: number, lng: number) => {
     const googleMapsLink = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
     let address = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;

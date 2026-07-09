@@ -64,3 +64,65 @@ export function prepareAppwriteData<T extends Record<string, any>>(data: T): Rec
   
   return result;
 }
+
+/**
+ * Parses latitude and longitude coordinates from any Google Maps link pattern
+ * or raw coordinate text string.
+ */
+export function parseCoordinates(link?: string): { lat: number; lng: number } | null {
+  if (!link) return null;
+  
+  const cleanLink = link.trim();
+  
+  // 1. Check for standard query parameter: q=latitude,longitude or query=latitude,longitude
+  const qMatch = cleanLink.match(/[?&](q|query)=([+-]?\d+\.\d+),([+-]?\d+\.\d+)/) || cleanLink.match(/(q|query)=([+-]?\d+\.\d+),([+-]?\d+\.\d+)/);
+  if (qMatch) {
+    const lat = parseFloat(qMatch[2]);
+    const lng = parseFloat(qMatch[3]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng };
+    }
+  }
+
+  // 2. Check for @latitude,longitude (e.g. /@6.927100,79.861200,17z)
+  const atMatch = cleanLink.match(/@([+-]?\d+\.\d+),([+-]?\d+\.\d+)/);
+  if (atMatch) {
+    const lat = parseFloat(atMatch[1]);
+    const lng = parseFloat(atMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng };
+    }
+  }
+
+  // 3. Check for /place/latitude,longitude or /maps/place/latitude,longitude
+  const placeMatch = cleanLink.match(/\/place\/([+-]?\d+\.\d+),([+-]?\d+\.\d+)/);
+  if (placeMatch) {
+    const lat = parseFloat(placeMatch[1]);
+    const lng = parseFloat(placeMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng };
+    }
+  }
+
+  // 4. Check for direct coordinates /latitude,longitude/ in URL path (allowing optional + sign)
+  const pathMatch = cleanLink.match(/\/([+-]?\d+\.\d+),\+?([+-]?\d+\.\d+)/) || cleanLink.match(/\/([+-]?\d+\.\d+),([+-]?\d+\.\d+)/);
+  if (pathMatch) {
+    const lat = parseFloat(pathMatch[1]);
+    const lng = parseFloat(pathMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng };
+    }
+  }
+
+  // 5. Check if the text is just raw latitude, longitude (e.g. "6.927100, 79.861200")
+  const rawMatch = cleanLink.match(/^([+-]?\d+\.\d+)\s*,\s*([+-]?\d+\.\d+)$/);
+  if (rawMatch) {
+    const lat = parseFloat(rawMatch[1]);
+    const lng = parseFloat(rawMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng };
+    }
+  }
+
+  return null;
+}

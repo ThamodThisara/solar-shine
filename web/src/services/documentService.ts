@@ -11,7 +11,8 @@ export interface DocumentListParams {
   page?: number;
   projectId?: string;
   department?: Department | 'all';
-  documentTypeId?: string | 'all';
+  documentTypeId?: string | string[] | 'all';
+  visibility?: string;
   /** When true, omit documents that belong to a site visit (shown separately). */
   excludeSiteVisitDocs?: boolean;
 }
@@ -26,19 +27,20 @@ function buildFilterQueries(params: Omit<DocumentListParams, 'page'>) {
   if (params.projectId) queries.push(Query.equal('project_id', params.projectId));
   if (params.department && params.department !== 'all') queries.push(Query.equal('department', params.department));
   if (params.documentTypeId && params.documentTypeId !== 'all') queries.push(Query.equal('document_type_id', params.documentTypeId));
+  if (params.visibility && params.visibility !== 'all') queries.push(Query.equal('document_visibility', params.visibility));
   if (params.excludeSiteVisitDocs) queries.push(Query.isNull('site_visit_id'));
   return queries;
 }
 
 export async function fetchDocuments(
-  { page = 0, projectId, department, documentTypeId, excludeSiteVisitDocs }: DocumentListParams = {}
+  { page = 0, projectId, department, documentTypeId, visibility, excludeSiteVisitDocs }: DocumentListParams = {}
 ): Promise<DocumentListResult> {
   try {
     const queries = [
       Query.orderDesc('uploaded_at'),
       Query.limit(PAGE_SIZE),
       Query.offset(page * PAGE_SIZE),
-      ...buildFilterQueries({ projectId, department, documentTypeId, excludeSiteVisitDocs }),
+      ...buildFilterQueries({ projectId, department, documentTypeId, visibility, excludeSiteVisitDocs }),
     ];
 
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, queries);
@@ -60,13 +62,13 @@ export async function fetchDocuments(
  * so the matching is performed in the component over this result set.
  */
 export async function searchDocuments(
-  { projectId, department, documentTypeId, excludeSiteVisitDocs }: Omit<DocumentListParams, 'page'> = {}
+  { projectId, department, documentTypeId, visibility, excludeSiteVisitDocs }: Omit<DocumentListParams, 'page'> = {}
 ): Promise<DocumentRecord[]> {
   try {
     const queries = [
       Query.orderDesc('uploaded_at'),
       Query.limit(SEARCH_LIMIT),
-      ...buildFilterQueries({ projectId, department, documentTypeId, excludeSiteVisitDocs }),
+      ...buildFilterQueries({ projectId, department, documentTypeId, visibility, excludeSiteVisitDocs }),
     ];
 
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, queries);

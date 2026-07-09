@@ -53,6 +53,7 @@ const TEAM_ROLE_OPTIONS = [
   { value: 'planning_engineer', label: 'Planning Engineer' },
   { value: 'sales_manager', label: 'Sales Manager' },
   { value: 'admin', label: 'Administrator' },
+  { value: 'hr', label: 'HR' },
 ];
 
 const UserManagementSection: React.FC = () => {

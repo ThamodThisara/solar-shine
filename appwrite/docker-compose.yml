@@ -42,12 +42,7 @@ services:
         max-size: 10m
     image: ${_APP_IMAGE:-appwrite/appwrite}:${_APP_VERSION:-latest}
     healthcheck:
-      test:
-      - CMD
-      - doctor
-      interval: 5s
-      timeout: 5s
-      retries: 12
+      disable: true
     networks:
     - appwrite
     labels:

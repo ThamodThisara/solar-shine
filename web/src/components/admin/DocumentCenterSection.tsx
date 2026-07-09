@@ -7,11 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
+import { Combobox } from '@/components/ui/combobox';
 import { canAccessSection } from '@/config/roles';
-import { Department, DocumentRecord } from '@/types/payload-types';
-import { DEPARTMENTS } from '@/lib/documentTypes';
+import { DocumentRecord } from '@/types/payload-types';
 import {
   fetchDocuments,
   fetchRecentDocuments,
@@ -33,8 +32,9 @@ const DocumentCenterSection: React.FC = () => {
   const queryClient = useQueryClient();
 
   const [projectFilter, setProjectFilter] = useState<string>('all');
-  const [departmentFilter, setDepartmentFilter] = useState<Department | 'all'>('all');
+  const departmentFilter = 'all';
   const [documentTypeFilter, setDocumentTypeFilter] = useState<string>('all');
+  const [visibilityFilter, setVisibilityFilter] = useState<string>('all');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
@@ -50,12 +50,6 @@ const DocumentCenterSection: React.FC = () => {
     return () => clearTimeout(handle);
   }, [searchInput]);
 
-  const hasFilters = projectFilter !== 'all' || departmentFilter !== 'all' || documentTypeFilter !== 'all';
-  const isSearching = search.length > 0;
-  // When a single project is in focus, its site-visit documents are shown in a
-  // dedicated panel, so they're excluded from the main grid to avoid duplication.
-  const isProjectSelected = projectFilter !== 'all';
-
   const { data: projects = [] } = useQuery({
     queryKey: ['project-execution-options'],
     queryFn: fetchProjectExecutionOptions,
@@ -68,6 +62,31 @@ const DocumentCenterSection: React.FC = () => {
     enabled: canAccess,
   });
 
+  // Derive allowed document type IDs based on user role and active department filter
+  const allowedTypeIds = useMemo(() => {
+    let filtered = documentTypes;
+    if (!isAdmin) {
+      const userDept = role === 'sales_manager' ? 'sales' : role === 'hr' ? 'hr' : 'engineer';
+      filtered = filtered.filter(dt => dt.department === userDept || dt.department === 'all' || !dt.department);
+    } else if (departmentFilter !== 'all') {
+      filtered = filtered.filter(dt => dt.department === departmentFilter);
+    }
+    return filtered.map(dt => dt.$id);
+  }, [documentTypes, role, isAdmin, departmentFilter]);
+
+  const queryDocTypeIds = useMemo(() => {
+    if (documentTypeFilter !== 'all') {
+      return documentTypeFilter;
+    }
+    return allowedTypeIds.length > 0 ? allowedTypeIds : ['none'];
+  }, [documentTypeFilter, allowedTypeIds]);
+
+  const hasFilters = !isAdmin || projectFilter !== 'all' || departmentFilter !== 'all' || documentTypeFilter !== 'all' || visibilityFilter !== 'all';
+  const isSearching = search.length > 0;
+  // When a single project is in focus, its site-visit documents are shown in a
+  // dedicated panel, so they're excluded from the main grid to avoid duplication.
+  const isProjectSelected = projectFilter !== 'all';
+
   const documentTypeById = (id: string) => documentTypes.find((dt) => dt.$id === id);
 
   const { data: recentDocuments, isLoading: isRecentLoading } = useQuery({
@@ -77,12 +96,13 @@ const DocumentCenterSection: React.FC = () => {
   });
 
   const { data: filteredData, isLoading: isFilteredLoading } = useQuery({
-    queryKey: ['documents', projectFilter, departmentFilter, documentTypeFilter, page],
+    queryKey: ['documents', projectFilter, departmentFilter, documentTypeFilter, visibilityFilter, allowedTypeIds, page],
     queryFn: () => fetchDocuments({
       page,
       projectId: projectFilter === 'all' ? undefined : projectFilter,
-      department: departmentFilter,
-      documentTypeId: documentTypeFilter,
+      department: 'all',
+      documentTypeId: queryDocTypeIds,
+      visibility: visibilityFilter,
       excludeSiteVisitDocs: isProjectSelected,
     }),
     enabled: canAccess && hasFilters && !isSearching,
@@ -91,11 +111,12 @@ const DocumentCenterSection: React.FC = () => {
   // While searching, fetch a batch honouring the active filters and match by
   // project name / document name on the client (neither is server-searchable).
   const { data: searchResults, isLoading: isSearchLoading } = useQuery({
-    queryKey: ['documents-search', projectFilter, departmentFilter, documentTypeFilter],
+    queryKey: ['documents-search', projectFilter, departmentFilter, documentTypeFilter, visibilityFilter, allowedTypeIds],
     queryFn: () => searchDocuments({
       projectId: projectFilter === 'all' ? undefined : projectFilter,
-      department: departmentFilter,
-      documentTypeId: documentTypeFilter,
+      department: 'all',
+      documentTypeId: queryDocTypeIds,
+      visibility: visibilityFilter,
       excludeSiteVisitDocs: isProjectSelected,
     }),
     enabled: canAccess && isSearching,
@@ -220,33 +241,52 @@ const DocumentCenterSection: React.FC = () => {
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Select value={projectFilter} onValueChange={(v) => { setProjectFilter(v); setPage(0); }}>
-          <SelectTrigger><SelectValue placeholder="All Projects" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Projects</SelectItem>
-            {projects.map((p) => (
-              <SelectItem key={p.$id} value={p.$id}>{p.project_code || p.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={departmentFilter} onValueChange={(v) => { setDepartmentFilter(v as Department | 'all'); setPage(0); }}>
-          <SelectTrigger><SelectValue placeholder="All Departments" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Departments</SelectItem>
-            {DEPARTMENTS.map((d) => (
-              <SelectItem key={d} value={d}>{d}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={documentTypeFilter} onValueChange={(v) => { setDocumentTypeFilter(v); setPage(0); }}>
-          <SelectTrigger><SelectValue placeholder="All Document Types" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Document Types</SelectItem>
-            {documentTypes.map((dt) => (
-              <SelectItem key={dt.$id} value={dt.$id}>{dt.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Combobox
+          value={projectFilter}
+          onChange={(v) => { setProjectFilter(v); setPage(0); }}
+          placeholder="All Projects"
+          searchPlaceholder="Search projects..."
+          emptyText="No projects found."
+          options={[
+            { value: 'all', label: 'All Projects' },
+            ...projects.map((p) => ({ value: p.$id, label: p.name, keywords: p.client }))
+          ]}
+        />
+
+        <Combobox
+          value={visibilityFilter}
+          onChange={(v) => { setVisibilityFilter(v); setPage(0); }}
+          placeholder="All Visibility"
+          searchPlaceholder="Search visibility..."
+          emptyText="No options found."
+          options={[
+            { value: 'all', label: 'All Visibility' },
+            { value: 'internal', label: 'Internal Documents' },
+            { value: 'client_facing', label: 'Client Facing Documents' }
+          ]}
+        />
+
+        <Combobox
+          value={documentTypeFilter}
+          onChange={(v) => { setDocumentTypeFilter(v); setPage(0); }}
+          placeholder="All Document Types"
+          searchPlaceholder="Search document types..."
+          emptyText="No document types found."
+          options={[
+            { value: 'all', label: 'All Document Types' },
+            ...documentTypes
+              .filter((dt) => allowedTypeIds.includes(dt.$id))
+              .map((dt) => ({
+                value: dt.$id,
+                label: `${dt.name} (${dt.type})`,
+                keywords: dt.type,
+                group: dt.department === 'engineer' ? 'Engineering' :
+                       dt.department === 'sales' ? 'Sales' :
+                       dt.department === 'hr' ? 'HR' :
+                       dt.department === 'admin' ? 'Admin' : 'All Departments'
+              }))
+          ]}
+        />
       </div>
 
       {!hasFilters && !isSearching && (

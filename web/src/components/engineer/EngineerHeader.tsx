@@ -27,15 +27,26 @@ const formatRole = (role?: string) =>
     : 'Engineer';
 
 const EngineerHeader: React.FC<EngineerHeaderProps> = ({ user, onMenuClick }) => {
+  const isHr = user?.role === 'hr';
+  const gradientClass = isHr 
+    ? "bg-gradient-to-r from-violet-600 to-violet-800" 
+    : "bg-gradient-to-r from-emerald-600 to-emerald-800";
+  const hoverClass = isHr ? "hover:bg-violet-700" : "hover:bg-emerald-700";
+  const badgeClass = isHr 
+    ? "bg-violet-500 text-white border-violet-400 hidden sm:inline-flex" 
+    : "bg-emerald-500 text-white border-emerald-400 hidden sm:inline-flex";
+  const borderClass = isHr ? "border-violet-400" : "border-emerald-400";
+  const textMutedClass = isHr ? "text-violet-200" : "text-emerald-200";
+
   return (
-    <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 shadow-lg py-3 px-4">
+    <div className={`${gradientClass} shadow-lg py-3 px-4`}>
       <div className="w-full max-w-[1440px] mx-auto flex justify-between items-center gap-2">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           {/* Mobile/tablet: open navigation drawer */}
           <Button
             variant="ghost"
             size="sm"
-            className="text-white hover:bg-emerald-700 px-2 lg:hidden"
+            className={`text-white ${hoverClass} px-2 lg:hidden`}
             onClick={onMenuClick}
             aria-label="Open menu"
           >
@@ -47,8 +58,8 @@ const EngineerHeader: React.FC<EngineerHeaderProps> = ({ user, onMenuClick }) =>
               <h1 className="text-lg sm:text-xl font-bold text-white truncate">Solar Maps</h1>
             </div>
           </div>
-          <Badge variant="secondary" className="bg-emerald-500 text-white border-emerald-400 hidden sm:inline-flex">
-            Engineer
+          <Badge variant="secondary" className={badgeClass}>
+            {isHr ? 'HR' : user?.role === 'sales_manager' ? 'Sales' : 'Engineer'}
           </Badge>
         </div>
 
@@ -56,7 +67,7 @@ const EngineerHeader: React.FC<EngineerHeaderProps> = ({ user, onMenuClick }) =>
           <Button
             variant="ghost"
             size="sm"
-            className="text-white hover:bg-emerald-700 px-2 sm:px-3"
+            className={`text-white ${hoverClass} px-2 sm:px-3`}
             onClick={() => window.open('/', '_blank')}
           >
             <Home size={16} className="sm:mr-2" />
@@ -65,10 +76,10 @@ const EngineerHeader: React.FC<EngineerHeaderProps> = ({ user, onMenuClick }) =>
 
           <NotificationBell />
 
-          <div className="flex items-center gap-3 border-l border-emerald-400 pl-4">
+          <div className={`flex items-center gap-3 border-l ${borderClass} pl-4`}>
             <div className="text-right hidden md:block">
               <p className="text-white text-sm font-medium">{user?.name || user?.email}</p>
-              <p className="text-emerald-200 text-xs">{formatRole(user?.role)}</p>
+              <p className={`${textMutedClass} text-xs`}>{formatRole(user?.role)}</p>
             </div>
           </div>
         </div>

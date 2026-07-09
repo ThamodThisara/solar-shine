@@ -23,6 +23,7 @@ export async function fetchDocumentTypes(): Promise<DocumentType[]> {
 export interface CreateDocumentTypeInput {
   type: string;
   name: string;
+  department?: string | null;
 }
 
 export async function createDocumentType(input: CreateDocumentTypeInput): Promise<DocumentType> {
@@ -30,6 +31,7 @@ export async function createDocumentType(input: CreateDocumentTypeInput): Promis
     const response = await databases.createDocument(DATABASE_ID, COLLECTIONS.DOCUMENT_TYPES, ID.unique(), {
       type: input.type.trim(),
       name: input.name.trim(),
+      department: input.department ? input.department.trim() : null,
     });
     return response as unknown as DocumentType;
   } catch (error) {
@@ -44,6 +46,20 @@ export async function deleteDocumentType(id: string): Promise<boolean> {
     return true;
   } catch (error) {
     console.error('Error deleting document type:', error);
+    throw error;
+  }
+}
+
+export async function updateDocumentType(id: string, input: CreateDocumentTypeInput): Promise<DocumentType> {
+  try {
+    const response = await databases.updateDocument(DATABASE_ID, COLLECTIONS.DOCUMENT_TYPES, id, {
+      type: input.type.trim(),
+      name: input.name.trim(),
+      department: input.department ? input.department.trim() : null,
+    });
+    return response as unknown as DocumentType;
+  } catch (error) {
+    console.error('Error updating document type:', error);
     throw error;
   }
 }

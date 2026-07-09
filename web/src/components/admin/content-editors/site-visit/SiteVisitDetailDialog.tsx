@@ -30,6 +30,7 @@ import {
 import { isAllowedFile, ALLOWED_FILE_EXTENSIONS } from '@/lib/documentTypes';
 import DocumentCard from '@/components/admin/DocumentCard';
 import { PlatformUser, fetchEngineers } from '@/services/userService';
+import { useAuth } from '@/contexts/AuthContext';
 import { MultiSelectPopover } from '@/components/ui/multi-select-popover';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
@@ -99,6 +100,14 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
   visit, isOpen, setIsOpen, projectName, documentTypes, currentUser, canEdit, isAdmin, users = [], projects = [], defaultTab = 'details', hideTabs = false,
 }) => {
   const queryClient = useQueryClient();
+  const { role } = useAuth();
+
+  const filteredTypes = React.useMemo(() => {
+    if (isAdmin) return documentTypes;
+    const userDept = role === 'sales_manager' ? 'sales' : 'engineer';
+    return documentTypes.filter(dt => dt.department === userDept || dt.department === 'all' || !dt.department);
+  }, [documentTypes, isAdmin, role]);
+
   // Local copy so the open dialog reflects saves without depending on the list
   // re-handing a fresh snapshot through props.
   const [current, setCurrent] = useState<SiteVisit>(visit);
@@ -217,15 +226,19 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
   });
 
   const uploadMutation = useMutation({
-    mutationFn: () => uploadDocuments({
-      files,
-      projectId: visit.project_id,
-      visibility,
-      department: visibility === 'internal' ? 'Engineering' : undefined,
-      documentTypeId: docTypeId,
-      uploadedBy: currentUser.$id,
-      siteVisitId: visit.$id,
-    }),
+    mutationFn: () => {
+      const selectedType = documentTypes.find(dt => dt.$id === docTypeId);
+      const docDept = selectedType?.department || 'admin';
+      return uploadDocuments({
+        files,
+        projectId: visit.project_id,
+        visibility,
+        department: visibility === 'internal' ? (docDept as any) : undefined,
+        documentTypeId: docTypeId,
+        uploadedBy: currentUser.$id,
+        siteVisitId: visit.$id,
+      });
+    },
     onSuccess: ({ succeeded, failed }) => {
       queryClient.invalidateQueries({ queryKey: ['site-visit-documents', visit.$id] });
       queryClient.invalidateQueries({ queryKey: ['documents'] });
@@ -664,7 +677,14 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
                       placeholder="Document type"
                       searchPlaceholder="Search document types..."
                       emptyText="No document types found."
-                      options={documentTypes.map((dt) => ({ value: dt.$id, label: `${dt.name} (${dt.type})`, keywords: dt.type }))}
+                      options={filteredTypes.map((dt) => ({
+                        value: dt.$id,
+                        label: `${dt.name} (${dt.type})`,
+                        keywords: dt.type,
+                        group: dt.department === 'engineer' ? 'Engineer' :
+                               dt.department === 'sales' ? 'Sales' :
+                               dt.department === 'admin' ? 'Admin' : 'All Departments'
+                      }))}
                     />
                     <div className="grid grid-cols-2 gap-2">
                       {(['internal', 'client_facing'] as DocumentVisibility[]).map((v) => (

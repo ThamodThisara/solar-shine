@@ -17,6 +17,8 @@ export interface ComboboxOption {
   label: string
   /** Extra text used for matching while typing (e.g. a code or client name). */
   keywords?: string
+  /** Optional group header for categorising options. */
+  group?: string
 }
 
 interface ComboboxProps {
@@ -52,6 +54,24 @@ export function Combobox({
   const [open, setOpen] = React.useState(false)
   const selected = options.find((o) => o.value === value)
 
+  const groupedOptions = React.useMemo(() => {
+    const groups: { [key: string]: ComboboxOption[] } = {};
+    const noGroup: ComboboxOption[] = [];
+
+    options.forEach((opt) => {
+      if (opt.group) {
+        if (!groups[opt.group]) {
+          groups[opt.group] = [];
+        }
+        groups[opt.group].push(opt);
+      } else {
+        noGroup.push(opt);
+      }
+    });
+
+    return { groups, noGroup };
+  }, [options]);
+
   return (
     <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>
@@ -76,26 +96,52 @@ export function Combobox({
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={`${option.label} ${option.keywords ?? ""}`}
-                  onSelect={() => {
-                    onChange(option.value)
-                    setOpen(false)
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <span className="truncate">{option.label}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            
+            {groupedOptions.noGroup.length > 0 && (
+              <CommandGroup>
+                {groupedOptions.noGroup.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={`${option.label} ${option.keywords ?? ""}`}
+                    onSelect={() => {
+                      onChange(option.value)
+                      setOpen(false)
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === option.value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span className="truncate">{option.label}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {Object.entries(groupedOptions.groups).map(([groupKey, groupOpts]) => (
+              <CommandGroup key={groupKey} heading={groupKey}>
+                {groupOpts.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={`${option.label} ${option.keywords ?? ""}`}
+                    onSelect={() => {
+                      onChange(option.value)
+                      setOpen(false)
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === option.value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span className="truncate">{option.label}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
           </CommandList>
         </Command>
       </PopoverContent>

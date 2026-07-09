@@ -117,3 +117,11 @@ export async function removeTeamMember(teamId: string, membershipId: string): Pr
     throw error;
   }
 }
+
+export async function resolveGoogleMapsLink(url: string): Promise<{ lat: number; lng: number; resolvedUrl: string }> {
+  return await callTeamFunction<{ lat: number; lng: number; resolvedUrl: string }>(
+    '/maps/resolve',
+    ExecutionMethod.POST,
+    { url }
+  );
+}

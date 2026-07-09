@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -18,6 +18,7 @@ import DocumentCard from '@/components/admin/DocumentCard';
 import SiteVisitCard from '@/components/admin/SiteVisitCard';
 import SiteVisitDetailDialog from '@/components/admin/content-editors/site-visit/SiteVisitDetailDialog';
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { Combobox } from '@/components/ui/combobox';
 import { EngineerLayout } from '@/components/engineer/EngineerLayout';
 import { cn } from '@/lib/utils';
 
@@ -78,7 +79,9 @@ const ProjectSummary: React.FC = () => {
   const [selectedVisit, setSelectedVisit] = useState<any | null>(null);
   const [selectedVisitTab, setSelectedVisitTab] = useState<'details' | 'activity' | 'documents'>('details');
   const [hideDialogTabs, setHideDialogTabs] = useState<boolean>(false);
-  const [department, setDepartment] = useState<string>('all');
+  const departmentFilter = 'all';
+  const [documentTypeFilter, setDocumentTypeFilter] = useState<string>('all');
+  const [visibilityFilter, setVisibilityFilter] = useState<string>('all');
 
   // Redirect back to dashboard based on role
   const handleBack = () => {
@@ -106,14 +109,40 @@ const ProjectSummary: React.FC = () => {
   });
   const siteVisits = siteVisitsData?.documents ?? [];
 
+  // 5. Fetch document types (moved up so allowedTypeIds has access to it)
+  const { data: documentTypes = [] } = useQuery({
+    queryKey: ['document-types'],
+    queryFn: fetchDocumentTypes,
+  });
+
+  const allowedTypeIds = useMemo(() => {
+    let filtered = documentTypes;
+    if (role !== 'admin') {
+      const userDept = role === 'sales_manager' ? 'sales' : role === 'hr' ? 'hr' : 'engineer';
+      filtered = filtered.filter(dt => dt.department === userDept || dt.department === 'all' || !dt.department);
+    } else if (departmentFilter !== 'all') {
+      filtered = filtered.filter(dt => dt.department === departmentFilter);
+    }
+    return filtered.map(dt => dt.$id);
+  }, [documentTypes, role, departmentFilter]);
+
+  const queryDocTypeIds = useMemo(() => {
+    if (documentTypeFilter !== 'all') {
+      return documentTypeFilter;
+    }
+    return allowedTypeIds.length > 0 ? allowedTypeIds : ['none'];
+  }, [documentTypeFilter, allowedTypeIds]);
+
   // 3. Fetch general project documents (excluding site visit ones)
   const { data: docsData, isLoading: isDocsLoading } = useQuery({
-    queryKey: ['project-general-docs', projectId, department],
+    queryKey: ['project-general-docs', projectId, departmentFilter, documentTypeFilter, visibilityFilter, allowedTypeIds],
     queryFn: () =>
       fetchDocuments({
         projectId: projectId!,
         excludeSiteVisitDocs: true,
-        department: department === 'all' ? undefined : (department as any),
+        department: 'all',
+        documentTypeId: queryDocTypeIds,
+        visibility: visibilityFilter,
       }),
     enabled: !!projectId,
   });
@@ -125,11 +154,6 @@ const ProjectSummary: React.FC = () => {
     queryFn: () => fetchUsers(),
   });
 
-  // 5. Fetch document types
-  const { data: documentTypes = [] } = useQuery({
-    queryKey: ['document-types'],
-    queryFn: fetchDocumentTypes,
-  });
 
   // 6. Fetch project options (needed for SiteVisitDetailDialog dropdown options resolving)
   const { data: projectsList = [] } = useQuery({
@@ -374,20 +398,51 @@ const ProjectSummary: React.FC = () => {
             <h2 className="text-base font-bold flex items-center gap-2">
               <FileText className="h-4 w-4 text-primary" /> General Project Documents
             </h2>
-            <div className="flex items-center gap-2 shrink-0">
-              <label htmlFor="dept-filter" className="text-xs font-semibold text-muted-foreground">Department:</label>
-              <select
-                id="dept-filter"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="h-8 rounded-md border border-input bg-background px-3 text-xs font-medium focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none cursor-pointer"
-              >
-                <option value="all">All Departments</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Sales">Sales</option>
-                <option value="Engineering">Engineering</option>
-                <option value="Finance">Finance</option>
-              </select>
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <div className="flex items-center gap-1.5 min-w-[160px]">
+                <label htmlFor="visibility-filter" className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Visibility:</label>
+                <Combobox
+                  id="visibility-filter"
+                  value={visibilityFilter}
+                  onChange={setVisibilityFilter}
+                  placeholder="All Visibility"
+                  searchPlaceholder="Search visibility..."
+                  emptyText="No options found."
+                  className="h-8 py-1 text-xs"
+                  options={[
+                    { value: 'all', label: 'All Visibility' },
+                    { value: 'internal', label: 'Internal Documents' },
+                    { value: 'client_facing', label: 'Client Facing Documents' }
+                  ]}
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 min-w-[380px]">
+                <label htmlFor="type-filter" className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Document Type:</label>
+                <Combobox
+                  id="type-filter"
+                  value={documentTypeFilter}
+                  onChange={setDocumentTypeFilter}
+                  placeholder="All Document Types"
+                  searchPlaceholder="Search types..."
+                  emptyText="No types found."
+                  className="h-8 py-1 text-xs w-[260px]"
+                  options={[
+                    { value: 'all', label: 'All Document Types' },
+                    ...documentTypes
+                      .filter((dt) => allowedTypeIds.includes(dt.$id))
+                      .map((dt) => ({
+                        value: dt.$id,
+                        label: `${dt.name} (${dt.type})`,
+                        keywords: dt.type,
+                        group: dt.department === 'engineer' ? 'Engineering' :
+                               dt.department === 'sales' ? 'Sales' :
+                               dt.department === 'hr' ? 'HR' :
+                               dt.department === 'admin' ? 'Admin' : 'All Departments'
+                      }))
+                  ]}
+                />
+              </div>
             </div>
           </div>
           

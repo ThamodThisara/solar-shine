@@ -66,6 +66,14 @@ const App = () => (
               }
             />
             <Route
+              path="/hr"
+              element={
+                <ProtectedRoute allowedRoles={PANELS.hr.roles}>
+                  <Engineer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/project-summary/:projectId"
               element={
                 <ProtectedRoute allowedRoles={LOGIN_ALLOWED_ROLES}>

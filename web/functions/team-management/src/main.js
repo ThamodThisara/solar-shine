@@ -1,5 +1,7 @@
 import { Client, Teams, Users, Account, Databases, ID, Query } from 'node-appwrite';
 import nodemailer from 'nodemailer';
+import https from 'https';
+import http from 'http';
 
 const PROJECTS_COLLECTION_ID = 'projects';
 
@@ -122,6 +124,8 @@ export default async ({ req, res, log, error }) => {
             role = 'sales_manager';
           } else if (lowerName.includes('admin')) {
             role = 'admin';
+          } else if (lowerName.includes('hr')) {
+            role = 'hr';
           }
         }
         if (role) {
@@ -269,6 +273,50 @@ export default async ({ req, res, log, error }) => {
       return res.json({ success: true });
     }
 
+    if (method === 'POST' && path === '/maps/resolve') {
+      const { url } = parseBody();
+      if (!url) {
+        return res.json({ error: 'Missing url' }, 400);
+      }
+
+      async function resolveFinalUrl(currentUrl, depth = 0) {
+        if (depth > 5) return currentUrl;
+        try {
+          const nextUrl = await new Promise((resolve) => {
+            const client = currentUrl.startsWith('https') ? https : http;
+            const req = client.request(currentUrl, { method: 'HEAD', headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } }, (response) => {
+              if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+                resolve(response.headers.location);
+              } else {
+                resolve(null);
+              }
+            });
+            req.on('error', () => resolve(null));
+            req.end();
+          });
+          if (nextUrl) {
+            const absoluteUrl = nextUrl.startsWith('http') ? nextUrl : new URL(nextUrl, currentUrl).toString();
+            return resolveFinalUrl(absoluteUrl, depth + 1);
+          }
+        } catch (err) {
+          // Ignore
+        }
+        return currentUrl;
+      }
+
+      try {
+        const finalUrl = await resolveFinalUrl(url);
+        const coords = serverParseCoordinates(finalUrl);
+        if (coords) {
+          return res.json({ success: true, lat: coords.lat, lng: coords.lng, resolvedUrl: finalUrl });
+        } else {
+          return res.json({ success: false, error: 'Could not extract coordinates from resolved URL' }, 400);
+        }
+      } catch (err) {
+        return res.json({ success: false, error: err.message }, 500);
+      }
+    }
+
     // Preview the next project code for a prefix. Non-authoritative: the final
     // code is assigned atomically at creation time (POST /projects/create).
     if (method === 'GET' && path === '/projects/next-id') {
@@ -378,6 +426,7 @@ export default async ({ req, res, log, error }) => {
                     else if (lowerName.includes('project')) role = 'project_engineer';
                     else if (lowerName.includes('sales')) role = 'sales_manager';
                     else if (lowerName.includes('admin')) role = 'admin';
+                    else if (lowerName.includes('hr')) role = 'hr';
                   }
                   if (role) break;
                 }
@@ -391,6 +440,8 @@ export default async ({ req, res, log, error }) => {
           let targetPath = '/admin';
           if (role === 'sales_manager') {
             targetPath = '/sales';
+          } else if (role === 'hr') {
+            targetPath = '/hr';
           } else if (role === 'project_engineer' || role === 'planning_engineer') {
             targetPath = '/engineer';
           }
@@ -539,3 +590,45 @@ export default async ({ req, res, log, error }) => {
     return res.json({ error: e.message }, 500);
   }
 };
+
+function serverParseCoordinates(link) {
+  if (!link) return null;
+  const cleanLink = link.trim();
+  
+  const qMatch = cleanLink.match(/[?&](q|query)=([+-]?\d+\.\d+),([+-]?\d+\.\d+)/) || cleanLink.match(/(q|query)=([+-]?\d+\.\d+),([+-]?\d+\.\d+)/);
+  if (qMatch) {
+    const lat = parseFloat(qMatch[2]);
+    const lng = parseFloat(qMatch[3]);
+    if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+  }
+
+  const atMatch = cleanLink.match(/@([+-]?\d+\.\d+),([+-]?\d+\.\d+)/);
+  if (atMatch) {
+    const lat = parseFloat(atMatch[1]);
+    const lng = parseFloat(atMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+  }
+
+  const placeMatch = cleanLink.match(/\/place\/([+-]?\d+\.\d+),([+-]?\d+\.\d+)/);
+  if (placeMatch) {
+    const lat = parseFloat(placeMatch[1]);
+    const lng = parseFloat(placeMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+  }
+
+  const pathMatch = cleanLink.match(/\/([+-]?\d+\.\d+),\+?([+-]?\d+\.\d+)/) || cleanLink.match(/\/([+-]?\d+\.\d+),([+-]?\d+\.\d+)/);
+  if (pathMatch) {
+    const lat = parseFloat(pathMatch[1]);
+    const lng = parseFloat(pathMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+  }
+
+  const rawMatch = cleanLink.match(/^([+-]?\d+\.\d+)\s*,\s*([+-]?\d+\.\d+)$/);
+  if (rawMatch) {
+    const lat = parseFloat(rawMatch[1]);
+    const lng = parseFloat(rawMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+  }
+
+  return null;
+}

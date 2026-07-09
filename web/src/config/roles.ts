@@ -15,6 +15,7 @@ export type AppRole =
   | 'project_engineer'
   | 'planning_engineer'
   | 'sales_manager'
+  | 'hr'
   | (string & {});
 
 /** A logical feature/section inside a panel. */
@@ -35,7 +36,7 @@ export interface PanelDefinition {
 
 export const ENGINEER_ROLES: AppRole[] = ['project_engineer', 'planning_engineer', 'sales_manager'];
 
-export const PANELS: Record<'admin' | 'engineer' | 'sales', PanelDefinition> = {
+export const PANELS: Record<'admin' | 'engineer' | 'sales' | 'hr', PanelDefinition> = {
   admin: {
     id: 'admin',
     path: '/admin',
@@ -51,6 +52,11 @@ export const PANELS: Record<'admin' | 'engineer' | 'sales', PanelDefinition> = {
     path: '/sales',
     roles: ['sales_manager'],
   },
+  hr: {
+    id: 'hr',
+    path: '/hr',
+    roles: ['hr'],
+  },
 };
 
 /**
@@ -58,9 +64,9 @@ export const PANELS: Record<'admin' | 'engineer' | 'sales', PanelDefinition> = {
  * admin-only by convention (see `canAccessSection`).
  */
 export const SECTION_ACCESS: Record<string, AppRole[]> = {
-  'project-execution': ['admin', ...ENGINEER_ROLES],
-  'document-center': ['admin', ...ENGINEER_ROLES],
-  'site-visits': ['admin', ...ENGINEER_ROLES],
+  'project-execution': ['admin', ...ENGINEER_ROLES, 'hr'],
+  'document-center': ['admin', ...ENGINEER_ROLES, 'hr'],
+  'site-visits': ['admin', ...ENGINEER_ROLES, 'hr'],
 };
 
 /** All roles that are allowed to authenticate into a panel at all. */
@@ -81,9 +87,9 @@ export function getHomeRoute(role?: string | null): string | null {
   return getPanelForRole(role)?.path ?? null;
 }
 
-/** Whether a role may access a specific panel ('admin' | 'engineer' | 'sales'). */
+/** Whether a role may access a specific panel ('admin' | 'engineer' | 'sales' | 'hr'). */
 export function canAccessPanel(
-  panel: 'admin' | 'engineer' | 'sales',
+  panel: 'admin' | 'engineer' | 'sales' | 'hr',
   role?: string | null,
 ): boolean {
   if (!role) return false;

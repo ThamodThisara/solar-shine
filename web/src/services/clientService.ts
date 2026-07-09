@@ -14,18 +14,7 @@ export interface ClientRecord {
   longitude?: number;
 }
 
-function parseCoordinates(link?: string): { lat: number; lng: number } | null {
-  if (!link) return null;
-  const match = link.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) || link.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (match) {
-    const lat = parseFloat(match[1]);
-    const lng = parseFloat(match[2]);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      return { lat, lng };
-    }
-  }
-  return null;
-}
+import { parseCoordinates } from '@/lib/utils';
 
 export async function fetchClients(): Promise<ClientRecord[]> {
   const registered: ClientRecord[] = [];

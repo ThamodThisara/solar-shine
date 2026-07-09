@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
-import { Save, Check, ChevronsUpDown, Plus } from 'lucide-react';
+import { cn, parseCoordinates } from '@/lib/utils';
+import { Save, Check, ChevronsUpDown, Plus, Clipboard } from 'lucide-react';
 import { CreateProjectExecutionInput, fetchNextProjectCode } from '@/services/projectExecutionService';
 import { ProjectExecution, ProjectExecutionStatus, ProjectType } from '@/types/payload-types';
 import { MultiSelectPopover } from '@/components/ui/multi-select-popover';
@@ -17,6 +17,7 @@ import { fetchUsers, fetchEngineers, PlatformUser } from '@/services/userService
 import { toast } from 'sonner';
 import { MapPicker } from '@/components/ui/map-picker';
 import { Checkbox } from '@/components/ui/checkbox';
+import { resolveGoogleMapsLink } from '@/services/teamService';
 
 interface ProjectExecutionFormDialogProps {
   isOpen: boolean;
@@ -82,7 +83,7 @@ const validate = (form: FormState, isEdit: boolean): FormErrors => {
   // and carried on the record, so we don't re-validate them.
   if (!isEdit) {
     if (!form.project_type_id) errors.project_type_id = 'Project type is required.';
-    if (!form.project_code.trim()) errors.project_code = 'Project ID could not be generated. Re-select the project type.';
+    if (!form.project_code.trim()) errors.project_code = 'Project Code could not be generated. Re-select the project type.';
   }
   if (!form.client.trim()) errors.client = 'Client is required.';
   if (!form.address.trim()) errors.address = 'Address is required.';
@@ -135,18 +136,7 @@ const formatNumberWithCommas = (value: string): string => {
   }
 };
 
-const parseCoordinatesFromMapLink = (link?: string): { lat: number; lng: number } | null => {
-  if (!link) return null;
-  const match = link.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) || link.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (match) {
-    const lat = parseFloat(match[1]);
-    const lng = parseFloat(match[2]);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      return { lat, lng };
-    }
-  }
-  return null;
-};
+const parseCoordinatesFromMapLink = parseCoordinates;
 
 
 
@@ -332,8 +322,8 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
       const code = await fetchNextProjectCode(type.prefix_code);
       setForm((prev) => (prev.project_type_id === typeId ? { ...prev, project_code: code } : prev));
     } catch (err) {
-      console.error('Failed to generate project ID:', err);
-      toast.error('Failed to generate Project ID. Please try again.');
+      console.error('Failed to generate project code:', err);
+      toast.error('Failed to generate Project Code. Please try again.');
     } finally {
       setIsGeneratingCode(false);
     }
@@ -476,7 +466,7 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
               <FieldError field="project_type_id" />
             </div>
             <div>
-              <Label htmlFor="project_code">Project ID</Label>
+              <Label htmlFor="project_code">Project Code</Label>
               <Input
                 id="project_code"
                 value={isGeneratingCode ? 'Generating…' : form.project_code}
@@ -560,34 +550,89 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
             </div>
             <div>
               <Label htmlFor="google_maps_link">Google Maps Link</Label>
-              <Input
-                id="google_maps_link"
-                value={form.google_maps_link}
-                onChange={(e) => setField('google_maps_link', e.target.value)}
-                className={errorClass('google_maps_link')}
-                aria-invalid={!!errors.google_maps_link}
-                placeholder="e.g. https://www.google.com/maps?q=..."
-              />
+              <div className="relative">
+                <Input
+                  id="google_maps_link"
+                  value={form.google_maps_link}
+                  onChange={(e) => {
+                    setField('google_maps_link', e.target.value);
+                  }}
+                  className={cn("pr-10", errorClass('google_maps_link'))}
+                  aria-invalid={!!errors.google_maps_link}
+                  placeholder="e.g. https://www.google.com/maps?q=..."
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground hover:text-foreground"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (!text) {
+                        toast.error("Clipboard is empty.");
+                        return;
+                      }
+
+                      const coords = parseCoordinates(text);
+                      if (coords) {
+                        setField('google_maps_link', text);
+                        toast.success("Location link pasted and validated successfully!");
+                        return;
+                      }
+
+                      if (text.startsWith("http") && (text.includes("maps.app.goo.gl") || text.includes("goo.gl/maps"))) {
+                        const loadingToast = toast.loading("Resolving shortened Google Maps link...");
+                        try {
+                          const result = await resolveGoogleMapsLink(text);
+                          toast.dismiss(loadingToast);
+                          if (result && result.lat && result.lng) {
+                            setField('google_maps_link', result.resolvedUrl);
+                            toast.success("Location link resolved and validated successfully!");
+                          } else {
+                            toast.error("Could not extract coordinates from resolved URL.");
+                          }
+                        } catch (err: any) {
+                          toast.dismiss(loadingToast);
+                          toast.error(`Resolution failed: ${err.message || err}`);
+                        }
+                        return;
+                      }
+
+                      toast.error("Invalid Google Maps link format.");
+                    } catch (err) {
+                      toast.error("Failed to read from clipboard.");
+                    }
+                  }}
+                >
+                  <Clipboard className="h-4 w-4" />
+                </Button>
+              </div>
               <FieldError field="google_maps_link" />
             </div>
             <div className="md:col-span-2 space-y-2 border-t pt-3">
               <Label>Project Location Map</Label>
-              <MapPicker
-                key={form.client}
-                initialLat={mapCenter.lat}
-                initialLng={mapCenter.lng}
-                onLocationSelect={({ googleMapsLink }) => {
-                  setForm((prev) => ({
-                    ...prev,
-                    google_maps_link: googleMapsLink,
-                  }));
-                  setErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.google_maps_link;
-                    return next;
-                  });
-                }}
-              />
+              {(() => {
+                const coords = parseCoordinates(form.google_maps_link);
+                return (
+                  <MapPicker
+                    key={form.client}
+                    initialLat={coords?.lat ?? mapCenter.lat}
+                    initialLng={coords?.lng ?? mapCenter.lng}
+                    onLocationSelect={({ googleMapsLink }) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        google_maps_link: googleMapsLink,
+                      }));
+                      setErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.google_maps_link;
+                        return next;
+                      });
+                    }}
+                  />
+                );
+              })()}
             </div>
             <div>
               <Label htmlFor="status">Status</Label>
@@ -827,12 +872,19 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
 
             <div className="space-y-2 border-t pt-3">
               <Label>Geolocate client location on map</Label>
-              <MapPicker
-                onLocationSelect={({ googleMapsLink }) => {
-                  setRegForm((prev) => ({ ...prev, googleMapsLink }));
-                  setRegErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
-                }}
-              />
+              {(() => {
+                const coords = parseCoordinates(regForm.googleMapsLink);
+                return (
+                  <MapPicker
+                    initialLat={coords?.lat}
+                    initialLng={coords?.lng}
+                    onLocationSelect={({ googleMapsLink }) => {
+                      setRegForm((prev) => ({ ...prev, googleMapsLink }));
+                      setRegErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                    }}
+                  />
+                );
+              })()}
             </div>
 
             <div className="space-y-1">
@@ -852,12 +904,66 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
 
             <div className="space-y-1">
               <Label htmlFor="reg_maps">Google Maps Location Link</Label>
-              <Input
-                id="reg_maps"
-                value={regForm.googleMapsLink}
-                onChange={(e) => setRegForm((prev) => ({ ...prev, googleMapsLink: e.target.value }))}
-                placeholder="Google Maps link"
-              />
+              <div className="relative">
+                <Input
+                  id="reg_maps"
+                  value={regForm.googleMapsLink}
+                  onChange={(e) => {
+                    setRegForm((prev) => ({ ...prev, googleMapsLink: e.target.value }));
+                    setRegErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                  }}
+                  placeholder="Google Maps link"
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground hover:text-foreground"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (!text) {
+                        toast.error("Clipboard is empty.");
+                        return;
+                      }
+
+                      const coords = parseCoordinates(text);
+                      if (coords) {
+                        setRegForm((prev) => ({ ...prev, googleMapsLink: text }));
+                        setRegErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                        toast.success("Location link pasted and validated successfully!");
+                        return;
+                      }
+
+                      if (text.startsWith("http") && (text.includes("maps.app.goo.gl") || text.includes("goo.gl/maps"))) {
+                        const loadingToast = toast.loading("Resolving shortened Google Maps link...");
+                        try {
+                          const result = await resolveGoogleMapsLink(text);
+                          toast.dismiss(loadingToast);
+                          if (result && result.lat && result.lng) {
+                            setRegForm((prev) => ({ ...prev, googleMapsLink: result.resolvedUrl }));
+                            setRegErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                            toast.success("Location link resolved and validated successfully!");
+                          } else {
+                            toast.error("Could not extract coordinates from resolved URL.");
+                          }
+                        } catch (err: any) {
+                          toast.dismiss(loadingToast);
+                          toast.error(`Resolution failed: ${err.message || err}`);
+                        }
+                        return;
+                      }
+
+                      toast.error("Invalid Google Maps link format.");
+                    } catch (err) {
+                      toast.error("Failed to read from clipboard.");
+                    }
+                  }}
+                >
+                  <Clipboard className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <DialogFooter className="pt-2">
