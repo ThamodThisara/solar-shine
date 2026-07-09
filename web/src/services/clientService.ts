@@ -4,6 +4,7 @@ import { fetchProjectExecutionOptions } from './projectExecutionService';
 
 export interface ClientRecord {
   $id?: string;
+  clientCode?: string;
   name: string;
   phone: string;
   email: string;
@@ -12,6 +13,18 @@ export interface ClientRecord {
   googleMapsLink?: string;
   latitude?: number;
   longitude?: number;
+}
+
+export function generateNextClientCode(clients: ClientRecord[]): string {
+  const PREFIX = 'SM-CL-';
+  let maxNum = 0;
+  for (const c of clients) {
+    if (c.clientCode && c.clientCode.startsWith(PREFIX)) {
+      const num = parseInt(c.clientCode.slice(PREFIX.length), 10);
+      if (!isNaN(num) && num > maxNum) maxNum = num;
+    }
+  }
+  return `${PREFIX}${String(maxNum + 1).padStart(4, '0')}`;
 }
 
 import { parseCoordinates } from '@/lib/utils';
@@ -28,6 +41,7 @@ export async function fetchClients(): Promise<ClientRecord[]> {
     
     const mapped = response.documents.map((doc) => ({
       $id: doc.$id,
+      clientCode: doc.clientCode || '',
       name: doc.name,
       phone: doc.phone,
       email: doc.email,
@@ -78,7 +92,10 @@ export async function registerClient(client: ClientRecord): Promise<ClientRecord
 
   const coords = parseCoordinates(client.googleMapsLink);
 
+  const clientCode = generateNextClientCode(current);
+
   const payload: any = {
+    clientCode,
     name: client.name.trim(),
     phone: client.phone.trim(),
     email: client.email.trim(),
@@ -100,6 +117,7 @@ export async function registerClient(client: ClientRecord): Promise<ClientRecord
 
   return {
     $id: response.$id,
+    clientCode: response.clientCode,
     name: response.name,
     phone: response.phone,
     email: response.email,

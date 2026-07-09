@@ -1569,6 +1569,7 @@
       "enabled": true,
       "documentSecurity": false,
       "attributes": [
+        { "key": "clientCode", "type": "string", "required": false, "array": false, "size": 20, "encrypt": false },
         { "key": "name", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
         { "key": "phone", "type": "string", "required": true, "array": false, "size": 50, "encrypt": false },
         { "key": "email", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
@@ -1578,7 +1579,8 @@
         { "key": "longitude", "type": "double", "required": false, "array": false }
       ],
       "indexes": [
-        { "key": "idx_name", "type": "key", "attributes": ["name"], "orders": ["ASC"] }
+        { "key": "idx_name", "type": "key", "attributes": ["name"], "orders": ["ASC"] },
+        { "key": "idx_client_code", "type": "unique", "attributes": ["clientCode"], "orders": ["ASC"] }
       ]
     }
     ,
