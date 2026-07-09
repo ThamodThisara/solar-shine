@@ -397,39 +397,7 @@ export const ClientsSection: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-2 border-t pt-3">
-              <Label>Select Location on Map</Label>
-              {(() => {
-                const coords = parseCoordinates(form.googleMapsLink);
-                return (
-                  <MapPicker
-                    initialLat={coords?.lat}
-                    initialLng={coords?.lng}
-                    onLocationSelect={({ googleMapsLink }) => {
-                      setForm((prev) => ({ ...prev, googleMapsLink }));
-                      setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
-                    }}
-                  />
-                );
-              })()}
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="create_address">Street Address</Label>
-              <Input
-                id="create_address"
-                value={form.address}
-                onChange={(e) => {
-                  setForm((prev) => ({ ...prev, address: e.target.value }));
-                  setErrors((prev) => ({ ...prev, address: undefined }));
-                }}
-                placeholder="Client address"
-                className={errors.address ? 'border-red-500 focus-visible:ring-red-500' : ''}
-              />
-              {errors.address && <p className="text-xs text-red-600">{errors.address}</p>}
-            </div>
-
-            <div className="space-y-1">
+            <div className="space-y-1 border-t pt-3">
               <Label htmlFor="create_maps">Google Maps Location Link</Label>
               <div className="relative">
                 <Input
@@ -491,6 +459,38 @@ export const ClientsSection: React.FC = () => {
                   <Clipboard className="h-4 w-4" />
                 </Button>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Select Location on Map</Label>
+              {(() => {
+                const coords = parseCoordinates(form.googleMapsLink);
+                return (
+                  <MapPicker
+                    initialLat={coords?.lat}
+                    initialLng={coords?.lng}
+                    onLocationSelect={({ googleMapsLink }) => {
+                      setForm((prev) => ({ ...prev, googleMapsLink }));
+                      setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                    }}
+                  />
+                );
+              })()}
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="create_address">Street Address</Label>
+              <Input
+                id="create_address"
+                value={form.address}
+                onChange={(e) => {
+                  setForm((prev) => ({ ...prev, address: e.target.value }));
+                  setErrors((prev) => ({ ...prev, address: undefined }));
+                }}
+                placeholder="Client address"
+                className={errors.address ? 'border-red-500 focus-visible:ring-red-500' : ''}
+              />
+              {errors.address && <p className="text-xs text-red-600">{errors.address}</p>}
             </div>
 
             <DialogFooter className="pt-2">
@@ -598,39 +598,7 @@ export const ClientsSection: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-2 border-t pt-3">
-              <Label>Select Location on Map</Label>
-              {(() => {
-                const coords = parseCoordinates(form.googleMapsLink);
-                return (
-                  <MapPicker
-                    initialLat={coords?.lat}
-                    initialLng={coords?.lng}
-                    onLocationSelect={({ googleMapsLink }) => {
-                      setForm((prev) => ({ ...prev, googleMapsLink }));
-                      setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
-                    }}
-                  />
-                );
-              })()}
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="edit_address">Street Address</Label>
-              <Input
-                id="edit_address"
-                value={form.address}
-                onChange={(e) => {
-                  setForm((prev) => ({ ...prev, address: e.target.value }));
-                  setErrors((prev) => ({ ...prev, address: undefined }));
-                }}
-                placeholder="Client address"
-                className={errors.address ? 'border-red-500 focus-visible:ring-red-500' : ''}
-              />
-              {errors.address && <p className="text-xs text-red-600">{errors.address}</p>}
-            </div>
-
-            <div className="space-y-1">
+            <div className="space-y-1 border-t pt-3">
               <Label htmlFor="edit_maps">Google Maps Location Link</Label>
               <div className="relative">
                 <Input
@@ -692,6 +660,38 @@ export const ClientsSection: React.FC = () => {
                   <Clipboard className="h-4 w-4" />
                 </Button>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Select Location on Map</Label>
+              {(() => {
+                const coords = parseCoordinates(form.googleMapsLink);
+                return (
+                  <MapPicker
+                    initialLat={coords?.lat}
+                    initialLng={coords?.lng}
+                    onLocationSelect={({ googleMapsLink }) => {
+                      setForm((prev) => ({ ...prev, googleMapsLink }));
+                      setErrors((prev) => ({ ...prev, googleMapsLink: undefined }));
+                    }}
+                  />
+                );
+              })()}
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit_address">Street Address</Label>
+              <Input
+                id="edit_address"
+                value={form.address}
+                onChange={(e) => {
+                  setForm((prev) => ({ ...prev, address: e.target.value }));
+                  setErrors((prev) => ({ ...prev, address: undefined }));
+                }}
+                placeholder="Client address"
+                className={errors.address ? 'border-red-500 focus-visible:ring-red-500' : ''}
+              />
+              {errors.address && <p className="text-xs text-red-600">{errors.address}</p>}
             </div>
 
             <DialogFooter className="pt-2">
