@@ -88,6 +88,10 @@ export type ProjectExecutionStatus =
 export interface ProjectExecution {
   $id: string;
   $createdAt: string;
+  /** Structured human-readable identifier, e.g. "PRO-2026-0004". Null for legacy records. */
+  project_code: string | null;
+  /** Prefix code copied from the selected project type, e.g. "PRO". Null for legacy records. */
+  prefix_code: string | null;
   name: string;
   client: string;
   location: string;
@@ -115,6 +119,14 @@ export interface DocumentType {
   type: string;
   /** Human-readable name, e.g. "Site Inspection Sheet". */
   name: string;
+}
+
+export interface ProjectType {
+  $id: string;
+  /** Short prefix code, e.g. "PRO", "FAR", "REN". */
+  prefix_code: string;
+  /** Human-readable service title, e.g. "Professional Service (Operations & Maintenance)". */
+  service_title: string;
 }
 
 export interface DocumentRecord {

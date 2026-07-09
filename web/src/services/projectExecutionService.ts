@@ -1,5 +1,5 @@
 import { databases, COLLECTIONS, DATABASE_ID } from '@/lib/appwrite';
-import { ID, Query, ExecutionMethod } from 'appwrite';
+import { Query, ExecutionMethod } from 'appwrite';
 import { ProjectExecution, ProjectExecutionStatus } from '@/types/payload-types';
 import { callTeamFunction } from './teamService';
 
@@ -65,12 +65,14 @@ export async function fetchProjectExecutions(
     if (trimmedSearch) {
       const searchLower = trimmedSearch.toLowerCase();
       documents = documents.filter((p) => {
+        const codeMatch = p.project_code?.toLowerCase().includes(searchLower);
+        const prefixMatch = p.prefix_code?.toLowerCase().includes(searchLower);
         const nameMatch = p.name?.toLowerCase().includes(searchLower);
         const clientMatch = p.client?.toLowerCase().includes(searchLower);
         const addrVal = p.address || (p.location?.includes('|||') ? p.location.split('|||')[0] : p.location);
         const locationMatch = addrVal?.toLowerCase().includes(searchLower);
 
-        return nameMatch || clientMatch || locationMatch;
+        return codeMatch || prefixMatch || nameMatch || clientMatch || locationMatch;
       });
     }
 
@@ -99,7 +101,10 @@ export async function fetchProjectExecutions(
 }
 
 export interface CreateProjectExecutionInput {
-  name: string;
+  /** Prefix copied from the selected project type; drives the generated project_code. */
+  prefix_code: string;
+  /** Optional — a project no longer needs a name to be created. */
+  name?: string;
   client: string;
   location: string;
   address: string;
@@ -116,21 +121,40 @@ export interface CreateProjectExecutionInput {
   current_stage?: string;
 }
 
+/**
+ * Returns a non-authoritative preview of the next project code for a prefix, used
+ * to fill the read-only Project ID field in the form. The authoritative code is
+ * assigned server-side at creation time (see createProjectExecution).
+ */
+export async function fetchNextProjectCode(prefixCode: string): Promise<string> {
+  const result = await callTeamFunction<{ projectCode: string }>(
+    `/projects/next-id?prefix=${encodeURIComponent(prefixCode)}`,
+    ExecutionMethod.GET
+  );
+  return result.projectCode;
+}
+
+/**
+ * Creates a project via the Cloud Function so the project_code is generated and
+ * assigned atomically (server-authoritative year + unique-index-protected retry),
+ * preventing duplicate IDs when multiple users create projects concurrently.
+ */
 export async function createProjectExecution(
   input: CreateProjectExecutionInput
 ): Promise<ProjectExecution> {
   try {
-    const response = await databases.createDocument(
-      DATABASE_ID,
-      COLLECTIONS.PROJECT_EXECUTIONS,
-      ID.unique(),
-      {
-        ...input,
-        start_date: new Date(input.start_date).toISOString(),
-        end_date: new Date(input.end_date).toISOString(),
-      }
+    const { prefix_code, ...projectData } = input;
+    const payload = {
+      ...projectData,
+      start_date: new Date(input.start_date).toISOString(),
+      end_date: new Date(input.end_date).toISOString(),
+      prefixCode: prefix_code,
+    };
+    return await callTeamFunction<ProjectExecution>(
+      '/projects/create',
+      ExecutionMethod.POST,
+      payload
     );
-    return response as unknown as ProjectExecution;
   } catch (error) {
     console.error('Error creating project execution:', error);
     throw error;
@@ -209,7 +233,7 @@ export async function fetchProjectExecutionStats(): Promise<ProjectExecutionStat
   }, {} as ProjectExecutionStats);
 }
 
-export async function fetchProjectExecutionOptions(): Promise<Pick<ProjectExecution, '$id' | 'name' | 'client' | 'engineer' | 'planning_engineer'>[]> {
+export async function fetchProjectExecutionOptions(): Promise<Pick<ProjectExecution, '$id' | 'project_code' | 'prefix_code' | 'name' | 'client' | 'engineer' | 'planning_engineer'>[]> {
   try {
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.PROJECT_EXECUTIONS, [
       Query.orderAsc('name'),
@@ -217,6 +241,8 @@ export async function fetchProjectExecutionOptions(): Promise<Pick<ProjectExecut
     ]);
     return response.documents.map((doc) => ({
       $id: doc.$id,
+      project_code: doc.project_code || null,
+      prefix_code: doc.prefix_code || null,
       name: doc.name,
       client: doc.client,
       engineer: doc.engineer || '',
@@ -278,6 +304,16 @@ export async function notifyAssignees(emails: string[], projectName: string, pro
   } catch (err) {
     console.error('Failed to notify project assignees:', err);
   }
+}
+
+/**
+ * The primary identifier to show for a project: its generated Project ID when
+ * present, falling back to the name for legacy records that predate codes.
+ */
+export function projectPrimaryLabel(
+  p: { project_code?: string | null; name?: string | null }
+): string {
+  return p.project_code || p.name || 'Untitled Project';
 }
 
 export { PAGE_SIZE as PROJECT_EXECUTION_PAGE_SIZE };

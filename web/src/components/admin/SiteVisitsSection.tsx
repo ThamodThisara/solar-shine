@@ -158,7 +158,10 @@ const SiteVisitsSection: React.FC = () => {
     onError: () => toast.error('Failed to delete site visit'),
   });
 
-  const projectNameById = (id: string) => projects.find((p) => p.$id === id)?.name ?? 'Unknown Project';
+  const projectNameById = (id: string) => {
+    const p = projects.find((proj) => proj.$id === id);
+    return p ? (p.project_code || p.name) : 'Unknown Project';
+  };
 
   if (isAuthLoading) {
     return <Card><CardContent className="p-6 text-center">Authenticating...</CardContent></Card>;
@@ -234,7 +237,7 @@ const SiteVisitsSection: React.FC = () => {
               emptyText="No projects found."
               options={[
                 { value: '', label: 'All Projects' },
-                ...projects.map((p) => ({ value: p.$id, label: `${p.name} — ${p.client}`, keywords: p.client })),
+                ...projects.map((p) => ({ value: p.$id, label: `${p.project_code || p.name} — ${p.client}`, keywords: `${p.project_code || ''} ${p.name || ''} ${p.client}` })),
               ]}
             />
           </div>
@@ -271,7 +274,7 @@ const SiteVisitsSection: React.FC = () => {
               emptyText="No projects found."
               options={[
                 { value: '', label: 'All Projects' },
-                ...projects.map((p) => ({ value: p.$id, label: `${p.name} — ${p.client}`, keywords: p.client })),
+                ...projects.map((p) => ({ value: p.$id, label: `${p.project_code || p.name} — ${p.client}`, keywords: `${p.project_code || ''} ${p.name || ''} ${p.client}` })),
               ]}
             />
           </div>

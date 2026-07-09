@@ -217,7 +217,7 @@ const SiteVisitFormDialog: React.FC<SiteVisitFormDialogProps> = ({
                 searchPlaceholder="Search projects..."
                 emptyText="No projects found."
                 className={errorClass('project_id')}
-                options={projects.map((p) => ({ value: p.$id, label: p.name, keywords: `${p.name} ${p.client || ''}` }))}
+                options={projects.map((p) => ({ value: p.$id, label: p.project_code || p.name, keywords: `${p.project_code || ''} ${p.name} ${p.client || ''}` }))}
               />
               <FieldError field="project_id" />
             </div>

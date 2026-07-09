@@ -7,11 +7,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { Save, Check, ChevronsUpDown, Plus } from 'lucide-react';
-import { CreateProjectExecutionInput } from '@/services/projectExecutionService';
-import { ProjectExecution, ProjectExecutionStatus } from '@/types/payload-types';
+import { CreateProjectExecutionInput, fetchNextProjectCode } from '@/services/projectExecutionService';
+import { ProjectExecution, ProjectExecutionStatus, ProjectType } from '@/types/payload-types';
 import { MultiSelectPopover } from '@/components/ui/multi-select-popover';
 import { Combobox } from '@/components/ui/combobox';
 import { fetchClients, registerClient, ClientRecord } from '@/services/clientService';
+import { fetchProjectTypes } from '@/services/projectTypeService';
 import { fetchUsers, fetchEngineers, PlatformUser } from '@/services/userService';
 import { toast } from 'sonner';
 import { MapPicker } from '@/components/ui/map-picker';
@@ -35,6 +36,9 @@ const statusOptions: Array<{ value: ProjectExecutionStatus; label: string }> = [
 ];
 
 interface FormState {
+  project_type_id: string;
+  prefix_code: string;
+  project_code: string;
   name: string;
   client: string;
   address: string;
@@ -51,6 +55,9 @@ interface FormState {
 }
 
 const initialState: FormState = {
+  project_type_id: '',
+  prefix_code: '',
+  project_code: '',
   name: '',
   client: '',
   address: '',
@@ -68,10 +75,15 @@ const initialState: FormState = {
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
 
-const validate = (form: FormState): FormErrors => {
+const validate = (form: FormState, isEdit: boolean): FormErrors => {
   const errors: FormErrors = {};
 
-  if (!form.name.trim()) errors.name = 'Project name is required.';
+  // Project Type / Project ID are chosen only at creation. On edit they are locked
+  // and carried on the record, so we don't re-validate them.
+  if (!isEdit) {
+    if (!form.project_type_id) errors.project_type_id = 'Project type is required.';
+    if (!form.project_code.trim()) errors.project_code = 'Project ID could not be generated. Re-select the project type.';
+  }
   if (!form.client.trim()) errors.client = 'Client is required.';
   if (!form.address.trim()) errors.address = 'Address is required.';
 
@@ -149,6 +161,8 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
   const [errors, setErrors] = useState<FormErrors>({});
   const [statusOpen, setStatusOpen] = useState(false);
   const [clientsList, setClientsList] = useState<ClientRecord[]>([]);
+  const [projectTypesList, setProjectTypesList] = useState<ProjectType[]>([]);
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [engineersList, setEngineersList] = useState<PlatformUser[]>([]);
   const [usersList, setUsersList] = useState<PlatformUser[]>([]);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({ lat: 6.9271, lng: 79.8612 });
@@ -161,11 +175,15 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
   useEffect(() => {
     if (isOpen) {
       fetchClients().then(setClientsList).catch(console.error);
+      fetchProjectTypes().then(setProjectTypesList).catch(console.error);
       fetchEngineers().then(setEngineersList).catch(console.error);
       fetchUsers().then(setUsersList).catch(console.error);
 
       if (project) {
         setForm({
+          project_type_id: '',
+          prefix_code: project.prefix_code || '',
+          project_code: project.project_code || '',
           name: project.name || '',
           client: project.client || '',
           address: project.address || '',
@@ -291,6 +309,36 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
     keywords: `${c.name} ${c.phone}`,
   }));
 
+  const projectTypeOptions = projectTypesList.map((pt) => ({
+    value: pt.$id,
+    label: `${pt.prefix_code} — ${pt.service_title}`,
+    keywords: `${pt.prefix_code} ${pt.service_title}`,
+  }));
+
+  const handleProjectTypeSelect = async (typeId: string) => {
+    const type = projectTypesList.find((pt) => pt.$id === typeId);
+    if (!type) return;
+
+    setForm((prev) => ({ ...prev, project_type_id: typeId, prefix_code: type.prefix_code, project_code: '' }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.project_type_id;
+      delete next.project_code;
+      return next;
+    });
+
+    try {
+      setIsGeneratingCode(true);
+      const code = await fetchNextProjectCode(type.prefix_code);
+      setForm((prev) => (prev.project_type_id === typeId ? { ...prev, project_code: code } : prev));
+    } catch (err) {
+      console.error('Failed to generate project ID:', err);
+      toast.error('Failed to generate Project ID. Please try again.');
+    } finally {
+      setIsGeneratingCode(false);
+    }
+  };
+
   const engineerOptions = engineersList
     .map((e) => ({
       value: e.email,
@@ -356,7 +404,7 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const validationErrors = validate(form);
+    const validationErrors = validate(form, !!project);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -365,7 +413,8 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
     const coords = parseCoordinatesFromMapLink(form.google_maps_link);
 
     onSave({
-      name: form.name.trim(),
+      prefix_code: form.prefix_code,
+      name: form.name.trim() || undefined,
       client: form.client.trim(),
       location: `${form.address.trim()} ||| ${form.google_maps_link.trim()}`,
       address: form.address.trim(),
@@ -398,7 +447,48 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4 py-4" noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="name">Project Name</Label>
+              <Label htmlFor="project_type">Project Type</Label>
+              {project ? (
+                <Input
+                  id="project_type"
+                  value={
+                    projectTypesList.find((pt) => pt.prefix_code === form.prefix_code)?.service_title ||
+                    form.prefix_code ||
+                    '—'
+                  }
+                  readOnly
+                  disabled
+                  className="bg-muted/50 cursor-not-allowed"
+                />
+              ) : (
+                <Combobox
+                  id="project_type"
+                  options={projectTypeOptions}
+                  value={form.project_type_id}
+                  onChange={handleProjectTypeSelect}
+                  placeholder="Select project type"
+                  searchPlaceholder="Search by code or title..."
+                  emptyText="No project types found."
+                  className={errorClass('project_type_id')}
+                  modal={true}
+                />
+              )}
+              <FieldError field="project_type_id" />
+            </div>
+            <div>
+              <Label htmlFor="project_code">Project ID</Label>
+              <Input
+                id="project_code"
+                value={isGeneratingCode ? 'Generating…' : form.project_code}
+                readOnly
+                disabled
+                placeholder="Select a project type first"
+                className={cn('bg-muted/50 cursor-not-allowed font-mono', errorClass('project_code'))}
+              />
+              <FieldError field="project_code" />
+            </div>
+            <div>
+              <Label htmlFor="name">Project Name <span className="text-muted-foreground text-xs font-normal">(Optional)</span></Label>
               <Input
                 id="name"
                 value={form.name}
@@ -644,7 +734,7 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSaving}>Cancel</Button>
-            <Button type="submit" disabled={isSaving}>
+            <Button type="submit" disabled={isSaving || isGeneratingCode}>
               <Save className="mr-2 h-4 w-4" /> {isSaving ? (project ? 'Saving...' : 'Creating...') : (project ? 'Save Changes' : 'Create Project')}
             </Button>
           </DialogFooter>

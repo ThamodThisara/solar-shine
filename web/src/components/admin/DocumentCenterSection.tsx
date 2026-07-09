@@ -101,7 +101,10 @@ const DocumentCenterSection: React.FC = () => {
     enabled: canAccess && isSearching,
   });
 
-  const projectNameById = (id: string) => projects.find((p) => p.$id === id)?.name ?? 'Unknown Project';
+  const projectNameById = (id: string) => {
+    const p = projects.find((proj) => proj.$id === id);
+    return p ? (p.project_code || p.name) : 'Unknown Project';
+  };
 
   const matchedDocuments = useMemo(() => {
     if (!isSearching) return [];
@@ -208,7 +211,7 @@ const DocumentCenterSection: React.FC = () => {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="Search by project name or document name..."
+          placeholder="Search by project ID, project name or document name..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="pl-9"
@@ -222,7 +225,7 @@ const DocumentCenterSection: React.FC = () => {
           <SelectContent>
             <SelectItem value="all">All Projects</SelectItem>
             {projects.map((p) => (
-              <SelectItem key={p.$id} value={p.$id}>{p.name}</SelectItem>
+              <SelectItem key={p.$id} value={p.$id}>{p.project_code || p.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
