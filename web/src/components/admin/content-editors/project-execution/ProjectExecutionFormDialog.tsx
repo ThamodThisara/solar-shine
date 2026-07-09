@@ -11,7 +11,7 @@ import { CreateProjectExecutionInput, fetchNextProjectCode } from '@/services/pr
 import { ProjectExecution, ProjectExecutionStatus, ProjectType } from '@/types/payload-types';
 import { MultiSelectPopover } from '@/components/ui/multi-select-popover';
 import { Combobox } from '@/components/ui/combobox';
-import { fetchClients, registerClient, ClientRecord } from '@/services/clientService';
+import { fetchClients, registerClient, generateNextClientCode, ClientRecord } from '@/services/clientService';
 import { fetchProjectTypes } from '@/services/projectTypeService';
 import { fetchUsers, fetchEngineers, PlatformUser } from '@/services/userService';
 import { toast } from 'sonner';
@@ -295,8 +295,8 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
 
   const clientOptions = clientsList.map((c) => ({
     value: c.name,
-    label: c.name,
-    keywords: `${c.name} ${c.phone}`,
+    label: c.clientCode ? `${c.clientCode} - ${c.name}` : c.name,
+    keywords: [c.clientCode, c.name, c.phone].filter(Boolean).join(' '),
   }));
 
   const projectTypeOptions = projectTypesList.map((pt) => ({
@@ -793,6 +793,16 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
             <DialogTitle>Register New Client</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleRegisterClient} className="space-y-4 py-2" noValidate>
+            <div className="space-y-1">
+              <Label htmlFor="reg_client_code">Client Code</Label>
+              <Input
+                id="reg_client_code"
+                value={generateNextClientCode(clientsList)}
+                readOnly
+                tabIndex={-1}
+                className="bg-muted text-muted-foreground font-mono cursor-not-allowed"
+              />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label htmlFor="reg_name">Client Name</Label>

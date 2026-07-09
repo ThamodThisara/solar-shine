@@ -72,6 +72,16 @@ export function Combobox({
     return { groups, noGroup };
   }, [options]);
 
+  const filterFn = React.useCallback(
+    (itemValue: string, search: string) => {
+      if (!search.trim()) return 1;
+      const haystack = itemValue.toLowerCase();
+      const terms = search.toLowerCase().trim().split(/\s+/);
+      return terms.every((t) => haystack.includes(t)) ? 1 : 0;
+    },
+    []
+  );
+
   return (
     <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>
@@ -92,7 +102,7 @@ export function Combobox({
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
+        <Command filter={filterFn}>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>

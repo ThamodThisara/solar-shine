@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { fetchClients, registerClient, updateClient, deleteClient, ClientRecord } from '@/services/clientService';
+import { fetchClients, registerClient, updateClient, deleteClient, generateNextClientCode, ClientRecord } from '@/services/clientService';
 import { fetchProjectExecutionOptions } from '@/services/projectExecutionService';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { MapPicker } from '@/components/ui/map-picker';
@@ -244,6 +244,7 @@ export const ClientsSection: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Client Code</TableHead>
                   <TableHead>Client Name</TableHead>
                   <TableHead>Contact / Phone</TableHead>
                   <TableHead>Email Address</TableHead>
@@ -256,6 +257,7 @@ export const ClientsSection: React.FC = () => {
                   const isAssigned = assignedMap[client.name.toLowerCase()] || false;
                   return (
                     <TableRow key={client.name}>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{client.clientCode || '—'}</TableCell>
                       <TableCell className="font-medium">{client.name}</TableCell>
                       <TableCell>{client.phone}</TableCell>
                       <TableCell>{client.email || '—'}</TableCell>
@@ -320,6 +322,16 @@ export const ClientsSection: React.FC = () => {
             <DialogDescription>Add a new client profile to the system.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateSubmit} className="space-y-4 py-2" noValidate>
+            <div className="space-y-1">
+              <Label htmlFor="create_client_code">Client Code</Label>
+              <Input
+                id="create_client_code"
+                value={generateNextClientCode(clients)}
+                readOnly
+                tabIndex={-1}
+                className="bg-muted text-muted-foreground font-mono cursor-not-allowed"
+              />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label htmlFor="create_name">Client Name</Label>
@@ -511,6 +523,15 @@ export const ClientsSection: React.FC = () => {
             <DialogDescription>Modify settings for this client profile.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4 py-2" noValidate>
+            <div className="space-y-1">
+              <Label htmlFor="edit_client_code">Client Code</Label>
+              <Input
+                id="edit_client_code"
+                value={selectedClient?.clientCode || '—'}
+                readOnly
+                className="bg-muted text-muted-foreground font-mono cursor-not-allowed"
+              />
+            </div>
             {selectedClient && assignedMap[selectedClient.name.toLowerCase()] && (
               <div className="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded-md text-xs flex gap-2 items-start border border-amber-200">
                 <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
@@ -713,6 +734,10 @@ export const ClientsSection: React.FC = () => {
           </DialogHeader>
           {selectedClient && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
+              <div className="space-y-1 sm:col-span-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Client Code</span>
+                <p className="text-sm font-mono font-semibold text-foreground">{selectedClient.clientCode || '—'}</p>
+              </div>
               <div className="space-y-1">
                 <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Client Name</span>
                 <p className="text-sm font-semibold text-foreground">{selectedClient.name}</p>
