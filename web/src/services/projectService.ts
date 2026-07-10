@@ -20,8 +20,9 @@ export async function fetchProjects(): Promise<Project[]> {
         } else {
           // It's a file ID, construct the full URL
           try {
+            const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
             const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID || '685bcfb7001103824569';
-            imageUrl = `https://fra.cloud.appwrite.io/v1/storage/buckets/${STORAGE_BUCKET_ID}/files/${doc.image_url}/view?project=${projectId}`;
+            imageUrl = `${endpoint}/storage/buckets/${STORAGE_BUCKET_ID}/files/${doc.image_url}/view?project=${projectId}`;
           } catch (error) {
             console.warn('Failed to construct image URL:', error);
           }

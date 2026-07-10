@@ -11,8 +11,9 @@ function mapDocumentToBlogPost(doc: any): BlogPost {
   if (doc.featured_image_id) {
     try {
       // Use the /view endpoint for direct image access
+      const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
       const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID || '685bcfb7001103824569';
-      imageUrl = `https://fra.cloud.appwrite.io/v1/storage/buckets/${STORAGE_BUCKET_ID}/files/${doc.featured_image_id}/view?project=${projectId}`;
+      imageUrl = `${endpoint}/storage/buckets/${STORAGE_BUCKET_ID}/files/${doc.featured_image_id}/view?project=${projectId}`;
       imageId = doc.featured_image_id;
     } catch (error) {
       console.warn('Failed to construct image URL:', error);
