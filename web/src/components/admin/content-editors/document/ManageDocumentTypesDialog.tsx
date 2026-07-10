@@ -32,6 +32,9 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleteTargetCode, setDeleteTargetCode] = useState('');
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertDescription, setAlertDescription] = useState('');
 
   const { data: documentTypes = [], isLoading } = useQuery({
     queryKey: ['document-types'],
@@ -114,7 +117,9 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
     try {
       const res = await fetchDocuments({ documentTypeId: id, page: 0 });
       if (res.total > 0) {
-        toast.error(`Cannot delete document type "${code}". There are ${res.total} document(s) uploaded under this type.`);
+        setAlertTitle('Cannot Delete Document Type');
+        setAlertDescription(`Cannot delete document type "${code}". There are ${res.total} document(s) uploaded under this type.`);
+        setIsAlertOpen(true);
         return;
       }
       setDeleteTargetId(id);
@@ -310,6 +315,15 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
         confirmText="Delete"
         cancelText="Cancel"
         variant="destructive"
+      />
+      <ConfirmDialog
+        open={isAlertOpen}
+        onOpenChange={setIsAlertOpen}
+        title={alertTitle}
+        description={alertDescription}
+        onConfirm={() => setIsAlertOpen(false)}
+        confirmText="OK"
+        showCancel={false}
       />
     </Dialog>
   );

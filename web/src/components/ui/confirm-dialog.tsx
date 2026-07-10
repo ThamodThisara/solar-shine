@@ -20,6 +20,7 @@ interface ConfirmDialogProps {
   cancelText?: string;
   variant?: 'default' | 'destructive';
   isLoading?: boolean;
+  showCancel?: boolean;
 }
 
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -32,6 +33,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   cancelText = 'Cancel',
   variant = 'default',
   isLoading = false,
+  showCancel = true,
 }) => {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -41,7 +43,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>{cancelText}</AlertDialogCancel>
+          {showCancel && <AlertDialogCancel disabled={isLoading}>{cancelText}</AlertDialogCancel>}
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();
