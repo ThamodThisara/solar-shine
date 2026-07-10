@@ -630,6 +630,10 @@
       "attributes": [
         { "key": "name", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
         { "key": "client", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "clientId", "type": "string", "required": false, "array": false, "size": 50, "encrypt": false },
+        { "key": "siteId", "type": "string", "required": false, "array": false, "size": 50, "encrypt": false },
+        { "key": "siteCode", "type": "string", "required": false, "array": false, "size": 30, "encrypt": false },
+        { "key": "siteName", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
         { "key": "location", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
         { "key": "project_code", "type": "string", "required": false, "array": false, "size": 30, "encrypt": false },
         { "key": "prefix_code", "type": "string", "required": false, "array": false, "size": 20, "encrypt": false },
@@ -658,7 +662,9 @@
       "indexes": [
         { "key": "idx_status", "type": "key", "attributes": ["status"], "orders": ["ASC"] },
         { "key": "idx_name_search", "type": "fulltext", "attributes": ["name"], "orders": ["ASC"] },
-        { "key": "idx_project_code_unique", "type": "unique", "attributes": ["project_code"], "orders": ["ASC"] }
+        { "key": "idx_project_code_unique", "type": "unique", "attributes": ["project_code"], "orders": ["ASC"] },
+        { "key": "idx_client_id", "type": "key", "attributes": ["clientId"], "orders": ["ASC"] },
+        { "key": "idx_site_id", "type": "key", "attributes": ["siteId"], "orders": ["ASC"] }
       ]
     },
     {
@@ -1608,6 +1614,45 @@
       "indexes": [
         { "key": "idx_user_id", "type": "key", "attributes": ["user_id"], "orders": ["ASC"] },
         { "key": "idx_created_at", "type": "key", "attributes": ["$createdAt"], "orders": ["DESC"] }
+      ]
+    },
+    {
+      "$id": "sites",
+      "$permissions": [
+        "read(\"users\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Sites",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "clientId", "type": "string", "required": true, "array": false, "size": 50, "encrypt": false },
+        { "key": "clientCode", "type": "string", "required": false, "array": false, "size": 20, "encrypt": false },
+        { "key": "siteCode", "type": "string", "required": true, "array": false, "size": 30, "encrypt": false },
+        { "key": "siteName", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "contactPersonName", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        { "key": "contactPersonNumber", "type": "string", "required": false, "array": false, "size": 50, "encrypt": false },
+        { "key": "email", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        { "key": "channels", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        { "key": "address", "type": "string", "required": false, "array": false, "size": 500, "encrypt": false },
+        { "key": "latitude", "type": "double", "required": false, "array": false },
+        { "key": "longitude", "type": "double", "required": false, "array": false },
+        { "key": "panelBrand", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        { "key": "panelModel", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        { "key": "panelQuantity", "type": "integer", "required": false, "array": false, "min": 0 },
+        { "key": "panelDcCapacity", "type": "double", "required": false, "array": false },
+        { "key": "inverterBrand", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        { "key": "inverterModel", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        { "key": "inverterQuantity", "type": "integer", "required": false, "array": false, "min": 0 },
+        { "key": "inverterAcCapacity", "type": "double", "required": false, "array": false },
+        { "key": "description", "type": "string", "required": false, "array": false, "size": 2000, "encrypt": false }
+      ],
+      "indexes": [
+        { "key": "idx_client_id", "type": "key", "attributes": ["clientId"], "orders": ["ASC"] },
+        { "key": "idx_site_code", "type": "unique", "attributes": ["siteCode"], "orders": ["ASC"] }
       ]
     }
   ],
