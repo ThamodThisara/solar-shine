@@ -84,15 +84,16 @@ export default async ({ req, res, log, error }) => {
     return res.json({ error: 'Unauthorized' }, 401);
   }
 
-  const isProjectIdRoute =
+  const isBypassAdminRoute =
     (method === 'GET' && path === '/projects/next-id') ||
-    (method === 'POST' && path === '/projects/create');
+    (method === 'POST' && path === '/projects/create') ||
+    (method === 'POST' && path === '/maps/resolve');
 
   if (
     callerPrefs.role !== 'admin' &&
     !(method === 'GET' && path === '/users') &&
     !(method === 'POST' && path === '/projects/assign') &&
-    !isProjectIdRoute
+    !isBypassAdminRoute
   ) {
     return res.json({ error: 'Forbidden: admin role required' }, 403);
   }
