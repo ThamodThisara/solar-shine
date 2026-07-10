@@ -350,6 +350,7 @@ export default async ({ req, res, log, error }) => {
         try {
           const created = await dbs.createDocument(databaseId, PROJECTS_COLLECTION_ID, ID.unique(), {
             ...projectData,
+            name: projectData.name || '',
             prefix_code: prefixCode,
             project_code: projectCode,
           });

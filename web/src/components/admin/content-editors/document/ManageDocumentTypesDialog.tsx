@@ -29,6 +29,9 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetCode, setDeleteTargetCode] = useState('');
 
   const { data: documentTypes = [], isLoading } = useQuery({
     queryKey: ['document-types'],
@@ -114,11 +117,21 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
         toast.error(`Cannot delete document type "${code}". There are ${res.total} document(s) uploaded under this type.`);
         return;
       }
-      deleteMutation.mutate(id);
+      setDeleteTargetId(id);
+      setDeleteTargetCode(code);
+      setIsDeleteConfirmOpen(true);
     } catch (error) {
       console.error(error);
       toast.error('Failed to check documents count before deleting');
     }
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTargetId) return;
+    deleteMutation.mutate(deleteTargetId);
+    setIsDeleteConfirmOpen(false);
+    setDeleteTargetId(null);
+    setDeleteTargetCode('');
   };
 
   const handleEditClick = (dt: any) => {
@@ -287,6 +300,16 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
         onConfirm={confirmUpdate}
         confirmText="Update"
         cancelText="Cancel"
+      />
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        title="Delete Document Type?"
+        description={`Are you sure you want to delete the document type "${deleteTargetCode}"? This action cannot be undone.`}
+        onConfirm={confirmDelete}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
       />
     </Dialog>
   );

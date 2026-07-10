@@ -719,11 +719,13 @@
       "documentSecurity": false,
       "attributes": [
         { "key": "type", "type": "string", "required": true, "array": false, "size": 50 },
-        { "key": "name", "type": "string", "required": true, "array": false, "size": 255 }
+        { "key": "name", "type": "string", "required": true, "array": false, "size": 255 },
+        { "key": "department", "type": "string", "required": false, "array": false, "size": 50 }
       ],
       "indexes": [
         { "key": "idx_type", "type": "key", "attributes": ["type"], "orders": ["ASC"] },
-        { "key": "idx_name", "type": "key", "attributes": ["name"], "orders": ["ASC"] }
+        { "key": "idx_name", "type": "key", "attributes": ["name"], "orders": ["ASC"] },
+        { "key": "idx_department", "type": "key", "attributes": ["department"], "orders": ["ASC"] }
       ]
     },
     {

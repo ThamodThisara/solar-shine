@@ -119,6 +119,7 @@ export interface DocumentType {
   type: string;
   /** Human-readable name, e.g. "Site Inspection Sheet". */
   name: string;
+  department?: string | null;
 }
 
 export interface ProjectType {
