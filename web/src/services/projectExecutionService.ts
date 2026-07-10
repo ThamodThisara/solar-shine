@@ -106,6 +106,12 @@ export interface CreateProjectExecutionInput {
   /** Optional — a project no longer needs a name to be created. */
   name?: string;
   client: string;
+  /** Reference to the selected client's Clients document ($id). */
+  clientId?: string;
+  /** Reference to the selected site's Sites document ($id). */
+  siteId: string;
+  siteCode: string;
+  siteName: string;
   location: string;
   address: string;
   latitude?: number;

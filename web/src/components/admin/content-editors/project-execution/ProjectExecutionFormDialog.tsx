@@ -12,6 +12,7 @@ import { ProjectExecution, ProjectExecutionStatus, ProjectType } from '@/types/p
 import { MultiSelectPopover } from '@/components/ui/multi-select-popover';
 import { Combobox } from '@/components/ui/combobox';
 import { fetchClients, registerClient, generateNextClientCode, ClientRecord } from '@/services/clientService';
+import { fetchSitesByClient, SiteRecord } from '@/services/siteService';
 import { fetchProjectTypes } from '@/services/projectTypeService';
 import { fetchUsers, fetchEngineers, PlatformUser } from '@/services/userService';
 import { toast } from 'sonner';
@@ -42,6 +43,10 @@ interface FormState {
   project_code: string;
   name: string;
   client: string;
+  client_id: string;
+  site_id: string;
+  site_code: string;
+  site_name: string;
   address: string;
   google_maps_link: string;
   status: ProjectExecutionStatus | '';
@@ -61,6 +66,10 @@ const initialState: FormState = {
   project_code: '',
   name: '',
   client: '',
+  client_id: '',
+  site_id: '',
+  site_code: '',
+  site_name: '',
   address: '',
   google_maps_link: '',
   status: '',
@@ -86,6 +95,9 @@ const validate = (form: FormState, isEdit: boolean): FormErrors => {
     if (!form.project_code.trim()) errors.project_code = 'Project Code could not be generated. Re-select the project type.';
   }
   if (!form.client.trim()) errors.client = 'Client is required.';
+  // A site must be selected to create a project. Not enforced on edit so that
+  // legacy projects (created before sites existed) remain editable.
+  if (!isEdit && !form.site_id.trim()) errors.site_id = 'Site is required.';
   if (!form.address.trim()) errors.address = 'Address is required.';
 
   if (!form.status) errors.status = 'Status is required.';
@@ -151,6 +163,8 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
   const [errors, setErrors] = useState<FormErrors>({});
   const [statusOpen, setStatusOpen] = useState(false);
   const [clientsList, setClientsList] = useState<ClientRecord[]>([]);
+  const [sitesList, setSitesList] = useState<SiteRecord[]>([]);
+  const [isLoadingSites, setIsLoadingSites] = useState(false);
   const [projectTypesList, setProjectTypesList] = useState<ProjectType[]>([]);
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [engineersList, setEngineersList] = useState<PlatformUser[]>([]);
@@ -163,11 +177,20 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
 
   // Reset the form each time the dialog is opened.
   useEffect(() => {
-    if (isOpen) {
-      fetchClients().then(setClientsList).catch(console.error);
-      fetchProjectTypes().then(setProjectTypesList).catch(console.error);
-      fetchEngineers().then(setEngineersList).catch(console.error);
-      fetchUsers().then(setUsersList).catch(console.error);
+    if (!isOpen) return;
+    let cancelled = false;
+
+    fetchProjectTypes().then((v) => !cancelled && setProjectTypesList(v)).catch(console.error);
+    fetchEngineers().then((v) => !cancelled && setEngineersList(v)).catch(console.error);
+    fetchUsers().then((v) => !cancelled && setUsersList(v)).catch(console.error);
+
+    (async () => {
+      const clients = await fetchClients().catch((err) => {
+        console.error(err);
+        return [] as ClientRecord[];
+      });
+      if (cancelled) return;
+      setClientsList(clients);
 
       if (project) {
         setForm({
@@ -176,6 +199,10 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
           project_code: project.project_code || '',
           name: project.name || '',
           client: project.client || '',
+          client_id: project.clientId || '',
+          site_id: project.siteId || '',
+          site_code: project.siteCode || '',
+          site_name: project.siteName || '',
           address: project.address || '',
           google_maps_link: project.location || '',
           status: project.status || '',
@@ -189,18 +216,100 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
           end_date: project.end_date ? project.end_date.split('T')[0] : '',
         });
         const coords = parseCoordinatesFromMapLink(project.location || undefined);
-        if (coords) {
-          setMapCenter(coords);
-        } else {
-          setMapCenter({ lat: 6.9271, lng: 79.8612 });
+        setMapCenter(coords || { lat: 6.9271, lng: 79.8612 });
+
+        // Load the selected client's sites so the dropdown is populated on edit.
+        const matched = clients.find(
+          (c) => c.name.toLowerCase() === (project.client || '').toLowerCase()
+        );
+        if (matched?.$id) {
+          const sites = await fetchSitesByClient(matched.$id);
+          if (!cancelled) {
+            setSitesList(sites);
+            // Fill in a client_id for legacy records that predate the reference.
+            if (!project.clientId) {
+              setForm((prev) => ({ ...prev, client_id: matched.$id! }));
+            }
+          }
+        } else if (!cancelled) {
+          setSitesList([]);
         }
       } else {
         setForm(initialState);
+        setSitesList([]);
         setMapCenter({ lat: 6.9271, lng: 79.8612 });
       }
-      setErrors({});
-    }
+      if (!cancelled) setErrors({});
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, project]);
+
+  /** Populate address/map/site fields from a selected site (or clear them). */
+  const applySite = (site: SiteRecord | null) => {
+    setForm((prev) => ({
+      ...prev,
+      site_id: site?.$id || '',
+      site_code: site?.siteCode || '',
+      site_name: site?.siteName || '',
+      address: site?.address || '',
+      google_maps_link: site?.googleMapsLink || '',
+    }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.site_id;
+      delete next.address;
+      delete next.google_maps_link;
+      return next;
+    });
+    const coords = parseCoordinatesFromMapLink(site?.googleMapsLink || undefined);
+    setMapCenter(coords || { lat: 6.9271, lng: 79.8612 });
+  };
+
+  /**
+   * Load the sites for the selected client. When the client has exactly one
+   * site it is auto-selected and its details are applied automatically.
+   */
+  const handleClientSelect = async (clientName: string) => {
+    const matched = clientsList.find((c) => c.name.toLowerCase() === clientName.toLowerCase());
+    setForm((prev) => ({
+      ...prev,
+      client: clientName,
+      client_id: matched?.$id || '',
+      site_id: '',
+      site_code: '',
+      site_name: '',
+      address: '',
+      google_maps_link: '',
+    }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.client;
+      delete next.site_id;
+      delete next.address;
+      delete next.google_maps_link;
+      return next;
+    });
+    setMapCenter({ lat: 6.9271, lng: 79.8612 });
+    setSitesList([]);
+
+    if (!matched?.$id) return;
+    try {
+      setIsLoadingSites(true);
+      const sites = await fetchSitesByClient(matched.$id);
+      setSitesList(sites);
+      if (sites.length === 1) {
+        applySite(sites[0]);
+      }
+    } catch (err) {
+      console.error('Failed to load sites for client:', err);
+      toast.error('Failed to load sites for the selected client.');
+    } finally {
+      setIsLoadingSites(false);
+    }
+  };
 
   const handleOpenRegChange = (open: boolean) => {
     setIsRegOpen(open);
@@ -260,32 +369,32 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
         googleMapsLink: regForm.googleMapsLink,
       });
       setClientsList((prev) => [...prev, newClient]);
-      
+
+      // A freshly registered client has no sites yet. Select the client but
+      // leave site/address/map empty — those are populated from a site, and the
+      // user must register a site for this client before creating the project.
       setForm((prev) => ({
         ...prev,
         client: newClient.name,
-        address: newClient.address || '',
-        google_maps_link: newClient.googleMapsLink || '',
+        client_id: newClient.$id || '',
+        site_id: '',
+        site_code: '',
+        site_name: '',
+        address: '',
+        google_maps_link: '',
       }));
       setErrors((prev) => {
         const next = { ...prev };
         delete next.client;
-        delete next.address;
-        delete next.google_maps_link;
         return next;
       });
-
-      const coords = parseCoordinatesFromMapLink(newClient.googleMapsLink || undefined);
-      if (coords) {
-        setMapCenter(coords);
-      } else {
-        setMapCenter({ lat: 6.9271, lng: 79.8612 });
-      }
+      setSitesList([]);
+      setMapCenter({ lat: 6.9271, lng: 79.8612 });
 
       setIsRegOpen(false);
       setRegForm({ name: '', phone: '', email: '', channels: '', address: '', googleMapsLink: '' });
       setRegErrors({});
-      toast.success('Client registered and selected');
+      toast.success('Client registered and selected. Add a site for this client to continue.');
       setIsRegSaving(false);
     } catch (err: any) {
       toast.error(err.message || 'Failed to register client');
@@ -297,6 +406,12 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
     value: c.name,
     label: c.clientCode ? `${c.clientCode} - ${c.name}` : c.name,
     keywords: [c.clientCode, c.name, c.phone].filter(Boolean).join(' '),
+  }));
+
+  const siteOptions = sitesList.map((s) => ({
+    value: s.$id || '',
+    label: `${s.siteCode} - ${s.siteName}`,
+    keywords: `${s.siteCode} ${s.siteName}`,
   }));
 
   const projectTypeOptions = projectTypesList.map((pt) => ({
@@ -406,6 +521,10 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
       prefix_code: form.prefix_code,
       name: form.name.trim() || undefined,
       client: form.client.trim(),
+      clientId: form.client_id.trim() || undefined,
+      siteId: form.site_id.trim(),
+      siteCode: form.site_code.trim(),
+      siteName: form.site_name.trim(),
       location: `${form.address.trim()} ||| ${form.google_maps_link.trim()}`,
       address: form.address.trim(),
       latitude: coords ? coords.lat : undefined,
@@ -503,31 +622,7 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
                 id="client"
                 options={clientOptions}
                 value={form.client}
-                onChange={(val) => {
-                  setField('client', val);
-                  const matched = clientsList.find((c) => c.name.toLowerCase() === val.toLowerCase());
-                  if (matched) {
-                    setForm((prev) => ({
-                      ...prev,
-                      client: val,
-                      address: matched.address || '',
-                      google_maps_link: matched.googleMapsLink || '',
-                    }));
-                    setErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.address;
-                      delete next.google_maps_link;
-                      return next;
-                    });
-
-                    const coords = parseCoordinatesFromMapLink(matched.googleMapsLink || undefined);
-                    if (coords) {
-                      setMapCenter(coords);
-                    } else {
-                      setMapCenter({ lat: 6.9271, lng: 79.8612 });
-                    }
-                  }
-                }}
+                onChange={(val) => { void handleClientSelect(val); }}
                 placeholder="Select client"
                 searchPlaceholder="Search clients..."
                 emptyText="No clients found."
@@ -535,6 +630,33 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
                 modal={true}
               />
               <FieldError field="client" />
+            </div>
+            <div>
+              <Label htmlFor="site">Site</Label>
+              <Combobox
+                id="site"
+                options={siteOptions}
+                value={form.site_id}
+                onChange={(val) => {
+                  const site = sitesList.find((s) => s.$id === val) || null;
+                  applySite(site);
+                }}
+                placeholder={
+                  isLoadingSites
+                    ? 'Loading sites…'
+                    : !form.client
+                      ? 'Select a client first'
+                      : sitesList.length === 0
+                        ? 'No sites for this client'
+                        : 'Select site'
+                }
+                searchPlaceholder="Search sites..."
+                emptyText="No sites found."
+                disabled={!form.client || isLoadingSites || sitesList.length === 0}
+                className={errorClass('site_id')}
+                modal={true}
+              />
+              <FieldError field="site_id" />
             </div>
             <div>
               <Label htmlFor="address">Address</Label>
@@ -616,7 +738,7 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
                 const coords = parseCoordinates(form.google_maps_link);
                 return (
                   <MapPicker
-                    key={form.client}
+                    key={form.site_id || form.client}
                     initialLat={coords?.lat ?? mapCenter.lat}
                     initialLng={coords?.lng ?? mapCenter.lng}
                     onLocationSelect={({ googleMapsLink }) => {

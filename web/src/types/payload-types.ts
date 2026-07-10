@@ -94,6 +94,12 @@ export interface ProjectExecution {
   prefix_code: string | null;
   name: string;
   client: string;
+  /** Reference to the Clients collection document ($id) for the selected client. */
+  clientId: string | null;
+  /** Reference to the Sites collection document ($id) for the selected site. */
+  siteId: string | null;
+  siteCode: string | null;
+  siteName: string | null;
   location: string;
   address: string | null;
   latitude: number | null;

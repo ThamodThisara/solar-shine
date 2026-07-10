@@ -110,6 +110,7 @@ export const COLLECTIONS = {
   PAGE_SEO: 'page_seo',
   WHAT_WE_DO: 'what_we_do',
   CLIENTS: 'clients',
+  SITES: 'sites',
   PROJECT_EXECUTIONS: 'projects',
   DOCUMENTS: 'documents',
   DOCUMENT_TYPES: 'document_types',

@@ -44,6 +44,10 @@ const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
 
+  const siteLabel = project.siteCode
+    ? (project.siteName ? `${project.siteCode} - ${project.siteName}` : project.siteCode)
+    : (project.siteName || '—');
+
   const address = project.address || (project.location && project.location.includes('|||') ? project.location.split('|||')[0] : project.location || '');
   const mapLink = project.latitude && project.longitude
     ? `https://www.google.com/maps?q=${project.latitude},${project.longitude}`
@@ -133,6 +137,11 @@ const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({
               </div>
               <div className="flex items-center min-w-0">
                 <span className="break-words">
+                  Site: <strong className="text-foreground font-semibold">{siteLabel}</strong>
+                </span>
+              </div>
+              <div className="flex items-center min-w-0">
+                <span className="break-words">
                   System Size: <strong className="text-foreground font-semibold">{project.system_size} kW</strong>
                 </span>
               </div>
@@ -164,11 +173,17 @@ const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({
               <p className="text-sm font-semibold mt-1 text-foreground">{format(new Date(project.end_date), 'MMM d, yyyy')}</p>
             </div>
             
-            {/* Site Address and Show on Map Button Row */}
+            {/* Site and Show on Map Button Row */}
             <div className="col-span-2 sm:col-span-3 md:col-span-5 border-t border-border/30 pt-3 mt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Site Address</p>
-                <p className="text-sm font-semibold mt-1 text-foreground break-words">{address.trim() || '—'}</p>
+              <div className="min-w-0 space-y-2">
+                <div>
+                  <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Site</p>
+                  <p className="text-sm font-semibold mt-1 text-foreground break-words">{siteLabel}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Site Address</p>
+                  <p className="text-sm font-semibold mt-1 text-foreground break-words">{address.trim() || '—'}</p>
+                </div>
               </div>
               {mapLink && (
                 <Button

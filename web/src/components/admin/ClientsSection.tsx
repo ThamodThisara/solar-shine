@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Trash2, Edit, ShieldAlert, Eye, Clipboard } from 'lucide-react';
+import { Plus, Trash2, Edit, ShieldAlert, Eye, Clipboard, MapPin } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +32,8 @@ import { parseCoordinates } from '@/lib/utils';
 import { resolveGoogleMapsLink } from '@/services/teamService';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SimplePagination } from '@/components/ui/simple-pagination';
+import { RegisterSiteDialog } from './RegisterSiteDialog';
+import { ClientSitesDialog } from './ClientSitesDialog';
 
 export const ClientsSection: React.FC = () => {
   const queryClient = useQueryClient();
@@ -48,6 +50,12 @@ export const ClientsSection: React.FC = () => {
   // Delete Confirmation Modal States
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+
+  // Site Dialog States
+  const [isSiteRegisterOpen, setIsSiteRegisterOpen] = useState(false);
+  const [siteRegisterClient, setSiteRegisterClient] = useState<ClientRecord | null>(null);
+  const [isSitesViewOpen, setIsSitesViewOpen] = useState(false);
+  const [sitesViewClient, setSitesViewClient] = useState<ClientRecord | null>(null);
 
   // Forms
   const [form, setForm] = useState({ name: '', phone: '', email: '', channels: '', address: '', googleMapsLink: '' });
@@ -85,11 +93,15 @@ export const ClientsSection: React.FC = () => {
   // Actions mutations
   const createMutation = useMutation({
     mutationFn: registerClient,
-    onSuccess: () => {
+    onSuccess: (createdClient) => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       setIsCreateOpen(false);
       resetForm();
       toast.success('Client registered');
+      // Every client must have at least one site — open the Register Site form
+      // immediately so the user can add the client's first site.
+      setSiteRegisterClient(createdClient);
+      setIsSiteRegisterOpen(true);
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to register client'),
   });
@@ -274,6 +286,20 @@ export const ClientsSection: React.FC = () => {
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => openView(client)}>
                             <Eye className="h-3.5 w-3.5 mr-1" /> View
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (!client.$id) {
+                                toast.error('This client has no saved record, so sites cannot be managed.');
+                                return;
+                              }
+                              setSitesViewClient(client);
+                              setIsSitesViewOpen(true);
+                            }}
+                          >
+                            <MapPin className="h-3.5 w-3.5 mr-1" /> Sites
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => openEdit(client)}>
                             <Edit className="h-3.5 w-3.5 mr-1" /> Edit
@@ -802,6 +828,20 @@ export const ClientsSection: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Register Site (opens automatically after client registration, and from Sites popup) */}
+      <RegisterSiteDialog
+        open={isSiteRegisterOpen}
+        onOpenChange={setIsSiteRegisterOpen}
+        client={siteRegisterClient}
+      />
+
+      {/* Client Sites popup */}
+      <ClientSitesDialog
+        open={isSitesViewOpen}
+        onOpenChange={setIsSitesViewOpen}
+        client={sitesViewClient}
+      />
 
       <ConfirmDialog
         open={isDeleteConfirmOpen}
