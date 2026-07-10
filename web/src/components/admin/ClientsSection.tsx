@@ -91,7 +91,7 @@ export const ClientsSection: React.FC = () => {
       resetForm();
       toast.success('Client registered');
     },
-    onError: (err: any) => toast.error(err.message || 'Failed to register client'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to register client'),
   });
 
   const updateMutation = useMutation({
@@ -104,7 +104,7 @@ export const ClientsSection: React.FC = () => {
       resetForm();
       toast.success('Client updated successfully');
     },
-    onError: (err: any) => toast.error(err.message || 'Failed to update client'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to update client'),
   });
 
   const deleteMutation = useMutation({
@@ -115,7 +115,7 @@ export const ClientsSection: React.FC = () => {
       setIsDeleteConfirmOpen(false);
       setClientToDelete(null);
     },
-    onError: (err: any) => toast.error(err.message || 'Failed to delete client'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to delete client'),
   });
 
   const resetForm = () => {

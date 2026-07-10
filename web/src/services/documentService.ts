@@ -1,4 +1,4 @@
-import { databases, storage, COLLECTIONS, DATABASE_ID, DOCUMENTS_BUCKET_ID } from '@/lib/appwrite';
+import { databases, storage, COLLECTIONS, DATABASE_ID, DOCUMENTS_BUCKET_ID, account } from '@/lib/appwrite';
 import { ID, Query } from 'appwrite';
 import { DocumentRecord, DocumentVisibility, Department } from '@/types/payload-types';
 import { isAllowedFile } from '@/lib/documentTypes';
@@ -213,6 +213,35 @@ export function getDocumentPreviewUrl(fileId: string): string {
 
 export function getDocumentDownloadUrl(fileId: string): string {
   return storage.getFileDownload(DOCUMENTS_BUCKET_ID, fileId);
+}
+
+export async function getAuthenticatedFileBlob(fileId: string, isDownload = false): Promise<string> {
+  const url = isDownload 
+    ? storage.getFileDownload(DOCUMENTS_BUCKET_ID, fileId)
+    : storage.getFileView(DOCUMENTS_BUCKET_ID, fileId);
+
+  try {
+    const jwtResponse = await account.createJWT();
+    const jwt = jwtResponse.jwt;
+
+    const response = await fetch(url, {
+      headers: {
+        'X-Appwrite-Project': import.meta.env.VITE_APPWRITE_PROJECT_ID,
+        'X-Appwrite-JWT': jwt
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  } catch (error) {
+    console.error('Error fetching authenticated file:', error);
+    // Fallback to direct URL if anything fails
+    return url;
+  }
 }
 
 export { PAGE_SIZE as DOCUMENT_PAGE_SIZE };

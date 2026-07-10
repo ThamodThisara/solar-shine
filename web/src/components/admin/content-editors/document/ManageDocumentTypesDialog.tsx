@@ -8,11 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   fetchDocumentTypes,
   createDocumentType,
   deleteDocumentType,
   updateDocumentType,
+  CreateDocumentTypeInput,
 } from '@/services/documentTypeService';
 import { fetchDocuments } from '@/services/documentService';
 
@@ -57,7 +59,7 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, input }: { id: string; input: any }) => updateDocumentType(id, input),
+    mutationFn: ({ id, input }: { id: string; input: CreateDocumentTypeInput }) => updateDocumentType(id, input),
     onSuccess: () => {
       invalidate();
       setType('');
@@ -184,18 +186,18 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <Label htmlFor="document-type-dept">Department</Label>
-              <select
-                id="document-type-dept"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <option value="all">All Departments</option>
-                <option value="engineer">Engineer</option>
-                <option value="sales">Sales</option>
-                <option value="admin">Admin</option>
-                <option value="hr">HR</option>
-              </select>
+              <Select value={department} onValueChange={(val) => setDepartment(val)}>
+                <SelectTrigger id="document-type-dept" className="h-10 text-sm">
+                  <SelectValue placeholder="Select Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  <SelectItem value="engineer">Engineer</SelectItem>
+                  <SelectItem value="sales">Sales</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="hr">HR</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="document-type-code">Document Type</Label>
@@ -222,7 +224,7 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
           <div className="flex flex-col sm:flex-row items-center gap-3">
             <div className="flex gap-2 w-full sm:w-auto shrink-0">
               <Button type="submit" className="w-full sm:w-auto font-semibold" disabled={!isFormValid || createMutation.isPending || updateMutation.isPending}>
-                <Plus className="mr-2 h-4 w-4" />
+                {!editingId && <Plus className="mr-2 h-4 w-4" />}
                 {editingId ? (updateMutation.isPending ? 'Updating...' : 'Update') : (createMutation.isPending ? 'Adding...' : 'Add')}
               </Button>
               {editingId && (

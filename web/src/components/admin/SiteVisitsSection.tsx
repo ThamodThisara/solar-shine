@@ -29,6 +29,7 @@ import { fetchEngineers, fetchUsers } from '@/services/userService';
 import SiteVisitCard from './SiteVisitCard';
 import SiteVisitFormDialog from './content-editors/site-visit/SiteVisitFormDialog';
 import SiteVisitDetailDialog from './content-editors/site-visit/SiteVisitDetailDialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 const filterOptions: Array<{ id: SiteVisitStatus | 'all'; label: string }> = [
   { id: 'all', label: 'All' },
@@ -72,6 +73,8 @@ const SiteVisitsSection: React.FC = () => {
     }
   }, [paramProject, paramMine]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [visitToDelete, setVisitToDelete] = useState<SiteVisit | null>(null);
   const [selectedVisit, setSelectedVisit] = useState<SiteVisit | null>(null);
   const [selectedVisitTab, setSelectedVisitTab] = useState<'details' | 'activity' | 'documents'>('details');
   const [hideDialogTabs, setHideDialogTabs] = useState<boolean>(false);
@@ -154,6 +157,8 @@ const SiteVisitsSection: React.FC = () => {
     onSuccess: () => {
       invalidate();
       toast.success('Site visit deleted');
+      setIsDeleteConfirmOpen(false);
+      setVisitToDelete(null);
     },
     onError: () => toast.error('Failed to delete site visit'),
   });
@@ -364,7 +369,10 @@ const SiteVisitsSection: React.FC = () => {
                 setSelectedVisitTab(tab ?? 'details');
                 setHideDialogTabs(!!hideTabs);
               }}
-              onDelete={isAdmin ? (v) => deleteMutation.mutate(v.$id) : undefined}
+              onDelete={isAdmin ? (v) => {
+                setVisitToDelete(v);
+                setIsDeleteConfirmOpen(true);
+              } : undefined}
               users={usersList}
             />
           ))}
@@ -416,6 +424,22 @@ const SiteVisitsSection: React.FC = () => {
           hideTabs={hideDialogTabs}
         />
       )}
+
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        title="Delete Site Visit?"
+        description={visitToDelete ? `Are you sure you want to delete the site visit "${visitToDelete.title}"? This action cannot be undone.` : ''}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (visitToDelete) {
+            deleteMutation.mutate(visitToDelete.$id);
+          }
+        }}
+      />
     </div>
   );
 };

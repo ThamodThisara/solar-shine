@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatFileSize } from '@/lib/utils';
 import { DocumentRecord, DocumentType } from '@/types/payload-types';
-import { getDocumentPreviewUrl, getDocumentDownloadUrl } from '@/services/documentService';
+import { getAuthenticatedFileBlob } from '@/services/documentService';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from 'sonner';
 
 const departmentStyles: Record<string, string> = {
   Marketing: 'text-violet-600 bg-violet-50',
@@ -29,6 +30,38 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentT
   const isImage = doc.file_type.startsWith('image/');
   const typeCode = documentType?.type ?? 'Unknown';
   const typeName = documentType?.name ?? 'Unknown Type';
+
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isDownloadLoading, setIsDownloadLoading] = useState(false);
+
+  const handlePreview = async () => {
+    setIsPreviewLoading(true);
+    try {
+      const url = await getAuthenticatedFileBlob(doc.file_id, false);
+      window.open(url, '_blank');
+    } catch (error) {
+      toast.error('Failed to load document preview');
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    setIsDownloadLoading(true);
+    try {
+      const url = await getAuthenticatedFileBlob(doc.file_id, true);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = doc.file_name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      toast.error('Failed to download document');
+    } finally {
+      setIsDownloadLoading(false);
+    }
+  };
 
   return (
     <>
@@ -74,15 +107,22 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentT
           </div>
 
           <div className="mt-4 flex gap-2">
-            <Button size="sm" variant="outline" className="flex-1 text-xs" asChild>
-              <a href={getDocumentPreviewUrl(doc.file_id)} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3.5 w-3.5 mr-1" /> Preview
-              </a>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 text-xs"
+              onClick={handlePreview}
+              disabled={isPreviewLoading}
+            >
+              <ExternalLink className="h-3.5 w-3.5 mr-1" /> {isPreviewLoading ? 'Loading...' : 'Preview'}
             </Button>
-            <Button size="sm" className="flex-1 text-xs" asChild>
-              <a href={getDocumentDownloadUrl(doc.file_id)} target="_blank" rel="noopener noreferrer">
-                <Download className="h-3.5 w-3.5 mr-1" /> Download
-              </a>
+            <Button
+              size="sm"
+              className="flex-1 text-xs"
+              onClick={handleDownload}
+              disabled={isDownloadLoading}
+            >
+              <Download className="h-3.5 w-3.5 mr-1" /> {isDownloadLoading ? 'Loading...' : 'Download'}
             </Button>
             {onDelete && (
               <Button size="sm" variant="outline" className="text-red-600 border-red-600 hover:bg-red-50" onClick={() => setIsConfirmOpen(true)}>

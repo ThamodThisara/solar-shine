@@ -21,7 +21,7 @@ import {
   deleteProjectExecution,
   updateProjectExecution,
   notifyAssignees,
-  PROJECT_EXECUTION_PAGE_SIZE,
+  PROJECT_EXECUTION_PAGE_SIZE, CreateProjectExecutionInput,
 } from '@/services/projectExecutionService';
 import ProjectExecutionCard from './ProjectExecutionCard';
 import ProjectExecutionFormDialog from './content-editors/project-execution/ProjectExecutionFormDialog';
@@ -216,7 +216,7 @@ const ProjectExecutionSection: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             {isAdmin && (
               <Button variant="outline" onClick={() => setIsManageTypesOpen(true)}>
-                <Tags className="mr-2 h-4 w-4" /> Add Project Types
+                <Tags className="mr-2 h-4 w-4" /> Manage Project Types
               </Button>
             )}
             <Button onClick={() => setIsDialogOpen(true)}>

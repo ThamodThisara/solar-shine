@@ -217,7 +217,7 @@ const DocumentCenterSection: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             {isAdmin && (
               <Button variant="outline" onClick={() => setIsManageTypesOpen(true)}>
-                <Tags className="mr-2 h-4 w-4" /> Add Document Types
+                <Tags className="mr-2 h-4 w-4" /> Manage Document Types
               </Button>
             )}
             <Button onClick={() => setIsUploadOpen(true)}>

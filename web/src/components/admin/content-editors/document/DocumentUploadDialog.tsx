@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Combobox } from '@/components/ui/combobox';
-import { Upload, UploadCloud, X, FileText } from 'lucide-react';
+import { Upload, UploadCloud, X, FileText, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, formatFileSize } from '@/lib/utils';
 import { ALLOWED_FILE_EXTENSIONS, isAllowedFile } from '@/lib/documentTypes';
@@ -15,6 +15,7 @@ interface ProjectOption {
   $id: string;
   name: string;
   client: string;
+  project_code?: string;
 }
 
 interface DocumentUploadDialogProps {
@@ -47,6 +48,13 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
   const [state, setState] = useState(initialState);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      reset();
+    }
+  }, [isOpen]);
 
   const allowedTypes = React.useMemo(() => {
     if (isAdmin) return documentTypes;
@@ -179,24 +187,46 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
 
           <div>
             <Label>Files</Label>
-            <div
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={cn(
-                "flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-md py-8 cursor-pointer transition-colors mt-1",
-                isDragging ? "border-primary bg-primary/5" : "hover:bg-accent/50"
-              )}
-            >
-              <UploadCloud className="h-8 w-8 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Drag & drop files here, or click to browse</span>
-              <span className="text-xs text-muted-foreground">{ALLOWED_FILE_EXTENSIONS.join(', ')}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-md py-6 cursor-pointer transition-colors text-center px-4",
+                  isDragging ? "border-primary bg-primary/5" : "hover:bg-accent/50"
+                )}
+              >
+                <UploadCloud className="h-8 w-8 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground font-semibold">Select File(s)</span>
+                <span className="text-xs text-muted-foreground">{ALLOWED_FILE_EXTENSIONS.join(', ')}</span>
+              </div>
+
+              <div
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-md py-6 cursor-pointer hover:bg-accent/50 transition-colors text-center px-4"
+              >
+                <Camera className="h-8 w-8 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground font-semibold">Take Photo (Camera)</span>
+                <span className="text-xs text-muted-foreground">Mobile Camera Capture</span>
+              </div>
             </div>
             <input
               ref={fileInputRef}
               type="file"
               multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) addFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
               className="hidden"
               onChange={(e) => {
                 if (e.target.files?.length) addFiles(e.target.files);

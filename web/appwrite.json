@@ -1610,5 +1610,61 @@
         { "key": "idx_created_at", "type": "key", "attributes": ["$createdAt"], "orders": ["DESC"] }
       ]
     }
+  ],
+  "buckets": [
+    {
+      "$id": "6873ba8f00060c027d7c",
+      "$permissions": [
+        "create(\"users\")",
+        "read(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")",
+        "read(\"any\")"
+      ],
+      "fileSecurity": false,
+      "name": "media",
+      "enabled": true,
+      "maximumFileSize": 50000000,
+      "allowedFileExtensions": [],
+      "compression": "none",
+      "encryption": true,
+      "antivirus": true
+    },
+    {
+      "$id": "6a324efb0017a8ba26fd",
+      "$permissions": [
+        "create(\"users\")",
+        "read(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "fileSecurity": false,
+      "name": "documents",
+      "enabled": true,
+      "maximumFileSize": 10000000,
+      "allowedFileExtensions": [
+        "jpg",
+        "jpeg",
+        "png",
+        "gif",
+        "webp",
+        "avif",
+        "svg",
+        "pdf",
+        "doc",
+        "docx",
+        "xls",
+        "xlsx",
+        "ppt",
+        "pptx",
+        "txt",
+        "odt",
+        "ods",
+        "odp"
+      ],
+      "compression": "none",
+      "encryption": true,
+      "antivirus": true
+    }
   ]
 }
