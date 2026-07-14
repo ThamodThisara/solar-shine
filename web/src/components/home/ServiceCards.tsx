@@ -68,10 +68,10 @@ const ServiceCards: React.FC<ServiceCardsProps> = ({ services }) => {
                   <div className={`${cardColor} w-14 rounded-lg flex items-center justify-center mb-4`}>
                     <div className="text-white text-2xl">⚡</div>
                   </div>
-                  <h3 className="text-xl font-bold mb-2">{service.title}</h3>
+                  <h3 className="text-xl font-bold mb-2">{service.title || 'Service'}</h3>
                   <p className="text-brand-gray line-clamp-2">{service.description}</p>
                   <a
-                    href={`/services#${service.title.toLowerCase().replace(/\s+/g, '-')}`}
+                    href={`/services#${(service.title || '').toLowerCase().replace(/\s+/g, '-')}`}
                     className="text-primary font-medium mt-4 flex items-center hover:underline"
                   >
                     Learn More

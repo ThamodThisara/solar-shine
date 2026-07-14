@@ -76,7 +76,8 @@ const Footer: React.FC = () => {
   };
 
   // Function to get the appropriate icon component based on the icon name
-  const getSocialIcon = (iconName: string) => {
+  const getSocialIcon = (iconName?: string | null) => {
+    if (!iconName) return Globe;
     const iconMap: { [key: string]: React.ComponentType<any> } = {
       facebook: Facebook,
       twitter: Twitter,
