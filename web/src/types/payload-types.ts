@@ -146,6 +146,8 @@ export interface DocumentRecord {
   file_type: string;
   document_visibility: DocumentVisibility;
   department: Department | null;
+  allowed_departments?: string[] | null;
+  allowed_users?: string[] | null;
   /** Foreign key referencing a DocumentType ($id). */
   document_type_id: string;
   /**

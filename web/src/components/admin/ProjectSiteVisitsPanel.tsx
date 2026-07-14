@@ -11,6 +11,7 @@ import { priorityStyles, statusStyles, priorityLabel, statusLabel, updateTypeLab
 import { fetchSiteVisitsByProject, fetchSiteVisitUpdates } from '@/services/siteVisitService';
 import { fetchDocumentsBySiteVisit, deleteDocumentRecord } from '@/services/documentService';
 import DocumentCard from './DocumentCard';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProjectSiteVisitsPanelProps {
   projectId: string;
@@ -23,6 +24,7 @@ const SiteVisitRow: React.FC<{
   projectName: string;
   documentTypes: DocumentType[];
 }> = ({ visit, projectName, documentTypes }) => {
+  const { user, role } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
 
@@ -33,8 +35,8 @@ const SiteVisitRow: React.FC<{
   });
 
   const { data: documents = [], isLoading: isDocsLoading } = useQuery({
-    queryKey: ['site-visit-documents', visit.$id],
-    queryFn: () => fetchDocumentsBySiteVisit(visit.$id),
+    queryKey: ['site-visit-documents', visit.$id, user?.$id, role],
+    queryFn: () => fetchDocumentsBySiteVisit(visit.$id, user?.$id, role || undefined),
     enabled: expanded,
   });
 

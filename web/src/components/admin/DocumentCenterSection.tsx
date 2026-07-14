@@ -78,8 +78,8 @@ const DocumentCenterSection: React.FC = () => {
     if (documentTypeFilter !== 'all') {
       return documentTypeFilter;
     }
-    return allowedTypeIds.length > 0 ? allowedTypeIds : ['none'];
-  }, [documentTypeFilter, allowedTypeIds]);
+    return undefined;
+  }, [documentTypeFilter]);
 
   const hasFilters = !isAdmin || projectFilter !== 'all' || departmentFilter !== 'all' || documentTypeFilter !== 'all' || visibilityFilter !== 'all';
   const isSearching = search.length > 0;
@@ -90,13 +90,13 @@ const DocumentCenterSection: React.FC = () => {
   const documentTypeById = (id: string) => documentTypes.find((dt) => dt.$id === id);
 
   const { data: recentDocuments, isLoading: isRecentLoading } = useQuery({
-    queryKey: ['documents-recent'],
-    queryFn: fetchRecentDocuments,
+    queryKey: ['documents-recent', user?.$id, role],
+    queryFn: () => fetchRecentDocuments(user?.$id, role || undefined),
     enabled: canAccess && !hasFilters && !isSearching,
   });
 
   const { data: filteredData, isLoading: isFilteredLoading } = useQuery({
-    queryKey: ['documents', projectFilter, departmentFilter, documentTypeFilter, visibilityFilter, allowedTypeIds, page],
+    queryKey: ['documents', projectFilter, departmentFilter, documentTypeFilter, visibilityFilter, allowedTypeIds, page, user?.$id, role],
     queryFn: () => fetchDocuments({
       page,
       projectId: projectFilter === 'all' ? undefined : projectFilter,
@@ -104,6 +104,8 @@ const DocumentCenterSection: React.FC = () => {
       documentTypeId: queryDocTypeIds,
       visibility: visibilityFilter,
       excludeSiteVisitDocs: isProjectSelected,
+      currentUserId: user?.$id,
+      currentUserRole: role || undefined,
     }),
     enabled: canAccess && hasFilters && !isSearching,
   });
@@ -111,20 +113,22 @@ const DocumentCenterSection: React.FC = () => {
   // While searching, fetch a batch honouring the active filters and match by
   // project name / document name on the client (neither is server-searchable).
   const { data: searchResults, isLoading: isSearchLoading } = useQuery({
-    queryKey: ['documents-search', projectFilter, departmentFilter, documentTypeFilter, visibilityFilter, allowedTypeIds],
+    queryKey: ['documents-search', projectFilter, departmentFilter, documentTypeFilter, visibilityFilter, allowedTypeIds, user?.$id, role],
     queryFn: () => searchDocuments({
       projectId: projectFilter === 'all' ? undefined : projectFilter,
       department: 'all',
       documentTypeId: queryDocTypeIds,
       visibility: visibilityFilter,
       excludeSiteVisitDocs: isProjectSelected,
+      currentUserId: user?.$id,
+      currentUserRole: role || undefined,
     }),
     enabled: canAccess && isSearching,
   });
 
   const projectNameById = (id: string) => {
     const p = projects.find((proj) => proj.$id === id);
-    return p ? (p.project_code || p.name) : 'Unknown Project';
+    return p ? (p.project_code || p.name || 'Unknown Project') : 'Unknown Project';
   };
 
   const matchedDocuments = useMemo(() => {

@@ -2,6 +2,7 @@ import { databases, storage, COLLECTIONS, DATABASE_ID, DOCUMENTS_BUCKET_ID, acco
 import { ID, Query } from 'appwrite';
 import { DocumentRecord, DocumentVisibility, Department } from '@/types/payload-types';
 import { isAllowedFile } from '@/lib/documentTypes';
+import { filterAccessibleDocuments } from '@/lib/permissions';
 
 const PAGE_SIZE = 9;
 const RECENT_LIMIT = 6;
@@ -15,6 +16,8 @@ export interface DocumentListParams {
   visibility?: string;
   /** When true, omit documents that belong to a site visit (shown separately). */
   excludeSiteVisitDocs?: boolean;
+  currentUserId?: string;
+  currentUserRole?: string;
 }
 
 export interface DocumentListResult {
@@ -33,21 +36,38 @@ function buildFilterQueries(params: Omit<DocumentListParams, 'page'>) {
 }
 
 export async function fetchDocuments(
-  { page = 0, projectId, department, documentTypeId, visibility, excludeSiteVisitDocs }: DocumentListParams = {}
+  params: DocumentListParams = {}
 ): Promise<DocumentListResult> {
+  const { page = 0, currentUserId, currentUserRole } = params;
   try {
+    const isAdmin = currentUserRole === 'admin';
+    const limit = isAdmin ? PAGE_SIZE : 100;
+    const offset = isAdmin ? page * PAGE_SIZE : 0;
+
     const queries = [
       Query.orderDesc('uploaded_at'),
-      Query.limit(PAGE_SIZE),
-      Query.offset(page * PAGE_SIZE),
-      ...buildFilterQueries({ projectId, department, documentTypeId, visibility, excludeSiteVisitDocs }),
+      Query.limit(limit),
+      Query.offset(offset),
+      ...buildFilterQueries(params),
     ];
 
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, queries);
+    const docs = response.documents as unknown as DocumentRecord[];
+
+    if (isAdmin) {
+      return {
+        documents: docs,
+        total: response.total,
+      };
+    }
+
+    // Client-side filtering and pagination for non-admins
+    const filteredDocs = filterAccessibleDocuments(docs, currentUserId, currentUserRole);
+    const paginatedDocs = filteredDocs.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
     return {
-      documents: response.documents as unknown as DocumentRecord[],
-      total: response.total,
+      documents: paginatedDocs,
+      total: filteredDocs.length,
     };
   } catch (error) {
     console.error('Error fetching documents:', error);
@@ -62,30 +82,36 @@ export async function fetchDocuments(
  * so the matching is performed in the component over this result set.
  */
 export async function searchDocuments(
-  { projectId, department, documentTypeId, visibility, excludeSiteVisitDocs }: Omit<DocumentListParams, 'page'> = {}
+  params: Omit<DocumentListParams, 'page'> = {}
 ): Promise<DocumentRecord[]> {
   try {
     const queries = [
       Query.orderDesc('uploaded_at'),
       Query.limit(SEARCH_LIMIT),
-      ...buildFilterQueries({ projectId, department, documentTypeId, visibility, excludeSiteVisitDocs }),
+      ...buildFilterQueries(params),
     ];
 
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, queries);
-    return response.documents as unknown as DocumentRecord[];
+    const docs = response.documents as unknown as DocumentRecord[];
+    return filterAccessibleDocuments(docs, params.currentUserId, params.currentUserRole);
   } catch (error) {
     console.error('Error searching documents:', error);
     throw error;
   }
 }
 
-export async function fetchRecentDocuments(): Promise<DocumentRecord[]> {
+export async function fetchRecentDocuments(userId?: string, userRole?: string): Promise<DocumentRecord[]> {
   try {
+    const limit = userRole === 'admin' ? RECENT_LIMIT : 100;
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, [
       Query.orderDesc('uploaded_at'),
-      Query.limit(RECENT_LIMIT),
+      Query.limit(limit),
     ]);
-    return response.documents as unknown as DocumentRecord[];
+    const docs = response.documents as unknown as DocumentRecord[];
+    if (userRole === 'admin') return docs;
+
+    // Filter and return at most RECENT_LIMIT
+    return filterAccessibleDocuments(docs, userId, userRole).slice(0, RECENT_LIMIT);
   } catch (error) {
     console.error('Error fetching recent documents:', error);
     throw error;
@@ -93,14 +119,15 @@ export async function fetchRecentDocuments(): Promise<DocumentRecord[]> {
 }
 
 /** Fetches every document linked to a specific site visit. */
-export async function fetchDocumentsBySiteVisit(siteVisitId: string): Promise<DocumentRecord[]> {
+export async function fetchDocumentsBySiteVisit(siteVisitId: string, userId?: string, userRole?: string): Promise<DocumentRecord[]> {
   try {
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, [
       Query.equal('site_visit_id', siteVisitId),
       Query.orderDesc('uploaded_at'),
       Query.limit(SEARCH_LIMIT),
     ]);
-    return response.documents as unknown as DocumentRecord[];
+    const docs = response.documents as unknown as DocumentRecord[];
+    return filterAccessibleDocuments(docs, userId, userRole);
   } catch (error) {
     console.error('Error fetching site visit documents:', error);
     throw error;
@@ -139,6 +166,8 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Docume
       file_type: input.file.type,
       document_visibility: input.visibility,
       department: input.visibility === 'internal' ? input.department ?? null : null,
+      allowed_departments: input.visibility === 'internal' && input.department ? [input.department] : [],
+      allowed_users: [],
       document_type_id: input.documentTypeId,
       site_visit_id: input.siteVisitId ?? null,
       uploaded_by: input.uploadedBy,
@@ -241,6 +270,29 @@ export async function getAuthenticatedFileBlob(fileId: string, isDownload = fals
     console.error('Error fetching authenticated file:', error);
     // Fallback to direct URL if anything fails
     return url;
+  }
+}
+
+export async function updateDocumentPermissions(
+  documentId: string,
+  allowedDepartments: string[],
+  allowedUsers: string[]
+): Promise<DocumentRecord> {
+  try {
+    const response = await databases.updateDocument(
+      DATABASE_ID,
+      COLLECTIONS.DOCUMENTS,
+      documentId,
+      {
+        allowed_departments: allowedDepartments,
+        allowed_users: allowedUsers,
+        updated_at: new Date().toISOString()
+      }
+    );
+    return response as unknown as DocumentRecord;
+  } catch (error) {
+    console.error('Error updating document permissions:', error);
+    throw error;
   }
 }
 

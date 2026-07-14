@@ -701,7 +701,9 @@
         { "key": "uploaded_by", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
         { "key": "uploaded_at", "type": "datetime", "required": true, "array": false },
         { "key": "updated_at", "type": "datetime", "required": false, "array": false },
-        { "key": "status", "type": "string", "required": false, "array": false, "size": 20, "default": "Active", "encrypt": false }
+        { "key": "status", "type": "string", "required": false, "array": false, "size": 20, "default": "Active", "encrypt": false },
+        { "key": "allowed_departments", "type": "string", "required": false, "array": true, "size": 50, "encrypt": false },
+        { "key": "allowed_users", "type": "string", "required": false, "array": true, "size": 255, "encrypt": false }
       ],
       "indexes": [
         { "key": "idx_project_id", "type": "key", "attributes": ["project_id"], "orders": ["ASC"] },

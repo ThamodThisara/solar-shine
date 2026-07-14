@@ -130,12 +130,12 @@ const ProjectSummary: React.FC = () => {
     if (documentTypeFilter !== 'all') {
       return documentTypeFilter;
     }
-    return allowedTypeIds.length > 0 ? allowedTypeIds : ['none'];
-  }, [documentTypeFilter, allowedTypeIds]);
+    return undefined;
+  }, [documentTypeFilter]);
 
   // 3. Fetch general project documents (excluding site visit ones)
   const { data: docsData, isLoading: isDocsLoading } = useQuery({
-    queryKey: ['project-general-docs', projectId, departmentFilter, documentTypeFilter, visibilityFilter, allowedTypeIds],
+    queryKey: ['project-general-docs', projectId, departmentFilter, documentTypeFilter, visibilityFilter, allowedTypeIds, user?.$id, role],
     queryFn: () =>
       fetchDocuments({
         projectId: projectId!,
@@ -143,6 +143,8 @@ const ProjectSummary: React.FC = () => {
         department: 'all',
         documentTypeId: queryDocTypeIds,
         visibility: visibilityFilter,
+        currentUserId: user?.$id,
+        currentUserRole: role || undefined,
       }),
     enabled: !!projectId,
   });
@@ -168,7 +170,7 @@ const ProjectSummary: React.FC = () => {
       .map((e) => e.trim())
       .filter(Boolean)
       .map((email) => {
-        const u = users.find((user) => user.email.toLowerCase() === email.toLowerCase());
+        const u = users.find((user) => user.email?.toLowerCase() === email.toLowerCase());
         return u?.name || email;
       });
     if (names.length === 0) return <p className="font-semibold text-foreground mt-0.5">—</p>;

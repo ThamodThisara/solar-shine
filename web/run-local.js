@@ -87,6 +87,7 @@ const server = http.createServer(async (req, res) => {
         process.env.SMTP_PORT = process.env.SMTP_PORT || '587';
         process.env.SMTP_USERNAME = process.env.SMTP_USERNAME || '';
         process.env.SMTP_PASSWORD = process.env.SMTP_PASSWORD || '';
+        process.env.SMTP_FROM = process.env.SMTP_FROM || '';
 
         // Inject the x-appwrite-key header using the process API key if it wasn't sent from the client
         const mergedHeaders = {

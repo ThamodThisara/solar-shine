@@ -25,6 +25,13 @@ export async function completeOnboarding({
   password,
 }: CompleteOnboardingInput): Promise<void> {
   try {
+    // Clear any existing active session on the browser first to prevent session conflicts
+    try {
+      await account.deleteSession('current');
+    } catch (e) {
+      // Ignore if there is no active session
+    }
+
     await account.updateRecovery(userId, secret, password);
     await account.createEmailPasswordSession(email, password);
     await account.updateName(username);

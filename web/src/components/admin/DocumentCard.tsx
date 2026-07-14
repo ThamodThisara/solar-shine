@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { FileText, Image as ImageIcon, Download, ExternalLink, Trash2, Building2 } from 'lucide-react';
+import { FileText, Image as ImageIcon, Download, ExternalLink, Trash2, Building2, Shield } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { DocumentRecord, DocumentType } from '@/types/payload-types';
 import { getAuthenticatedFileBlob } from '@/services/documentService';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { ManagePermissionsDialog } from './content-editors/document/ManagePermissionsDialog';
 
 const departmentStyles: Record<string, string> = {
   Marketing: 'text-violet-600 bg-violet-50',
@@ -26,13 +28,17 @@ interface DocumentCardProps {
 }
 
 const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentType, onDelete }) => {
+  const { user, role } = useAuth();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
   const isImage = doc.file_type.startsWith('image/');
   const typeCode = documentType?.type ?? 'Unknown';
   const typeName = documentType?.name ?? 'Unknown Type';
 
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isDownloadLoading, setIsDownloadLoading] = useState(false);
+
+  const canManagePermissions = role === 'admin' || (user?.$id && doc.uploaded_by === user.$id);
 
   const handlePreview = async () => {
     setIsPreviewLoading(true);
@@ -130,6 +136,16 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentT
               </Button>
             )}
           </div>
+          {canManagePermissions && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="w-full mt-2 text-xs flex items-center justify-center gap-1 bg-primary/5 hover:bg-primary/10 text-black hover:text-black border border-primary/10 hover:border-black"
+              onClick={() => setIsPermissionsOpen(true)}
+            >
+              <Shield className="h-3.5 w-3.5" /> Manage Permissions
+            </Button>
+          )}
         </CardContent>
       </Card>
       <ConfirmDialog
@@ -145,6 +161,13 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentT
         cancelText="Cancel"
         variant="destructive"
       />
+      {canManagePermissions && (
+        <ManagePermissionsDialog
+          doc={doc}
+          isOpen={isPermissionsOpen}
+          onOpenChange={setIsPermissionsOpen}
+        />
+      )}
     </>
   );
 };

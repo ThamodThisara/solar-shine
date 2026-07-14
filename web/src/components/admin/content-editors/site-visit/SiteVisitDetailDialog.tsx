@@ -172,8 +172,8 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
   });
 
   const { data: documents = [], isLoading: isDocsLoading } = useQuery({
-    queryKey: ['site-visit-documents', visit.$id],
-    queryFn: () => fetchDocumentsBySiteVisit(visit.$id),
+    queryKey: ['site-visit-documents', visit.$id, currentUser.$id, role],
+    queryFn: () => fetchDocumentsBySiteVisit(visit.$id, currentUser.$id, role || undefined),
     enabled: isOpen,
   });
 
@@ -278,7 +278,7 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
     }
   }
 
-  const filteredEngineers = engineers.filter((eng) => projectEmails.has(eng.email.toLowerCase()));
+  const filteredEngineers = engineers.filter((eng) => projectEmails.has(eng.email?.toLowerCase()));
   const engineerOptions = filteredEngineers.map((eng) => ({
     value: eng.$id,
     label: eng.name || eng.email,

@@ -56,7 +56,7 @@ const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({
   const getNamesFromEmails = (email?: string) => {
     if (!email) return '—';
     const emailClean = email.trim().toLowerCase();
-    const u = users.find((user) => user.email.toLowerCase() === emailClean);
+    const u = users.find((user) => user.email?.toLowerCase() === emailClean);
     return u?.name || email;
   };
 

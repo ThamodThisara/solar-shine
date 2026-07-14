@@ -76,10 +76,11 @@ const Onboarding: React.FC = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
+                  disabled
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">Name</Label>
                 <Input
                   id="username"
                   type="text"

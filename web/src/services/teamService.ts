@@ -101,6 +101,25 @@ export async function addTeamMember(
   }
 }
 
+export async function resendInvitation(
+  teamId: string,
+  email: string
+): Promise<{ emailSent: boolean; emailError: string | null }> {
+  try {
+    return await callTeamFunction<{ emailSent: boolean; emailError: string | null }>(
+      `/teams/${teamId}/resend-invite`,
+      ExecutionMethod.POST,
+      {
+        email,
+        redirectOrigin: window.location.origin,
+      }
+    );
+  } catch (error) {
+    console.error('Error resending invitation:', error);
+    throw error;
+  }
+}
+
 /**
  * Marks the currently-authenticated user's own email as verified.
  * Used at the end of the onboarding flow.

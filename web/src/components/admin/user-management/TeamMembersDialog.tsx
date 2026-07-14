@@ -33,14 +33,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { fetchTeamMembers, addTeamMember, removeTeamMember } from '@/services/teamService';
+import { fetchTeamMembers, addTeamMember, removeTeamMember, resendInvitation } from '@/services/teamService';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface TeamMembersDialogProps {
   team: Models.Team<Models.Preferences>;
@@ -48,24 +42,17 @@ interface TeamMembersDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const roleFilterOptions = [
-  { id: 'all', label: 'All roles' },
-  { id: 'owner', label: 'Owner' },
-  { id: 'member', label: 'Member' },
-];
-
 const TeamMembersDialog: React.FC<TeamMembersDialogProps> = ({ team, open, onOpenChange }) => {
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
+  const [searchInput, setSearchInput] = useState('');
+  const debouncedSearch = useDebounce(searchInput, 300);
   const [newEmail, setNewEmail] = useState('');
-  const [newRole, setNewRole] = useState('member');
 
-  const queryKey = ['team-members', team.$id, search];
+  const queryKey = ['team-members', team.$id, debouncedSearch];
 
   const { data, isLoading } = useQuery({
     queryKey,
-    queryFn: () => fetchTeamMembers(team.$id, search || undefined),
+    queryFn: () => fetchTeamMembers(team.$id, debouncedSearch || undefined),
     enabled: open,
     meta: {
       onError: (error: Error) => toast.error(`Failed to load members: ${error.message}`),
@@ -75,22 +62,33 @@ const TeamMembersDialog: React.FC<TeamMembersDialogProps> = ({ team, open, onOpe
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['team-members', team.$id] });
 
   const addMutation = useMutation({
-    mutationFn: (email: string) => addTeamMember(team.$id, email, [newRole]),
+    mutationFn: (email: string) => addTeamMember(team.$id, email, ['member']),
     onSuccess: (result, email) => {
       invalidate();
       if (result.emailError) {
-        // Membership was created, but the setup email genuinely failed to send.
         toast.error(`${email} was added, but the setup email failed to send: ${result.emailError}`);
       } else if (result.emailSent) {
         toast.success(`Setup email sent to ${email}`);
       } else {
-        // Existing user who already completed setup — no email needed.
         toast.success(`${email} added to the team`);
       }
       setNewEmail('');
-      setNewRole('member');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to add member'),
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: (email: string) => resendInvitation(team.$id, email),
+    onSuccess: (result, email) => {
+      if (result.emailError) {
+        toast.error(`Failed to send setup email: ${result.emailError}`);
+      } else if (result.emailSent) {
+        toast.success(`Setup email sent to ${email}`);
+      } else {
+        toast.error(`Failed to send setup email`);
+      }
+    },
+    onError: (error: Error) => toast.error(error.message || 'Failed to resend invitation'),
   });
 
   const removeMutation = useMutation({
@@ -102,9 +100,7 @@ const TeamMembersDialog: React.FC<TeamMembersDialogProps> = ({ team, open, onOpe
     onError: () => toast.error('Failed to remove member'),
   });
 
-  const members = (data?.memberships ?? []).filter(
-    (m) => roleFilter === 'all' || m.roles.includes(roleFilter)
-  );
+  const members = data?.memberships ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,13 +119,6 @@ const TeamMembersDialog: React.FC<TeamMembersDialogProps> = ({ team, open, onOpe
               onChange={(e) => setNewEmail(e.target.value)}
             />
           </div>
-          <Select value={newRole} onValueChange={setNewRole}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="member">Member</SelectItem>
-              <SelectItem value="owner">Owner</SelectItem>
-            </SelectContent>
-          </Select>
           <Button
             onClick={() => addMutation.mutate(newEmail.trim())}
             disabled={!newEmail.trim() || addMutation.isPending}
@@ -141,18 +130,10 @@ const TeamMembersDialog: React.FC<TeamMembersDialogProps> = ({ team, open, onOpe
         <div className="flex gap-2 flex-wrap">
           <Input
             placeholder="Search members by name or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="max-w-sm"
           />
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {roleFilterOptions.map((opt) => (
-                <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         {isLoading ? (
@@ -166,24 +147,20 @@ const TeamMembersDialog: React.FC<TeamMembersDialogProps> = ({ team, open, onOpe
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Roles</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="w-[180px]">Name</TableHead>
+                <TableHead className="w-[200px]">Email</TableHead>
+                <TableHead className="w-[100px]">Status</TableHead>
+                <TableHead className="text-right w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {members.map((member) => (
                 <TableRow key={member.$id}>
-                  <TableCell>{member.userName || '—'}</TableCell>
-                  <TableCell>{member.userEmail}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {member.roles.map((role) => (
-                        <Badge key={role} variant="secondary">{role}</Badge>
-                      ))}
-                    </div>
+                  <TableCell className="max-w-[180px] truncate font-medium" title={member.userName || '—'}>
+                    {member.userName || '—'}
+                  </TableCell>
+                  <TableCell className="max-w-[200px] truncate" title={member.userEmail}>
+                    {member.userEmail}
                   </TableCell>
                   <TableCell>
                     <Badge variant={member.confirm ? 'default' : 'outline'}>
@@ -191,30 +168,42 @@ const TeamMembersDialog: React.FC<TeamMembersDialogProps> = ({ team, open, onOpe
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                    <div className="flex justify-end gap-2 items-center">
+                      {!member.confirm && (
+                        <Button
+                          variant="outline"
+                          className="h-8 px-2.5 text-xs whitespace-nowrap"
+                          onClick={() => resendMutation.mutate(member.userEmail)}
+                          disabled={resendMutation.isPending}
+                        >
+                          {resendMutation.isPending ? 'Sending...' : 'Resend'}
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remove Member</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to remove {member.userEmail} from "{team.name}"?
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => removeMutation.mutate(member.$id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Remove
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove Member</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to remove {member.userEmail} from "{team.name}"?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => removeMutation.mutate(member.$id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

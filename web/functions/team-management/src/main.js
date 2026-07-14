@@ -211,12 +211,44 @@ export default async ({ req, res, log, error }) => {
 
     match = path.match(/^\/teams\/([^/]+)\/memberships$/);
     if (method === 'GET' && match) {
+      const searchVal = (query.search || '').trim().toLowerCase();
+
       const result = await teams.listMemberships(
         match[1],
-        [Query.orderDesc('$createdAt'), Query.limit(100)],
-        query.search || undefined
+        [Query.orderDesc('$createdAt'), Query.limit(100)]
       );
-      return res.json(result);
+      
+      // Perform in-memory search filtering by name and email
+      let filteredMemberships = result.memberships;
+      if (searchVal) {
+        filteredMemberships = filteredMemberships.filter(m => {
+          const userName = (m.userName || '').toLowerCase();
+          const userEmail = (m.userEmail || '').toLowerCase();
+          return userName.includes(searchVal) || userEmail.includes(searchVal);
+        });
+      }
+      
+      // Determine if each user has actually onboarded (by checking if password is set and email is verified)
+      const membershipsWithConfirm = await Promise.all(
+        filteredMemberships.map(async (m) => {
+          let onboarded = false;
+          try {
+            const u = await users.get(m.userId);
+            onboarded = !!u.passwordUpdate && u.emailVerification;
+          } catch (e) {
+            // Ignore, default to false
+          }
+          return {
+            ...m,
+            confirm: onboarded
+          };
+        })
+      );
+
+      return res.json({
+        memberships: membershipsWithConfirm,
+        total: membershipsWithConfirm.length
+      });
     }
 
     if (method === 'POST' && match) {
@@ -253,11 +285,65 @@ export default async ({ req, res, log, error }) => {
         const user = await users.get(membership.userId);
         if (!user.passwordUpdate) {
           emailRequired = true;
-          if (!redirectOrigin) {
-            throw new Error('Missing redirect origin for the setup email');
+          const url = `https://solarmaps.lk/onboarding?email=${encodeURIComponent(email)}`;
+          const recoveryToken = await account.createRecovery(email, url);
+          
+          // Setup SMTP Transporter to send recovery/setup email manually
+          const smtpUser = process.env.SMTP_USERNAME;
+          const smtpPass = process.env.SMTP_PASSWORD;
+          const smtpFrom = process.env.SMTP_FROM;
+          if (!smtpUser || !smtpPass || !smtpFrom) {
+            throw new Error('SMTP_USERNAME, SMTP_PASSWORD, or SMTP_FROM is not configured in the function environment variables');
           }
-          const url = `${redirectOrigin}/onboarding?email=${encodeURIComponent(email)}`;
-          await account.createRecovery(email, url);
+          const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+            port: parseInt(process.env.SMTP_PORT || '587', 10),
+            secure: false, // TLS
+            auth: {
+              user: smtpUser,
+              pass: smtpPass
+            }
+          });
+
+          // Build onboarding link using the generated recovery secret
+          const onboardingLink = `https://solarmaps.lk/onboarding?email=${encodeURIComponent(email)}&userId=${recoveryToken.userId}&secret=${recoveryToken.secret}`;
+
+          const mailSubject = `[Solar Shine] Complete Your Account Setup`;
+          const mailHtml = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8F8F8; padding: 40px 20px; text-align: center; color: #333;">
+              <div style="max-width: 580px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); text-align: left;">
+                <div style="margin-bottom: 24px; border-bottom: 1px solid #F3F4F6; padding-bottom: 16px;">
+                  <span style="font-size: 24px; font-weight: bold; color: #000000; letter-spacing: -0.5px;">Solar <span style="color: #FEC105;">Maps</span></span>
+                </div>
+                
+                <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin-top: 0; margin-bottom: 12px; line-height: 1.25;">Complete Your Account Setup</h2>
+                <p style="font-size: 15px; color: #4B5563; margin-top: 0; margin-bottom: 20px; line-height: 1.5;">Hello <strong>${name || email}</strong>,</p>
+                <p style="font-size: 15px; color: #4B5563; margin-top: 0; margin-bottom: 24px; line-height: 1.5;">You have been invited to join the Solar Shine team. Please click the button below to complete your account registration and set your password.</p>
+                
+                <div style="text-align: center; margin-bottom: 28px;">
+                  <a href="${onboardingLink}" style="display: inline-block; padding: 12px 28px; background-color: #FEC105; color: #000000; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; transition: background-color 0.2s;">Set Up Account</a>
+                </div>
+
+                <p style="font-size: 14px; color: #6B7280; margin-bottom: 24px; line-height: 1.5;">Or copy and paste this URL into your browser:</p>
+                <p style="font-size: 13px; word-break: break-all; color: #2563EB; background-color: #F3F4F6; padding: 12px; border-radius: 6px; margin-bottom: 28px;">${onboardingLink}</p>
+                
+                <p style="font-size: 12px; color: #9CA3AF; margin: 0; border-top: 1px solid #F3F4F6; padding-top: 16px; line-height: 1.4;">
+                  This is an automated notification. Please do not reply directly to this email.<br/>
+                  &copy; ${new Date().getFullYear()} Solar Shine Team.
+                </p>
+              </div>
+            </div>
+          `;
+
+          const mailOptions = {
+            from: `"Solar Shine" <${smtpFrom}>`,
+            to: email,
+            subject: mailSubject,
+            text: `Hello ${name || email},\n\nYou have been invited to join the Solar Shine team. Please set up your account by opening this link: ${onboardingLink}\n\nBest regards,\nSolar Shine Team`,
+            html: mailHtml
+          };
+
+          await transporter.sendMail(mailOptions);
           emailSent = true;
         }
       } catch (e) {
@@ -266,6 +352,83 @@ export default async ({ req, res, log, error }) => {
       }
 
       return res.json({ membership, emailRequired, emailSent, emailError });
+    }
+
+    match = path.match(/^\/teams\/([^/]+)\/resend-invite$/);
+    if (method === 'POST' && match) {
+      const { email, redirectOrigin } = parseBody();
+      if (!email) {
+        return res.json({ error: 'Missing email' }, 400);
+      }
+
+      let emailSent = false;
+      let emailError = null;
+      try {
+        const url = `https://solarmaps.lk/onboarding?email=${encodeURIComponent(email)}`;
+        const recoveryToken = await account.createRecovery(email, url);
+
+        const smtpUser = process.env.SMTP_USERNAME;
+        const smtpPass = process.env.SMTP_PASSWORD;
+        const smtpFrom = process.env.SMTP_FROM;
+        if (!smtpUser || !smtpPass || !smtpFrom) {
+          throw new Error('SMTP_USERNAME, SMTP_PASSWORD, or SMTP_FROM is not configured in the function environment variables');
+        }
+
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+          port: parseInt(process.env.SMTP_PORT || '587', 10),
+          secure: false, // TLS
+          auth: {
+            user: smtpUser,
+            pass: smtpPass
+          }
+        });
+
+        const onboardingLink = `https://solarmaps.lk/onboarding?email=${encodeURIComponent(email)}&userId=${recoveryToken.userId}&secret=${recoveryToken.secret}`;
+
+        const mailSubject = `[Solar Shine] Complete Your Account Setup`;
+        const mailHtml = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8F8F8; padding: 40px 20px; text-align: center; color: #333;">
+            <div style="max-width: 580px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); text-align: left;">
+              <div style="margin-bottom: 24px; border-bottom: 1px solid #F3F4F6; padding-bottom: 16px;">
+                <span style="font-size: 24px; font-weight: bold; color: #000000; letter-spacing: -0.5px;">Solar <span style="color: #FEC105;">Maps</span></span>
+              </div>
+              
+              <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin-top: 0; margin-bottom: 12px; line-height: 1.25;">Complete Your Account Setup</h2>
+              <p style="font-size: 15px; color: #4B5563; margin-top: 0; margin-bottom: 20px; line-height: 1.5;">Hello,</p>
+              <p style="font-size: 15px; color: #4B5563; margin-top: 0; margin-bottom: 24px; line-height: 1.5;">You have been invited to join the Solar Shine team. Please click the button below to complete your account registration and set your password.</p>
+              
+              <div style="text-align: center; margin-bottom: 28px;">
+                <a href="${onboardingLink}" style="display: inline-block; padding: 12px 28px; background-color: #FEC105; color: #000000; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; transition: background-color 0.2s;">Set Up Account</a>
+              </div>
+
+              <p style="font-size: 14px; color: #6B7280; margin-bottom: 24px; line-height: 1.5;">Or copy and paste this URL into your browser:</p>
+              <p style="font-size: 13px; word-break: break-all; color: #2563EB; background-color: #F3F4F6; padding: 12px; border-radius: 6px; margin-bottom: 28px;">${onboardingLink}</p>
+              
+              <p style="font-size: 12px; color: #9CA3AF; margin: 0; border-top: 1px solid #F3F4F6; padding-top: 16px; line-height: 1.4;">
+                This is an automated notification. Please do not reply directly to this email.<br/>
+                &copy; ${new Date().getFullYear()} Solar Shine Team.
+              </p>
+            </div>
+          </div>
+        `;
+
+        const mailOptions = {
+          from: `"Solar Shine" <${smtpFrom}>`,
+          to: email,
+          subject: mailSubject,
+          text: `Hello,\n\nYou have been invited to join the Solar Shine team. Please set up your account by opening this link: ${onboardingLink}\n\nBest regards,\nSolar Shine Team`,
+          html: mailHtml
+        };
+
+        await transporter.sendMail(mailOptions);
+        emailSent = true;
+      } catch (e) {
+        emailError = e.message;
+        error(`Failed to resend setup email: ${e.message}`);
+      }
+
+      return res.json({ emailSent, emailError });
     }
 
     match = path.match(/^\/teams\/([^/]+)\/memberships\/([^/]+)$/);
@@ -388,13 +551,19 @@ export default async ({ req, res, log, error }) => {
       const databaseId = process.env.VITE_APPWRITE_DATABASE_ID || '6873ba790033a7d5cfdb';
 
       // Setup SMTP Transporter
+      const smtpUser = process.env.SMTP_USERNAME;
+      const smtpPass = process.env.SMTP_PASSWORD;
+      const smtpFrom = process.env.SMTP_FROM;
+      if (!smtpUser || !smtpPass || !smtpFrom) {
+        throw new Error('SMTP_USERNAME, SMTP_PASSWORD, or SMTP_FROM is not configured in the function environment variables');
+      }
       const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
         port: parseInt(process.env.SMTP_PORT || '587', 10),
         secure: false, // TLS
         auth: {
-          user: process.env.SMTP_USERNAME,
-          pass: process.env.SMTP_PASSWORD
+          user: smtpUser,
+          pass: smtpPass
         }
       });
 
@@ -565,7 +734,7 @@ export default async ({ req, res, log, error }) => {
           `;
 
           const mailOptions = {
-            from: `"Solar Shine" <helixz.heshan@gmail.com>`,
+            from: `"Solar Shine" <${smtpFrom}>`,
             to: email,
             subject: mailSubject,
             text: isSiteVisit
