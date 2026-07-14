@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 import { Combobox } from '@/components/ui/combobox';
 import { DocumentRecord, Department } from '@/types/payload-types';
 import { updateDocumentPermissions } from '@/services/documentService';
@@ -45,6 +46,7 @@ export const ManagePermissionsDialog: React.FC<ManagePermissionsDialogProps> = (
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [userSearchValue, setUserSearchValue] = useState<string>('');
+  const [onlySpecificUsers, setOnlySpecificUsers] = useState<boolean>(false);
 
   // Fetch all platform users
   const { data: allUsers = [], isLoading: isUsersLoading } = useQuery({
@@ -92,9 +94,14 @@ export const ManagePermissionsDialog: React.FC<ManagePermissionsDialogProps> = (
       
       // If both allowed lists are empty (never customized) and visibility is internal, default to all departments
       const allowedUsers = doc.allowed_users || [];
-      if (initialDepts.length === 0 && allowedUsers.length === 0 && doc.document_visibility === 'internal') {
+      const isCustomized = doc.updated_at && doc.uploaded_at && doc.updated_at !== doc.uploaded_at;
+      if (!isCustomized && initialDepts.length === 0 && allowedUsers.length === 0 && doc.document_visibility === 'internal') {
         initialDepts = DEPARTMENTS.map(d => d.value);
       }
+
+      // Specific user access only is enabled if the document is customized and no departments are checked, or if explicit users exist without departments
+      const isOnlyUsers = (isCustomized && depts.length === 0) || (allowedUsers.length > 0 && depts.length === 0);
+      setOnlySpecificUsers(!!isOnlyUsers);
       
       setSelectedDepts(initialDepts);
       setSelectedUserIds(allowedUsers);
@@ -104,8 +111,8 @@ export const ManagePermissionsDialog: React.FC<ManagePermissionsDialogProps> = (
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      const deptsToSave = [...selectedDepts];
-      if (ownerDept && !deptsToSave.includes(ownerDept)) {
+      const deptsToSave = onlySpecificUsers ? [] : [...selectedDepts];
+      if (!onlySpecificUsers && ownerDept && !deptsToSave.includes(ownerDept)) {
         deptsToSave.push(ownerDept);
       }
       return updateDocumentPermissions(doc.$id, deptsToSave, selectedUserIds);
@@ -148,15 +155,25 @@ export const ManagePermissionsDialog: React.FC<ManagePermissionsDialogProps> = (
 
   const userOptions = allUsers
     .filter((u) => u.$id !== doc.uploaded_by && !selectedUserIds.includes(u.$id))
-    .map((u) => ({
-      value: u.$id,
-      label: `${u.name} (${u.email})`,
-      keywords: `${u.name} ${u.email}`,
-    }));
+    .map((u) => {
+      let group = 'Other Users';
+      if (u.role === 'admin') group = 'Admins';
+      else if (u.role === 'sales_manager') group = 'Sales';
+      else if (u.role === 'hr') group = 'HR';
+      else if (u.role === 'project_engineer') group = 'Project Engineers';
+      else if (u.role === 'planning_engineer') group = 'Planning Engineers';
+
+      return {
+        value: u.$id,
+        label: u.name ? `${u.name} (${u.email})` : u.email,
+        keywords: `${u.name || ''} ${u.email}`,
+        group,
+      };
+    });
 
   const resolveUserName = (id: string) => {
     const u = allUsers.find((user) => user.$id === id);
-    return u ? `${u.name} (${u.email})` : id;
+    return u ? (u.name ? `${u.name} (${u.email})` : u.email) : id;
   };
 
   return (
@@ -174,31 +191,40 @@ export const ManagePermissionsDialog: React.FC<ManagePermissionsDialogProps> = (
         <div className="py-4 space-y-6">
           {/* Departments Permission */}
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-              Department Access
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className={`text-sm font-semibold flex items-center gap-1.5 ${onlySpecificUsers ? 'text-muted-foreground/60' : 'text-foreground'}`}>
+                Department Access
+              </h4>
+              {onlySpecificUsers && (
+                <span className="text-[11px] text-orange-500 font-medium bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
+                  Ignored (Specific users active)
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
               Select which departments are allowed to view this document.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
               {DEPARTMENTS.map((dept) => {
                 const isOwner = ownerDept === dept.value;
+                const isDisabled = isOwner || onlySpecificUsers;
+                const isChecked = !onlySpecificUsers && (isOwner || selectedDepts.includes(dept.value));
                 return (
                   <div
                     key={dept.value}
-                    className="flex items-center space-x-2 border rounded-md p-2 bg-muted/20 hover:bg-muted/50 transition-colors"
+                    className={`flex items-center space-x-2 border rounded-md p-2 transition-colors ${onlySpecificUsers ? 'bg-muted/10 opacity-50' : 'bg-muted/20 hover:bg-muted/50'}`}
                   >
                     <Checkbox
                       id={`dept-${dept.value}`}
-                      checked={isOwner || selectedDepts.includes(dept.value)}
-                      disabled={isOwner}
+                      checked={isChecked}
+                      disabled={isDisabled}
                       onCheckedChange={(checked) =>
                         handleToggleDept(dept.value, !!checked)
                       }
                     />
                     <Label
                       htmlFor={`dept-${dept.value}`}
-                      className={`text-xs font-medium ${isOwner ? 'cursor-not-allowed text-muted-foreground opacity-70' : 'cursor-pointer'}`}
+                      className={`text-xs font-medium ${isDisabled ? 'cursor-not-allowed text-muted-foreground opacity-70' : 'cursor-pointer'}`}
                     >
                       {dept.label}
                     </Label>
@@ -212,9 +238,24 @@ export const ManagePermissionsDialog: React.FC<ManagePermissionsDialogProps> = (
 
           {/* Users Permission */}
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-              Specific User Access
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                Specific User Access
+              </h4>
+              <div className="flex items-center space-x-2 bg-muted/40 px-2.5 py-1.5 rounded-lg border">
+                <Switch
+                  id="only-specific-users"
+                  checked={onlySpecificUsers}
+                  onCheckedChange={setOnlySpecificUsers}
+                />
+                <Label
+                  htmlFor="only-specific-users"
+                  className="text-[11px] cursor-pointer font-semibold text-muted-foreground select-none"
+                >
+                  Restrict to specific users only
+                </Label>
+              </div>
+            </div>
             <p className="text-xs text-muted-foreground">
               Grant explicit view permission to individuals from other departments.
             </p>
