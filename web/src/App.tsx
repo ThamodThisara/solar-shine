@@ -74,6 +74,22 @@ const App = () => (
               }
             />
             <Route
+              path="/finance"
+              element={
+                <ProtectedRoute allowedRoles={PANELS.finance.roles}>
+                  <Engineer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/marketing"
+              element={
+                <ProtectedRoute allowedRoles={PANELS.marketing.roles}>
+                  <Engineer />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/project-summary/:projectId"
               element={
                 <ProtectedRoute allowedRoles={LOGIN_ALLOWED_ROLES}>

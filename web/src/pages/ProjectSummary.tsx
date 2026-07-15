@@ -13,6 +13,7 @@ import { fetchSiteVisits } from '@/services/siteVisitService';
 import { fetchDocuments } from '@/services/documentService';
 import { fetchUsers } from '@/services/userService';
 import { fetchDocumentTypes, getTypeGroupLabel, typeServesDepartment } from '@/services/documentTypeService';
+import { getDocumentDepartmentForRole, getHomeRoute } from '@/config/roles';
 import { formatCurrency } from '@/lib/utils';
 import DocumentCard from '@/components/admin/DocumentCard';
 import SiteVisitCard from '@/components/admin/SiteVisitCard';
@@ -57,11 +58,7 @@ const LayoutWrapper: React.FC<LayoutWrapperProps> = ({ children, role, navigate 
         activeSection={activeSec}
         onSectionChange={(sec) => {
           setActiveSec(sec);
-          if (role === 'sales_manager') {
-            navigate('/sales');
-          } else {
-            navigate('/engineer');
-          }
+          navigate(getHomeRoute(role) ?? '/engineer');
         }}
       >
         {children}
@@ -85,13 +82,7 @@ const ProjectSummary: React.FC = () => {
 
   // Redirect back to dashboard based on role
   const handleBack = () => {
-    if (role === 'admin') {
-      navigate('/admin');
-    } else if (role === 'sales_manager') {
-      navigate('/sales');
-    } else {
-      navigate('/engineer');
-    }
+    navigate(getHomeRoute(role) ?? '/engineer');
   };
 
   // 1. Fetch project execution details
@@ -118,8 +109,8 @@ const ProjectSummary: React.FC = () => {
   const allowedTypeIds = useMemo(() => {
     let filtered = documentTypes;
     if (role !== 'admin') {
-      const userDept = role === 'sales_manager' ? 'sales' : role === 'hr' ? 'hr' : 'engineer';
-      filtered = filtered.filter(dt => typeServesDepartment(dt, userDept));
+      const userDept = getDocumentDepartmentForRole(role);
+      filtered = userDept ? filtered.filter(dt => typeServesDepartment(dt, userDept)) : [];
     } else if (departmentFilter !== 'all') {
       filtered = filtered.filter(dt => typeServesDepartment(dt, departmentFilter));
     }

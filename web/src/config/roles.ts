@@ -4,11 +4,20 @@
  * This is the single source of truth for role-based access in the app. To add a
  * new role or panel in the future, you typically only need to:
  *   1. Add the role string to `AppRole` (or just rely on the generic string type).
- *   2. Add/extend a `PanelDefinition` in `PANELS` with its route and allowed roles.
- *   3. List the sections the panel exposes.
+ *   2. Add/extend a `PanelDefinition` in `PANELS` with its route and allowed roles,
+ *      and mount that route in App.tsx.
+ *   3. Grant the role its sections via `ENGINEER_ROLES` / `SECTION_ACCESS`.
+ *   4. Map it in `ROLE_DOCUMENT_DEPARTMENT` so document scoping resolves, and give
+ *      it a `ROLE_PANEL_LABEL` if the panel heading is not "Engineer".
+ *   5. Add the role to the `TEAM_ROLE_OPTIONS` dropdown in UserManagementSection,
+ *      and to `TEAM_NAME_ROLE_RULES` / `ROLE_HOME_PATH` in the team-management
+ *      function (its notification links resolve roles server-side).
  * The routing (App.tsx), route guards (ProtectedRoute), login redirect, and the
  * per-section authorization checks all read from here, so no other wiring changes.
  */
+
+import { Department } from '@/types/payload-types';
+import { OWNER_DEPARTMENT } from '@/lib/documentTypes';
 
 export type AppRole =
   | 'admin'
@@ -16,6 +25,8 @@ export type AppRole =
   | 'planning_engineer'
   | 'sales_manager'
   | 'hr'
+  | 'finance_manager'
+  | 'marketing_manager'
   | (string & {});
 
 /** A logical feature/section inside a panel. */
@@ -34,9 +45,22 @@ export interface PanelDefinition {
   roles: AppRole[];
 }
 
-export const ENGINEER_ROLES: AppRole[] = ['project_engineer', 'planning_engineer', 'sales_manager'];
+/**
+ * Non-admin staff roles that share the engineer panel. Despite the name this is
+ * broader than the two engineer roles — it is the set `SECTION_ACCESS` grants the
+ * shared sections to, and backs `isEngineer` on the auth context.
+ */
+export const ENGINEER_ROLES: AppRole[] = [
+  'project_engineer',
+  'planning_engineer',
+  'sales_manager',
+  'finance_manager',
+  'marketing_manager',
+];
 
-export const PANELS: Record<'admin' | 'engineer' | 'sales' | 'hr', PanelDefinition> = {
+export type PanelId = 'admin' | 'engineer' | 'sales' | 'hr' | 'finance' | 'marketing';
+
+export const PANELS: Record<PanelId, PanelDefinition> = {
   admin: {
     id: 'admin',
     path: '/admin',
@@ -57,6 +81,16 @@ export const PANELS: Record<'admin' | 'engineer' | 'sales' | 'hr', PanelDefiniti
     path: '/hr',
     roles: ['hr'],
   },
+  finance: {
+    id: 'finance',
+    path: '/finance',
+    roles: ['finance_manager'],
+  },
+  marketing: {
+    id: 'marketing',
+    path: '/marketing',
+    roles: ['marketing_manager'],
+  },
 };
 
 /**
@@ -68,6 +102,56 @@ export const SECTION_ACCESS: Record<string, AppRole[]> = {
   'document-center': ['admin', ...ENGINEER_ROLES, 'hr'],
   'site-visits': ['admin', ...ENGINEER_ROLES, 'hr'],
 };
+
+/**
+ * Short label for the panel a role works in, used for the panel heading and the
+ * header badge (e.g. "Finance" -> "Finance Panel"). Defaults to "Engineer" for
+ * the engineer roles and anything unmapped.
+ */
+export const ROLE_PANEL_LABEL: Record<string, string> = {
+  hr: 'HR',
+  sales_manager: 'Sales',
+  finance_manager: 'Finance',
+  marketing_manager: 'Marketing',
+};
+
+export function getPanelLabelForRole(role?: string | null): string {
+  if (!role) return 'Engineer';
+  return ROLE_PANEL_LABEL[role] ?? 'Engineer';
+}
+
+/**
+ * The document-type department each role belongs to. Roles absent from this map
+ * (notably `admin`, who is never scoped to one department) have no department.
+ */
+export const ROLE_DOCUMENT_DEPARTMENT: Record<string, string> = {
+  project_engineer: 'engineer',
+  planning_engineer: 'engineer',
+  sales_manager: 'sales',
+  hr: 'hr',
+  finance_manager: 'finance',
+  marketing_manager: 'marketing',
+};
+
+/**
+ * The department a role's document types are filed under, or null when the role
+ * is not scoped to a single department. Use this rather than testing role slugs
+ * inline, so a new role only has to be added to `ROLE_DOCUMENT_DEPARTMENT`.
+ */
+export function getDocumentDepartmentForRole(role?: string | null): string | null {
+  if (!role) return null;
+  return ROLE_DOCUMENT_DEPARTMENT[role] ?? null;
+}
+
+/**
+ * The Document `department` (access taxonomy) a role belongs to, or null when the
+ * role is not scoped to one — admins included, as they see every department.
+ */
+export function getAccessDepartmentForRole(role?: string | null): Department | null {
+  const dept = getDocumentDepartmentForRole(role);
+  if (!dept) return null;
+  return OWNER_DEPARTMENT[dept] ?? null;
+}
 
 /** All roles that are allowed to authenticate into a panel at all. */
 export const LOGIN_ALLOWED_ROLES: AppRole[] = Array.from(
@@ -87,11 +171,8 @@ export function getHomeRoute(role?: string | null): string | null {
   return getPanelForRole(role)?.path ?? null;
 }
 
-/** Whether a role may access a specific panel ('admin' | 'engineer' | 'sales' | 'hr'). */
-export function canAccessPanel(
-  panel: 'admin' | 'engineer' | 'sales' | 'hr',
-  role?: string | null,
-): boolean {
+/** Whether a role may access a specific panel. */
+export function canAccessPanel(panel: PanelId, role?: string | null): boolean {
   if (!role) return false;
   return PANELS[panel].roles.includes(role);
 }

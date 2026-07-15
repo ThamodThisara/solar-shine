@@ -117,7 +117,7 @@ export interface ProjectExecution {
 
 export type DocumentVisibility = "internal" | "client_facing";
 export type DocumentStatus = "Active" | "Archived";
-export type Department = "Marketing" | "Sales" | "Finance" | "Engineering" | "HR";
+export type Department = "Marketing" | "Sales" | "Finance" | "Engineering" | "HR" | "Admin";
 
 export interface DocumentType {
   $id: string;

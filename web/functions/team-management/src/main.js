@@ -6,6 +6,39 @@ import http from 'http';
 const PROJECTS_COLLECTION_ID = 'projects';
 
 /**
+ * Fallback role for teams created before `prefs.role` was stored, inferred from
+ * the team name. Ordered most- to least-specific: "marketing" is tested before
+ * "admin" so an "Admin & Marketing" team resolves to the more specific role.
+ */
+const TEAM_NAME_ROLE_RULES = [
+  ['planning', 'planning_engineer'],
+  ['project', 'project_engineer'],
+  ['sales', 'sales_manager'],
+  ['finance', 'finance_manager'],
+  ['marketing', 'marketing_manager'],
+  ['admin', 'admin'],
+  ['hr', 'hr'],
+];
+
+/** Resolves a team's role from `prefs.role`, falling back to its name. */
+function resolveTeamRole(team) {
+  if (team.prefs?.role) return team.prefs.role;
+  const lowerName = (team.name || '').toLowerCase();
+  const match = TEAM_NAME_ROLE_RULES.find(([needle]) => lowerName.includes(needle));
+  return match ? match[1] : undefined;
+}
+
+/** Panel path each role lands on. Roles without an entry fall back to `/admin`. */
+const ROLE_HOME_PATH = {
+  sales_manager: '/sales',
+  hr: '/hr',
+  finance_manager: '/finance',
+  marketing_manager: '/marketing',
+  project_engineer: '/engineer',
+  planning_engineer: '/engineer',
+};
+
+/**
  * Computes the next sequential project code for a given prefix in the CURRENT
  * (server-clock) year, in the form `PREFIX-YYYY-0001`. The year is derived from
  * the function host clock so it can't be skewed by a client's device clock.
@@ -114,21 +147,7 @@ export default async ({ req, res, log, error }) => {
       const teamList = await teams.list([Query.limit(100)]);
       const teamRoleMap = {};
       for (const t of teamList.teams) {
-        let role = t.prefs?.role;
-        if (!role) {
-          const lowerName = t.name.toLowerCase();
-          if (lowerName.includes('planning')) {
-            role = 'planning_engineer';
-          } else if (lowerName.includes('project')) {
-            role = 'project_engineer';
-          } else if (lowerName.includes('sales')) {
-            role = 'sales_manager';
-          } else if (lowerName.includes('admin')) {
-            role = 'admin';
-          } else if (lowerName.includes('hr')) {
-            role = 'hr';
-          }
-        }
+        const role = resolveTeamRole(t);
         if (role) {
           teamRoleMap[t.$id] = role;
         }
@@ -590,15 +609,7 @@ export default async ({ req, res, log, error }) => {
               for (const t of teamList.teams) {
                 const memberships = await teams.listMemberships(t.$id, [Query.limit(100)]);
                 if (memberships.memberships.some(m => m.userId === userId)) {
-                  role = t.prefs?.role;
-                  if (!role) {
-                    const lowerName = t.name.toLowerCase();
-                    if (lowerName.includes('planning')) role = 'planning_engineer';
-                    else if (lowerName.includes('project')) role = 'project_engineer';
-                    else if (lowerName.includes('sales')) role = 'sales_manager';
-                    else if (lowerName.includes('admin')) role = 'admin';
-                    else if (lowerName.includes('hr')) role = 'hr';
-                  }
+                  role = resolveTeamRole(t);
                   if (role) break;
                 }
               }
@@ -608,14 +619,7 @@ export default async ({ req, res, log, error }) => {
           }
 
           // Choose correct path based on resolved role
-          let targetPath = '/admin';
-          if (role === 'sales_manager') {
-            targetPath = '/sales';
-          } else if (role === 'hr') {
-            targetPath = '/hr';
-          } else if (role === 'project_engineer' || role === 'planning_engineer') {
-            targetPath = '/engineer';
-          }
+          const targetPath = ROLE_HOME_PATH[role] ?? '/admin';
 
           const isSiteVisit = type === 'site_visit';
           let inAppLink = targetPath;

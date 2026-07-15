@@ -4,6 +4,7 @@ import { Home, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import NotificationBell from '../layout/NotificationBell';
+import { getPanelLabelForRole } from '@/config/roles';
 
 interface EngineerUser {
   name?: string;
@@ -59,7 +60,7 @@ const EngineerHeader: React.FC<EngineerHeaderProps> = ({ user, onMenuClick }) =>
             </div>
           </div>
           <Badge variant="secondary" className={badgeClass}>
-            {isHr ? 'HR' : user?.role === 'sales_manager' ? 'Sales' : 'Engineer'}
+            {getPanelLabelForRole(user?.role)}
           </Badge>
         </div>
 

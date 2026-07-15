@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { Combobox } from '@/components/ui/combobox';
-import { canAccessSection } from '@/config/roles';
+import { canAccessSection, getDocumentDepartmentForRole } from '@/config/roles';
 import { DocumentRecord } from '@/types/payload-types';
 import {
   fetchDocuments,
@@ -66,8 +66,8 @@ const DocumentCenterSection: React.FC = () => {
   const allowedTypeIds = useMemo(() => {
     let filtered = documentTypes;
     if (!isAdmin) {
-      const userDept = role === 'sales_manager' ? 'sales' : role === 'hr' ? 'hr' : 'engineer';
-      filtered = filtered.filter(dt => typeServesDepartment(dt, userDept));
+      const userDept = getDocumentDepartmentForRole(role);
+      filtered = userDept ? filtered.filter(dt => typeServesDepartment(dt, userDept)) : [];
     } else if (departmentFilter !== 'all') {
       filtered = filtered.filter(dt => typeServesDepartment(dt, departmentFilter));
     }

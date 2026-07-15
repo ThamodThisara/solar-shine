@@ -54,6 +54,8 @@ const TEAM_ROLE_OPTIONS = [
   { value: 'sales_manager', label: 'Sales Manager' },
   { value: 'admin', label: 'Administrator' },
   { value: 'hr', label: 'HR' },
+  { value: 'finance_manager', label: 'Finance Manager' },
+  { value: 'marketing_manager', label: 'Marketing Manager' },
 ];
 
 const UserManagementSection: React.FC = () => {

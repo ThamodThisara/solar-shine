@@ -29,6 +29,7 @@ import {
 } from '@/services/documentService';
 import { isAllowedFile, ALLOWED_FILE_EXTENSIONS } from '@/lib/documentTypes';
 import { getTypeGroupLabel, typeServesDepartment } from '@/services/documentTypeService';
+import { getDocumentDepartmentForRole } from '@/config/roles';
 import DocumentCard from '@/components/admin/DocumentCard';
 import { PlatformUser, fetchEngineers } from '@/services/userService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -105,7 +106,8 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
 
   const filteredTypes = React.useMemo(() => {
     if (isAdmin) return documentTypes;
-    const userDept = role === 'sales_manager' ? 'sales' : 'engineer';
+    const userDept = getDocumentDepartmentForRole(role);
+    if (!userDept) return [];
     return documentTypes.filter(dt => typeServesDepartment(dt, userDept));
   }, [documentTypes, isAdmin, role]);
 

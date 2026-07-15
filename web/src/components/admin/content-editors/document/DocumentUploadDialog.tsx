@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { cn, formatFileSize } from '@/lib/utils';
 import { ALLOWED_FILE_EXTENSIONS, isAllowedFile } from '@/lib/documentTypes';
 import { Department, DocumentVisibility, DocumentType } from '@/types/payload-types';
+import { getDocumentDepartmentForRole } from '@/config/roles';
 import { UploadDocumentsInput } from '@/services/documentService';
 import {
   getTypeGroupLabel,
@@ -63,7 +64,8 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
 
   const allowedTypes = React.useMemo(() => {
     if (isAdmin) return documentTypes;
-    const userDept = role === 'sales_manager' ? 'sales' : role === 'hr' ? 'hr' : 'engineer';
+    const userDept = getDocumentDepartmentForRole(role);
+    if (!userDept) return [];
     return documentTypes.filter((dt) => typeServesDepartment(dt, userDept));
   }, [documentTypes, role, isAdmin]);
 

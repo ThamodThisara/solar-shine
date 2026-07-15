@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
-import { canAccessSection } from '@/config/roles';
+import { canAccessSection, getPanelLabelForRole } from '@/config/roles';
 import {
   LogOut,
   Menu,
@@ -85,7 +85,7 @@ export const EngineerSidebar: React.FC<EngineerSidebarProps> = ({
         <div className="flex items-center justify-between">
           {showLabels && (
             <h2 className="text-lg font-semibold text-gray-900">
-              {role === 'hr' ? 'HR Panel' : 'Engineer Panel'}
+              {`${getPanelLabelForRole(role)} Panel`}
             </h2>
           )}
           {/* Desktop: collapse toggle */}

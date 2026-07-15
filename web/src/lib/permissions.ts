@@ -1,4 +1,5 @@
 import { DocumentRecord } from '@/types/payload-types';
+import { getAccessDepartmentForRole } from '@/config/roles';
 
 /**
  * Checks if a specific user is authorized to read/view a given document record
@@ -19,14 +20,7 @@ export function canUserAccessDocument(
   if (userId && doc.allowed_users && doc.allowed_users.includes(userId)) return true;
 
   // 4. Map the user's platform role to a capitalized Department enum
-  let userDept: string | null = null;
-  if (userRole === 'sales_manager') {
-    userDept = 'Sales';
-  } else if (userRole === 'hr') {
-    userDept = 'HR';
-  } else if (userRole === 'project_engineer' || userRole === 'planning_engineer') {
-    userDept = 'Engineering';
-  }
+  const userDept: string | null = getAccessDepartmentForRole(userRole);
 
   if (userDept) {
     // Check if the document has been customized

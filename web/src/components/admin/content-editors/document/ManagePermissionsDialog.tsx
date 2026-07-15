@@ -165,6 +165,8 @@ export const ManagePermissionsDialog: React.FC<ManagePermissionsDialogProps> = (
       else if (u.role === 'hr') group = 'HR';
       else if (u.role === 'project_engineer') group = 'Project Engineers';
       else if (u.role === 'planning_engineer') group = 'Planning Engineers';
+      else if (u.role === 'finance_manager') group = 'Finance';
+      else if (u.role === 'marketing_manager') group = 'Marketing';
 
       return {
         value: u.$id,
