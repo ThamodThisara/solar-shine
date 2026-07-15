@@ -9,6 +9,11 @@ import { cn, formatFileSize } from '@/lib/utils';
 import { ALLOWED_FILE_EXTENSIONS, isAllowedFile } from '@/lib/documentTypes';
 import { Department, DocumentVisibility, DocumentType } from '@/types/payload-types';
 import { UploadDocumentsInput } from '@/services/documentService';
+import {
+  getTypeGroupLabel,
+  getTypeOwnerDepartment,
+  typeServesDepartment,
+} from '@/services/documentTypeService';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ProjectOption {
@@ -59,9 +64,7 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
   const allowedTypes = React.useMemo(() => {
     if (isAdmin) return documentTypes;
     const userDept = role === 'sales_manager' ? 'sales' : role === 'hr' ? 'hr' : 'engineer';
-    return documentTypes.filter(
-      (dt) => dt.department === userDept || dt.department === 'all' || !dt.department
-    );
+    return documentTypes.filter((dt) => typeServesDepartment(dt, userDept));
   }, [documentTypes, role, isAdmin]);
 
   const reset = () => setState(initialState);
@@ -97,12 +100,10 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
   const handleSubmit = () => {
     if (!isFormValid) return;
     const selectedType = documentTypes.find((dt) => dt.$id === state.documentTypeId);
-    const derivedDept = selectedType?.department
-      ? (selectedType.department === 'engineer' ? 'Engineering' :
-         selectedType.department === 'sales' ? 'Sales' :
-         selectedType.department === 'hr' ? 'HR' :
-         selectedType.department === 'admin' ? 'Finance' : undefined)
-      : undefined;
+    // A document carries a single owning department, so one can only be derived
+    // when the type maps to exactly one. Types spanning several departments (or
+    // "all") are ambiguous and leave it unset, as "all" always has.
+    const derivedDept = getTypeOwnerDepartment(selectedType) ?? undefined;
 
     onUpload({
       files: state.files,
@@ -177,10 +178,7 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
                 value: dt.$id,
                 label: `${dt.name} (${dt.type})`,
                 keywords: dt.type,
-                group: dt.department === 'engineer' ? 'Engineering' :
-                       dt.department === 'sales' ? 'Sales' :
-                       dt.department === 'hr' ? 'HR' :
-                       dt.department === 'admin' ? 'Admin' : 'All Departments'
+                group: getTypeGroupLabel(dt),
               }))}
             />
           </div>

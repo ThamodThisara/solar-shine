@@ -19,7 +19,7 @@ import {
   deleteDocumentRecord,
   DOCUMENT_PAGE_SIZE,
 } from '@/services/documentService';
-import { fetchDocumentTypes } from '@/services/documentTypeService';
+import { fetchDocumentTypes, getTypeGroupLabel, typeServesDepartment } from '@/services/documentTypeService';
 import { fetchProjectExecutionOptions } from '@/services/projectExecutionService';
 import DocumentCard from './DocumentCard';
 import DocumentUploadDialog from './content-editors/document/DocumentUploadDialog';
@@ -67,9 +67,9 @@ const DocumentCenterSection: React.FC = () => {
     let filtered = documentTypes;
     if (!isAdmin) {
       const userDept = role === 'sales_manager' ? 'sales' : role === 'hr' ? 'hr' : 'engineer';
-      filtered = filtered.filter(dt => dt.department === userDept || dt.department === 'all' || !dt.department);
+      filtered = filtered.filter(dt => typeServesDepartment(dt, userDept));
     } else if (departmentFilter !== 'all') {
-      filtered = filtered.filter(dt => dt.department === departmentFilter);
+      filtered = filtered.filter(dt => typeServesDepartment(dt, departmentFilter));
     }
     return filtered.map(dt => dt.$id);
   }, [documentTypes, role, isAdmin, departmentFilter]);
@@ -284,10 +284,7 @@ const DocumentCenterSection: React.FC = () => {
                 value: dt.$id,
                 label: `${dt.name} (${dt.type})`,
                 keywords: dt.type,
-                group: dt.department === 'engineer' ? 'Engineering' :
-                       dt.department === 'sales' ? 'Sales' :
-                       dt.department === 'hr' ? 'HR' :
-                       dt.department === 'admin' ? 'Admin' : 'All Departments'
+                group: getTypeGroupLabel(dt),
               }))
           ]}
         />

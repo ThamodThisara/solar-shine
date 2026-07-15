@@ -9,25 +9,38 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   fetchDocumentTypes,
   createDocumentType,
   deleteDocumentType,
   updateDocumentType,
+  getTypeDepartments,
+  typeServesDepartment,
+  ALL_DEPARTMENTS,
+  DOCUMENT_TYPE_DEPARTMENTS,
   CreateDocumentTypeInput,
 } from '@/services/documentTypeService';
 import { fetchDocuments } from '@/services/documentService';
+import { DocumentType } from '@/types/payload-types';
 
 interface ManageDocumentTypesDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
 }
 
+const departmentLabel = (value: string) =>
+  value === ALL_DEPARTMENTS
+    ? 'All Departments'
+    : DOCUMENT_TYPE_DEPARTMENTS.find((d) => d.value === value)?.label ?? value;
+
 const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ isOpen, setIsOpen }) => {
   const queryClient = useQueryClient();
   const [type, setType] = useState('');
   const [name, setName] = useState('');
-  const [department, setDepartment] = useState('all');
+  const [departments, setDepartments] = useState<string[]>([ALL_DEPARTMENTS]);
+  // Filters the list below; independent of the departments picked in the form.
+  const [filterDepartment, setFilterDepartment] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -52,7 +65,7 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
       invalidate();
       setType('');
       setName('');
-      setDepartment('all');
+      setDepartments([ALL_DEPARTMENTS]);
       toast.success('Document type added');
     },
     onError: () => toast.error('Failed to add document type'),
@@ -64,7 +77,7 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
       invalidate();
       setType('');
       setName('');
-      setDepartment('all');
+      setDepartments([ALL_DEPARTMENTS]);
       setEditingId(null);
       toast.success('Document type updated');
     },
@@ -82,27 +95,45 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
 
   const trimmedType = type.trim();
   const trimmedName = name.trim();
-  const isFormValid = trimmedType.length > 0 && trimmedName.length > 0;
+  const isFormValid = trimmedType.length > 0 && trimmedName.length > 0 && departments.length > 0;
+
+  // "All Departments" is exclusive: it already implies every department, so it
+  // can't be combined with individual picks.
+  const toggleDepartment = (value: string, checked: boolean) => {
+    setDepartments((prev) => {
+      if (value === ALL_DEPARTMENTS) return checked ? [ALL_DEPARTMENTS] : [];
+      const next = checked
+        ? [...prev.filter((d) => d !== ALL_DEPARTMENTS), value]
+        : prev.filter((d) => d !== value);
+      return next;
+    });
+  };
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid || createMutation.isPending || updateMutation.isPending) return;
 
-    const duplicate = documentTypes.some(
-      (dt) =>
-        dt.$id !== editingId &&
-        dt.type.toLowerCase() === trimmedType.toLowerCase() &&
-        (dt.department || 'all') === department
-    );
-    if (duplicate) {
-      toast.error(`Document type "${trimmedType}" already exists in the selected department`);
+    // A code may repeat across departments but must stay unique within any one
+    // of them, so a clash is an overlap between the two department sets.
+    const clash = documentTypes.find((dt) => {
+      if (dt.$id === editingId) return false;
+      if (dt.type.toLowerCase() !== trimmedType.toLowerCase()) return false;
+      const existing = getTypeDepartments(dt);
+      if (existing.includes(ALL_DEPARTMENTS) || departments.includes(ALL_DEPARTMENTS)) return true;
+      return existing.some((d) => departments.includes(d));
+    });
+    if (clash) {
+      const overlap = getTypeDepartments(clash);
+      toast.error(
+        `Document type "${trimmedType}" already exists in: ${overlap.map(departmentLabel).join(', ')}`
+      );
       return;
     }
 
     if (editingId) {
       setIsConfirmOpen(true);
     } else {
-      createMutation.mutate({ type: trimmedType, name: trimmedName, department });
+      createMutation.mutate({ type: trimmedType, name: trimmedName, departments });
     }
   };
 
@@ -111,7 +142,7 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
     if (!editingId) return;
     updateMutation.mutate({
       id: editingId,
-      input: { type: trimmedType, name: trimmedName, department },
+      input: { type: trimmedType, name: trimmedName, departments },
     });
   };
 
@@ -141,11 +172,11 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
     setDeleteTargetCode('');
   };
 
-  const handleEditClick = (dt: any) => {
+  const handleEditClick = (dt: DocumentType) => {
     setEditingId(dt.$id);
     setType(dt.type);
     setName(dt.name);
-    setDepartment(dt.department || 'all');
+    setDepartments(getTypeDepartments(dt));
   };
 
   const handleCancelEdit = () => {
@@ -157,8 +188,8 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
 
   const displayedTypes = useMemo(() => {
     let filtered = documentTypes;
-    if (department !== 'all') {
-      filtered = filtered.filter((dt) => dt.department === department);
+    if (filterDepartment !== 'all') {
+      filtered = filtered.filter((dt) => typeServesDepartment(dt, filterDepartment));
     }
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
@@ -169,7 +200,7 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
       );
     }
     return filtered;
-  }, [documentTypes, department, searchTerm]);
+  }, [documentTypes, filterDepartment, searchTerm]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -183,22 +214,36 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
         </DialogHeader>
 
         <form onSubmit={handleAdd} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <Label htmlFor="document-type-dept">Department</Label>
-              <Select value={department} onValueChange={(val) => setDepartment(val)}>
-                <SelectTrigger id="document-type-dept" className="h-10 text-sm">
-                  <SelectValue placeholder="Select Department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  <SelectItem value="engineer">Engineer</SelectItem>
-                  <SelectItem value="sales">Sales</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="hr">HR</SelectItem>
-                </SelectContent>
-              </Select>
+          <div>
+            <Label>Departments</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Select every department this document type should appear under.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+              {[{ value: ALL_DEPARTMENTS, label: 'All Departments' }, ...DOCUMENT_TYPE_DEPARTMENTS].map((dept) => {
+                const isChecked = departments.includes(dept.value);
+                return (
+                  <label
+                    key={dept.value}
+                    htmlFor={`document-type-dept-${dept.value}`}
+                    className="flex items-center space-x-2 border rounded-md p-2 bg-muted/20 hover:bg-muted/50 transition-colors cursor-pointer min-h-10"
+                  >
+                    <Checkbox
+                      id={`document-type-dept-${dept.value}`}
+                      checked={isChecked}
+                      onCheckedChange={(checked) => toggleDepartment(dept.value, checked === true)}
+                    />
+                    <span className="text-sm font-medium leading-none">{dept.label}</span>
+                  </label>
+                );
+              })}
             </div>
+            {departments.length === 0 && (
+              <p className="text-xs text-red-600 mt-1.5">Select at least one department.</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="document-type-code">Document Type</Label>
               <Input
@@ -243,6 +288,17 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
                 className="pl-9 h-10 text-sm"
               />
             </div>
+            <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+              <SelectTrigger className="h-10 text-sm w-full sm:w-[180px] shrink-0" aria-label="Filter list by department">
+                <SelectValue placeholder="Filter by department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {DOCUMENT_TYPE_DEPARTMENTS.map((dept) => (
+                  <SelectItem key={dept.value} value={dept.value}>{dept.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </form>
 
@@ -268,9 +324,16 @@ const ManageDocumentTypesDialog: React.FC<ManageDocumentTypesDialogProps> = ({ i
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold truncate">{dt.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{dt.type}</span>
-                      <span className="text-[10px] uppercase font-bold tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{dt.department || 'all'}</span>
+                      {getTypeDepartments(dt).map((dept) => (
+                        <span
+                          key={dept}
+                          className="text-[10px] uppercase font-bold tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-full"
+                        >
+                          {dept}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>

@@ -19,7 +19,12 @@ import { Combobox } from '@/components/ui/combobox';
 import { DocumentRecord, Department } from '@/types/payload-types';
 import { updateDocumentPermissions } from '@/services/documentService';
 import { fetchUsers } from '@/services/userService';
-import { fetchDocumentTypes } from '@/services/documentTypeService';
+import {
+  ACCESS_DEPARTMENTS,
+  fetchDocumentTypes,
+  getTypeAccessDepartments,
+  getTypeOwnerDepartment,
+} from '@/services/documentTypeService';
 
 interface ManagePermissionsDialogProps {
   doc: DocumentRecord;
@@ -28,13 +33,10 @@ interface ManagePermissionsDialogProps {
   onSuccess?: () => void;
 }
 
-const DEPARTMENTS: { value: Department; label: string }[] = [
-  { value: 'Marketing', label: 'Marketing' },
-  { value: 'Sales', label: 'Sales' },
-  { value: 'Finance', label: 'Finance' },
-  { value: 'Engineering', label: 'Engineering' },
-  { value: 'HR', label: 'HR' },
-];
+const DEPARTMENTS: { value: Department; label: string }[] = ACCESS_DEPARTMENTS.map((value) => ({
+  value,
+  label: value,
+}));
 
 export const ManagePermissionsDialog: React.FC<ManagePermissionsDialogProps> = ({
   doc,
@@ -56,7 +58,7 @@ export const ManagePermissionsDialog: React.FC<ManagePermissionsDialogProps> = (
   });
 
   // Fetch all document types to determine the owner department of this document type
-  const { data: documentTypes = [] } = useQuery({
+  const { data: documentTypes = [], isLoading: isTypesLoading } = useQuery({
     queryKey: ['document-types-permissions'],
     queryFn: () => fetchDocumentTypes(),
     enabled: isOpen,
@@ -66,18 +68,18 @@ export const ManagePermissionsDialog: React.FC<ManagePermissionsDialogProps> = (
     return documentTypes.find(dt => dt.$id === doc.document_type_id);
   }, [documentTypes, doc.document_type_id]);
 
-  const ownerDept = useMemo(() => {
-    if (!docType || !docType.department) return null;
-    if (docType.department === 'engineer') return 'Engineering';
-    if (docType.department === 'sales') return 'Sales';
-    if (docType.department === 'hr') return 'HR';
-    if (docType.department === 'admin') return 'Finance';
-    return null;
-  }, [docType]);
+  const ownerDept = useMemo(() => getTypeOwnerDepartment(docType), [docType]);
 
-  // Sync state with doc when opened
+  // Memoised so the sync effect below re-runs once the types query resolves.
+  // `ownerDept` can't carry that signal on its own: it stays null both before
+  // and after loading for a type spanning several departments.
+  const typeAccessDepts = useMemo(() => getTypeAccessDepartments(docType), [docType]);
+
+  // Sync state with doc when opened. Held back until the document types have
+  // loaded, so the defaults are seeded from the document's type rather than
+  // briefly rendering an empty set that a click could race.
   useEffect(() => {
-    if (isOpen && doc) {
+    if (isOpen && doc && !isTypesLoading) {
       const depts = doc.allowed_departments || [];
       const legacyDept = doc.department;
       
@@ -92,11 +94,12 @@ export const ManagePermissionsDialog: React.FC<ManagePermissionsDialogProps> = (
         initialDepts.push(ownerDept);
       }
       
-      // If both allowed lists are empty (never customized) and visibility is internal, default to all departments
+      // Never customized and internal: default to the departments its document
+      // type is assigned to, rather than granting every department.
       const allowedUsers = doc.allowed_users || [];
       const isCustomized = doc.updated_at && doc.uploaded_at && doc.updated_at !== doc.uploaded_at;
       if (!isCustomized && initialDepts.length === 0 && allowedUsers.length === 0 && doc.document_visibility === 'internal') {
-        initialDepts = DEPARTMENTS.map(d => d.value);
+        initialDepts = [...typeAccessDepts];
       }
 
       // Specific user access only is enabled if the document is customized and no departments are checked, or if explicit users exist without departments
@@ -107,7 +110,7 @@ export const ManagePermissionsDialog: React.FC<ManagePermissionsDialogProps> = (
       setSelectedUserIds(allowedUsers);
       setUserSearchValue('');
     }
-  }, [isOpen, doc, ownerDept]);
+  }, [isOpen, doc, ownerDept, typeAccessDepts, isTypesLoading]);
 
   const saveMutation = useMutation({
     mutationFn: () => {

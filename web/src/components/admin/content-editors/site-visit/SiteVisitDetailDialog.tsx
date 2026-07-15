@@ -28,6 +28,7 @@ import {
   fetchDocumentsBySiteVisit, uploadDocuments, deleteDocumentRecord,
 } from '@/services/documentService';
 import { isAllowedFile, ALLOWED_FILE_EXTENSIONS } from '@/lib/documentTypes';
+import { getTypeGroupLabel, typeServesDepartment } from '@/services/documentTypeService';
 import DocumentCard from '@/components/admin/DocumentCard';
 import { PlatformUser, fetchEngineers } from '@/services/userService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -105,7 +106,7 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
   const filteredTypes = React.useMemo(() => {
     if (isAdmin) return documentTypes;
     const userDept = role === 'sales_manager' ? 'sales' : 'engineer';
-    return documentTypes.filter(dt => dt.department === userDept || dt.department === 'all' || !dt.department);
+    return documentTypes.filter(dt => typeServesDepartment(dt, userDept));
   }, [documentTypes, isAdmin, role]);
 
   // Local copy so the open dialog reflects saves without depending on the list
@@ -681,9 +682,7 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
                         value: dt.$id,
                         label: `${dt.name} (${dt.type})`,
                         keywords: dt.type,
-                        group: dt.department === 'engineer' ? 'Engineer' :
-                               dt.department === 'sales' ? 'Sales' :
-                               dt.department === 'admin' ? 'Admin' : 'All Departments'
+                        group: getTypeGroupLabel(dt),
                       }))}
                     />
                     <div className="grid grid-cols-2 gap-2">

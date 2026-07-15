@@ -125,7 +125,19 @@ export interface DocumentType {
   type: string;
   /** Human-readable name, e.g. "Site Inspection Sheet". */
   name: string;
+  /**
+   * @deprecated Superseded by `departments`. Retained only so rows written
+   * before the multi-department migration keep resolving; read through
+   * `getTypeDepartments` rather than touching this directly.
+   */
   department?: string | null;
+  /**
+   * Departments this type is available under, e.g. ["engineer", "sales"].
+   * The single value "all" is a sentinel meaning every department. Note this
+   * is the lowercase document-type taxonomy, which is distinct from the
+   * capitalized `Department` union used on Document records.
+   */
+  departments?: string[] | null;
 }
 
 export interface ProjectType {

@@ -12,7 +12,7 @@ import { fetchProjectExecution, fetchProjectExecutionOptions } from '@/services/
 import { fetchSiteVisits } from '@/services/siteVisitService';
 import { fetchDocuments } from '@/services/documentService';
 import { fetchUsers } from '@/services/userService';
-import { fetchDocumentTypes } from '@/services/documentTypeService';
+import { fetchDocumentTypes, getTypeGroupLabel, typeServesDepartment } from '@/services/documentTypeService';
 import { formatCurrency } from '@/lib/utils';
 import DocumentCard from '@/components/admin/DocumentCard';
 import SiteVisitCard from '@/components/admin/SiteVisitCard';
@@ -119,9 +119,9 @@ const ProjectSummary: React.FC = () => {
     let filtered = documentTypes;
     if (role !== 'admin') {
       const userDept = role === 'sales_manager' ? 'sales' : role === 'hr' ? 'hr' : 'engineer';
-      filtered = filtered.filter(dt => dt.department === userDept || dt.department === 'all' || !dt.department);
+      filtered = filtered.filter(dt => typeServesDepartment(dt, userDept));
     } else if (departmentFilter !== 'all') {
-      filtered = filtered.filter(dt => dt.department === departmentFilter);
+      filtered = filtered.filter(dt => typeServesDepartment(dt, departmentFilter));
     }
     return filtered.map(dt => dt.$id);
   }, [documentTypes, role, departmentFilter]);
@@ -437,10 +437,7 @@ const ProjectSummary: React.FC = () => {
                         value: dt.$id,
                         label: `${dt.name} (${dt.type})`,
                         keywords: dt.type,
-                        group: dt.department === 'engineer' ? 'Engineering' :
-                               dt.department === 'sales' ? 'Sales' :
-                               dt.department === 'hr' ? 'HR' :
-                               dt.department === 'admin' ? 'Admin' : 'All Departments'
+                        group: getTypeGroupLabel(dt),
                       }))
                   ]}
                 />
