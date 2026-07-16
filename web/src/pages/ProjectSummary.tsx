@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { ArrowLeft, MapPin, Calendar, Activity, FileText, ClipboardList } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,21 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Combobox } from '@/components/ui/combobox';
 import { EngineerLayout } from '@/components/engineer/EngineerLayout';
 import { cn } from '@/lib/utils';
+
+/**
+ * Navigates to the panel home for `role`, or shows an error toast and does
+ * nothing when the role has no resolvable panel (signed out, or a role string
+ * that isn't wired to a panel) — silently falling back to `/engineer` would put
+ * an unrecognized or missing role into a panel it may not be authorized for.
+ */
+const navigateToRoleHome = (role: string | null, navigate: (path: string) => void) => {
+  const home = getHomeRoute(role);
+  if (!home) {
+    toast.error('Unable to determine your panel. Please log in again.');
+    return;
+  }
+  navigate(home);
+};
 
 const projectStatusStyles = {
   pending: 'bg-gray-100 text-gray-800 border-gray-200',
@@ -58,7 +74,7 @@ const LayoutWrapper: React.FC<LayoutWrapperProps> = ({ children, role, navigate 
         activeSection={activeSec}
         onSectionChange={(sec) => {
           setActiveSec(sec);
-          navigate(getHomeRoute(role) ?? '/engineer');
+          navigateToRoleHome(role, navigate);
         }}
       >
         {children}
@@ -82,7 +98,7 @@ const ProjectSummary: React.FC = () => {
 
   // Redirect back to dashboard based on role
   const handleBack = () => {
-    navigate(getHomeRoute(role) ?? '/engineer');
+    navigateToRoleHome(role, navigate);
   };
 
   // 1. Fetch project execution details
