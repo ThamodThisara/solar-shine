@@ -47,7 +47,15 @@ const statCards: Array<{ key: keyof Awaited<ReturnType<typeof fetchProjectExecut
   { key: 'completed', label: 'Completed', color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/30' },
 ];
 
-const ProjectExecutionSection: React.FC = () => {
+interface ProjectExecutionSectionProps {
+  /**
+   * Whether the "Create Project" action is available. Panels that provide a
+   * read-only view of projects (e.g. Finance) pass `false` to hide it.
+   */
+  showCreate?: boolean;
+}
+
+const ProjectExecutionSection: React.FC<ProjectExecutionSectionProps> = ({ showCreate = true }) => {
   const { role, user, isAdmin, isLoading: isAuthLoading } = useAuth();
   const canAccess = canAccessSection('project-execution', role);
   const queryClient = useQueryClient();
@@ -219,9 +227,11 @@ const ProjectExecutionSection: React.FC = () => {
                 <Tags className="mr-2 h-4 w-4" /> Manage Project Types
               </Button>
             )}
-            <Button onClick={() => setIsDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Create Project
-            </Button>
+            {showCreate && (
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" /> Create Project
+              </Button>
+            )}
           </div>
         </CardHeader>
       </Card>

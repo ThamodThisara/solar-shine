@@ -46,7 +46,15 @@ const statCards: Array<{ key: SiteVisitStatus; label: string; color: string }> =
   { key: 'cancelled', label: 'Cancelled', color: 'text-red-600 bg-red-50 dark:bg-red-950/30' },
 ];
 
-const SiteVisitsSection: React.FC = () => {
+interface SiteVisitsSectionProps {
+  /**
+   * Whether the "Create Site Visit" action is available. Panels that provide a
+   * read-only view of site visits (e.g. Finance) pass `false` to hide it.
+   */
+  showCreate?: boolean;
+}
+
+const SiteVisitsSection: React.FC<SiteVisitsSectionProps> = ({ showCreate = true }) => {
   const { role, isLoading: isAuthLoading, user, isAdmin } = useAuth();
   const canAccess = canAccessSection('site-visits', role);
   const queryClient = useQueryClient();
@@ -210,9 +218,11 @@ const SiteVisitsSection: React.FC = () => {
                 : 'Create, view, and update site visits — including unassigned ones open to all engineers.'}
             </CardDescription>
           </div>
-          <Button onClick={() => setIsCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Create Site Visit
-          </Button>
+          {showCreate && (
+            <Button onClick={() => setIsCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Create Site Visit
+            </Button>
+          )}
         </CardHeader>
       </Card>
 

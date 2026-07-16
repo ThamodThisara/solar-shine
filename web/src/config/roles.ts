@@ -101,6 +101,9 @@ export const SECTION_ACCESS: Record<string, AppRole[]> = {
   'project-execution': ['admin', ...ENGINEER_ROLES, 'hr'],
   'document-center': ['admin', ...ENGINEER_ROLES, 'hr'],
   'site-visits': ['admin', ...ENGINEER_ROLES, 'hr'],
+  // Dashboard + Client Management are admin features also surfaced in the Sales panel.
+  'dashboard': ['admin', 'sales_manager'],
+  'clients': ['admin', 'sales_manager'],
 };
 
 /**

@@ -13,6 +13,8 @@ import BlogPostPage from "./pages/BlogPostPage";
 import Contact from "./pages/Contact";
 import Admin from "./pages/Admin";
 import Engineer from "./pages/Engineer";
+import Sales from "./pages/Sales";
+import Finance from "./pages/Finance";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
@@ -61,7 +63,7 @@ const App = () => (
               path="/sales"
               element={
                 <ProtectedRoute allowedRoles={PANELS.sales.roles}>
-                  <Engineer />
+                  <Sales />
                 </ProtectedRoute>
               }
             />
@@ -77,7 +79,7 @@ const App = () => (
               path="/finance"
               element={
                 <ProtectedRoute allowedRoles={PANELS.finance.roles}>
-                  <Engineer />
+                  <Finance />
                 </ProtectedRoute>
               }
             />
