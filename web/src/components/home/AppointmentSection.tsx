@@ -10,7 +10,15 @@ import { createAppointment } from '@/services/appointmentService';
 import { isTimeSlotAvailable } from '@/services/appointmentService'; // Import the availability check function
 import { cn } from '@/lib/utils';
 
-const AppointmentSection: React.FC = () => {
+interface AppointmentSectionProps {
+  title?: string;
+  description?: string;
+}
+
+const AppointmentSection: React.FC<AppointmentSectionProps> = ({
+  title = 'Book an Appointment',
+  description = 'Schedule a free consultation with our solar experts to discuss your energy needs and discover the best solar solutions for your property.',
+}) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<{ $id: string; time_slot: string; isAvailable: boolean }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -195,9 +203,9 @@ setAvailableTimeSlots([]);
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Book an Appointment</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">{title}</h2>
             <p className="text-white/80 mb-8">
-              Schedule a free consultation with our solar experts to discuss your energy needs and discover the best solar solutions for your property.
+              {description}
             </p>
           </motion.div>
 

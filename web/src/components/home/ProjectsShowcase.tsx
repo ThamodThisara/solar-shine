@@ -6,17 +6,23 @@ import { Project } from '@/types/payload-types';
 
 interface ProjectsShowcaseProps {
   projects: Project[];
+  title?: string;
+  description?: string;
 }
 
-const ProjectsShowcase: React.FC<ProjectsShowcaseProps> = ({ projects }) => {
+const ProjectsShowcase: React.FC<ProjectsShowcaseProps> = ({
+  projects,
+  title = 'Our Recent Projects',
+  description = 'Explore our portfolio of successfully completed solar installations across Sri Lanka.',
+}) => {
   return (
     <section className="section bg-white">
       <div className="container-custom">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12">
           <div>
-            <h2 className="section-title text-left">Our Recent Projects</h2>
+            <h2 className="section-title text-left">{title}</h2>
             <p className="section-subtitle text-left max-w-xl">
-              Explore our portfolio of successfully completed solar installations across Sri Lanka.
+              {description}
             </p>
           </div>
           <a

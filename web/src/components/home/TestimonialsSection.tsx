@@ -6,9 +6,15 @@ import { Testimonial } from '@/types/payload-types';
 
 interface TestimonialsSectionProps {
   testimonials: Testimonial[];
+  title?: string;
+  description?: string;
 }
 
-const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials }) => {
+const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({
+  testimonials,
+  title = 'What Our Clients Say',
+  description = 'Hear from businesses and homeowners who have experienced the transformative benefits of our solar solutions.',
+}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
@@ -106,7 +112,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
             transition={{ duration: 0.6, delay: 0.1 }}
             className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-transparent mb-4"
           >
-            What Our Clients Say
+            {title}
           </motion.h2>
 
           <motion.p
@@ -116,7 +122,7 @@ const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ testimonials 
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed"
           >
-            Hear from businesses and homeowners who have experienced the transformative benefits of our solar solutions.
+            {description}
           </motion.p>
         </div>
 

@@ -4,15 +4,23 @@ import { motion } from 'framer-motion';
 import { fetchSpecializedAreas } from '@/services/specializedAreaService';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const SpecializedAreas: React.FC = () => {
+interface SpecializedAreasProps {
+  title?: string;
+  description?: string;
+}
+
+const SpecializedAreas: React.FC<SpecializedAreasProps> = ({
+  title = 'Our Specialized Areas',
+  description = 'We provide specialized solar solutions across different sectors, each tailored to specific energy requirements and environmental conditions.',
+}) => {
   const { data: areas, isLoading, error } = useQuery({
     queryKey: ['specializedAreas'],
     queryFn: fetchSpecializedAreas
   });
 
-  // Default content that should NEVER change
-  const defaultTitle = "Our Specialized Areas";
-  const defaultDescription = "We provide specialized solar solutions across different sectors, each tailored to specific energy requirements and environmental conditions.";
+  // Fall back to the standard copy when no override is provided.
+  const defaultTitle = title;
+  const defaultDescription = description;
 
   // Use data only for the individual cards, not for the main heading
   const hasData = !isLoading && !error && areas && areas.length > 0;

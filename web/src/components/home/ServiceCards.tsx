@@ -8,9 +8,15 @@ import { ServiceCard } from '@/types/payload-types';
 
 interface ServiceCardsProps {
   services: ServiceCard[];
+  title?: string;
+  description?: string;
 }
 
-const ServiceCards: React.FC<ServiceCardsProps> = ({ services }) => {
+const ServiceCards: React.FC<ServiceCardsProps> = ({
+  services,
+  title = 'Our Services',
+  description = 'We provide comprehensive solar energy solutions to meet your renewable energy goals.',
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -23,9 +29,9 @@ const ServiceCards: React.FC<ServiceCardsProps> = ({ services }) => {
   return (
     <section className="section bg-brand-light">
       <div className="container-custom">
-        <h2 className="section-title">Our Services</h2>
+        <h2 className="section-title">{title}</h2>
         <p className="section-subtitle">
-          We provide comprehensive solar energy solutions to meet your renewable energy goals.
+          {description}
         </p>
 
         <div className="relative mt-12">

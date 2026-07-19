@@ -14,6 +14,7 @@ import AppointmentSection from '@/components/home/AppointmentSection';
 import SEOHead from '@/components/common/SEOHead';
 import { HeroSection as HeroSectionType, ServiceCard, Project, Testimonial, BlogPost } from '@/types/payload-types';
 import { fetchHeroSection, fetchServiceCards, fetchProjects, fetchTestimonials, fetchBlogPosts } from '@/services/cmsService';
+import { fetchHomeContent, DEFAULT_HOME_CONTENT } from '@/services/homeContentService';
 
 const Index: React.FC = () => {
   const { 
@@ -52,14 +53,22 @@ const Index: React.FC = () => {
     queryFn: fetchTestimonials
   });
 
-  const { 
-    data: blogPosts, 
+  const {
+    data: blogPosts,
     isLoading: blogLoading,
     error: blogError
   } = useQuery({
     queryKey: ['blogPosts'],
     queryFn: fetchBlogPosts
   });
+
+  const { data: homeContent } = useQuery({
+    queryKey: ['homeContent'],
+    queryFn: fetchHomeContent
+  });
+
+  // Fall back to defaults so headings render even before the query resolves.
+  const home = homeContent ?? DEFAULT_HOME_CONTENT;
 
   // Show error toasts for any fetch failures
   useEffect(() => {
@@ -82,12 +91,42 @@ const Index: React.FC = () => {
       <Header />
       <main>
         {heroData && <HeroSection data={heroData} />}
-        {serviceCards && <ServiceCards services={serviceCards} />}
-        <SpecializedAreas />
-        {projects && <ProjectsShowcase projects={projects} />}
-        {testimonials && <TestimonialsSection testimonials={testimonials} />}
-        {blogPosts && <BlogSection posts={blogPosts} />}
-        <AppointmentSection />
+        {serviceCards && (
+          <ServiceCards
+            services={serviceCards}
+            title={home.services_title}
+            description={home.services_description}
+          />
+        )}
+        <SpecializedAreas
+          title={home.specialized_title}
+          description={home.specialized_description}
+        />
+        {projects && (
+          <ProjectsShowcase
+            projects={projects}
+            title={home.projects_title}
+            description={home.projects_description}
+          />
+        )}
+        {testimonials && (
+          <TestimonialsSection
+            testimonials={testimonials}
+            title={home.testimonials_title}
+            description={home.testimonials_description}
+          />
+        )}
+        {blogPosts && (
+          <BlogSection
+            posts={blogPosts}
+            title={home.blog_title}
+            description={home.blog_description}
+          />
+        )}
+        <AppointmentSection
+          title={home.appointment_title}
+          description={home.appointment_description}
+        />
       </main>
       <Footer />
     </>

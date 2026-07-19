@@ -109,6 +109,7 @@ export const COLLECTIONS = {
   SEO_SETTINGS: 'seo_settings',
   PAGE_SEO: 'page_seo',
   WHAT_WE_DO: 'what_we_do',
+  HOME_CONTENT: 'home_content',
   CLIENTS: 'clients',
   SITES: 'sites',
   PROJECT_EXECUTIONS: 'projects',

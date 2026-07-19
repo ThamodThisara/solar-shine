@@ -55,6 +55,7 @@ const sidebarItems = [
   {
     category: 'Content Management',
     items: [
+      { id: 'home-content', label: 'Home Content', icon: Home },
       { id: 'hero', label: 'Hero Section', icon: Image },
       { id: 'services', label: 'Services', icon: ShoppingBag },
       { id: 'specialized-areas', label: 'Specialized Areas', icon: Award },

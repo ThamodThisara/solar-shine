@@ -122,6 +122,24 @@
           "array": false,
           "size": 255,
           "default": null
+        },
+        {
+          "key": "cta_text",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "cta_url",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
         }
       ],
       "indexes": []
@@ -1258,7 +1276,8 @@
           "type": "string",
           "required": false,
           "array": false,
-          "size": 1000,
+          "size": 100000,
+          "encrypt": false,
           "default": null
         },
         {
@@ -1266,7 +1285,8 @@
           "type": "string",
           "required": false,
           "array": false,
-          "size": 1000,
+          "size": 100000,
+          "encrypt": false,
           "default": null
         },
         {
@@ -1274,7 +1294,8 @@
           "type": "string",
           "required": false,
           "array": false,
-          "size": 1000,
+          "size": 100000,
+          "encrypt": false,
           "default": null
         },
         {
@@ -1282,7 +1303,8 @@
           "type": "string",
           "required": false,
           "array": false,
-          "size": 1000,
+          "size": 100000,
+          "encrypt": false,
           "default": null
         },
         {
@@ -1290,7 +1312,132 @@
           "type": "string",
           "required": false,
           "array": false,
-          "size": 1000,
+          "size": 100000,
+          "encrypt": false,
+          "default": null
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "home_content",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Home Content",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "services_title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "services_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 2000,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "specialized_title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "specialized_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 2000,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "projects_title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "projects_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 2000,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "testimonials_title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "testimonials_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 2000,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "blog_title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "blog_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 2000,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "appointment_title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "appointment_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 2000,
+          "encrypt": false,
           "default": null
         }
       ],

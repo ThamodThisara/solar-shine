@@ -7,6 +7,7 @@ import { TestimonialsManager } from './TestimonialsManager';
 import { SpecializedAreasManager } from './SpecializedAreasManager';
 import { AboutContentManager } from './AboutContentManager';
 import { WhatWeDoManager } from './WhatWeDoManager';
+import { HomeContentManager } from './HomeContentManager';
 import { CompanyInfoManager } from './CompanyInfoManager';
 import { SocialLinksManager } from './SocialLinksManager';
 import { FooterLinksManager } from './FooterLinksManager';
@@ -21,6 +22,8 @@ interface ContentManagerProps {
 export const ContentManager: React.FC<ContentManagerProps> = ({ activeSection }) => {
   const renderContent = () => {
     switch (activeSection) {
+      case 'home-content':
+        return <HomeContentManager />;
       case 'hero':
         return <HeroSectionManager />;
       case 'services':

@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 
 interface BlogSectionProps {
   posts: BlogPost[];
+  title?: string;
+  description?: string;
 }
 
 const formatDate = (dateString: string) => {
@@ -28,18 +30,21 @@ const formatRelativeTime = (dateString: string) => {
   return `${Math.ceil(diffDays / 365)} years ago`;
 };
 
-const BlogSection: React.FC<BlogSectionProps> = ({ posts }) => {
+const BlogSection: React.FC<BlogSectionProps> = ({
+  posts,
+  title = 'Latest Insights',
+  description = 'Stay updated with the latest news, trends, and innovations in solar energy. Discover cutting-edge solutions and industry insights from our expert team.',
+}) => {
   return (
     <section className="section bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="container-custom">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 md:mb-16">
           <div>
             <h2 className="section-title text-left text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">
-              Latest <span className="text-primary">Insights</span>
+              {title}
             </h2>
             <p className="section-subtitle text-left max-w-2xl text-lg text-gray-600 leading-relaxed">
-              Stay updated with the latest news, trends, and innovations in solar energy.
-              Discover cutting-edge solutions and industry insights from our expert team.
+              {description}
             </p>
           </div>
           <motion.a
