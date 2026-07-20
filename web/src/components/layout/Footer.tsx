@@ -114,24 +114,26 @@ const Footer: React.FC = () => {
 
   // Default sections if no footer links
   const defaultSections = {
-    'Quick Links': [
-      { name: 'Home', url: '/' },
-      { name: 'Services', url: '/services' },
-      { name: 'Projects', url: '/projects' },
-      { name: 'About Us', url: '/who-we-are' },
-      { name: 'Contact', url: '/contact' },
-    ],
-    'Our Services': [
-      { name: 'Solar Installation', url: '/services#installation' },
-      { name: 'Energy Consultation', url: '/services#consultation' },
-      { name: 'Maintenance', url: '/services#maintenance' },
-      { name: 'System Design', url: '/services#design' },
-    ],
     'Company': [
       { name: 'About Us', url: '/who-we-are' },
-      { name: 'Our Team', url: '/who-we-are#team' },
+      { name: 'Services', url: '/services' },
+      { name: 'Projects', url: '/projects' },
       { name: 'News', url: '/blog' },
-    ]
+      { name: 'Contact', url: '/contact' },
+      { name: 'Privacy Policy', url: '/privacy' },
+      { name: 'Terms of Service', url: '/terms' },
+    ],
+    // 'Our Services': [
+    //   { name: 'Solar Installation', url: '/services#installation' },
+    //   { name: 'Energy Consultation', url: '/services#consultation' },
+    //   { name: 'Maintenance', url: '/services#maintenance' },
+    //   { name: 'System Design', url: '/services#design' },
+    // ],
+    // 'Company': [
+    //   { name: 'About Us', url: '/who-we-are' },
+    //   { name: 'Our Team', url: '/who-we-are#team' },
+    //   { name: 'News', url: '/blog' },
+    // ]
   };
 
   const sections = Object.keys(groupedFooterLinks).length > 0 ? groupedFooterLinks : defaultSections;
@@ -173,20 +175,23 @@ const Footer: React.FC = () => {
         {/* Main Footer Content */}
         <div className="container-custom py-12 md:py-16 px-4">
           <motion.div
-            className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12"
+            className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-start"
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
           >
-            {/* Company Info - Takes 4 columns on large screens */}
-            <motion.div className="lg:col-span-4" variants={itemVariants}>
+            {/* Company Info - Full width on tablet, 4 columns on large screens */}
+            <motion.div className="md:col-span-12 lg:col-span-4" variants={itemVariants}>
               <div className="flex items-start mb-8">
-                <div className="bg-gradient-to-r from-orange-500 to-yellow-500 p-2 rounded-2xl mr-5 flex-shrink-0 shadow-lg">
+                <div className="bg-white p-2 rounded-2xl mr-5 flex-shrink-0 shadow-lg">
                   {companyInfo?.logo_url ? (
                     <img
-                      src={companyInfo.logo_url}
-                      alt={`${company.name} Logo`}
+                      // src={companyInfo.logo_url}
+                      // alt={`${company.name} Logo`}
+                      // className="h-12 w-12 object-contain"
+                      src="/Solar%20Maps%20logo.png"
+                      alt="Solar Maps"
                       className="h-12 w-12 object-contain"
                       onError={(e) => {
                         // If logo fails to load, hide it and show Sun icon
@@ -245,37 +250,11 @@ const Footer: React.FC = () => {
                   )}
                 </div>
               </div>
-
-              {/* Contact Info */}
-              <div className="space-y-3">
-                <div className="flex items-start space-x-3">
-                  <MapPin className="h-5 w-5 text-orange-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-300 text-sm leading-relaxed">{contactInfo.address}</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Phone className="h-5 w-5 text-orange-400 flex-shrink-0" />
-                  <a
-                    href={`tel:${contactInfo.phone}`}
-                    className="text-gray-300 hover:text-orange-400 transition-colors text-sm"
-                  >
-                    {contactInfo.phone}
-                  </a>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Mail className="h-5 w-5 text-orange-400 flex-shrink-0" />
-                  <a
-                    href={`mailto:${contactInfo.email}`}
-                    className="text-gray-300 hover:text-orange-400 transition-colors text-sm"
-                  >
-                    {contactInfo.email}
-                  </a>
-                </div>
-              </div>
             </motion.div>
 
-            {/* Footer Links Sections - Takes 8 columns on large screens */}
-            <motion.div className="lg:col-span-8" variants={itemVariants}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Footer Links Sections - 7 columns on tablet, 4 (even third) on large screens */}
+            <motion.div className="md:col-span-7 lg:col-span-4" variants={itemVariants}>
+              <div className="grid grid-cols-1 gap-y-6">
                 {Object.entries(sections).map(([sectionName, links]) => (
                   <motion.div key={sectionName} variants={itemVariants}>
                     {/* Mobile Accordion Header */}
@@ -300,7 +279,7 @@ const Footer: React.FC = () => {
 
                     {/* Links List */}
                     <div className={`lg:block ${expandedSections[sectionName] ? 'block' : 'hidden'}`}>
-                      <ul className="space-y-3">
+                      <ul className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-3">
                         {links.map((link) => (
                           <li key={link.name}>
                             <Link
@@ -316,6 +295,35 @@ const Footer: React.FC = () => {
                     </div>
                   </motion.div>
                 ))}
+              </div>
+            </motion.div>
+            <motion.div className="md:col-span-5 lg:col-span-4" variants={itemVariants}>
+              {/* Contact Info */}
+              <h3 className="text-lg font-semibold text-white mb-4">Contact Us</h3>
+              <div className="space-y-3">
+
+                <div className="flex items-center space-x-3">
+                  <Mail className="h-5 w-5 text-orange-400 flex-shrink-0" />
+                  <a
+                      href={`mailto:${contactInfo.email}`}
+                      className="text-gray-300 hover:text-orange-400 transition-colors text-sm min-w-0 break-words"
+                  >
+                    {contactInfo.email}
+                  </a>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Phone className="h-5 w-5 text-orange-400 flex-shrink-0" />
+                  <a
+                      href={`tel:${contactInfo.phone}`}
+                      className="text-gray-300 hover:text-orange-400 transition-colors text-sm"
+                  >
+                    {contactInfo.phone}
+                  </a>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <MapPin className="h-5 w-5 text-orange-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-gray-300 text-sm leading-relaxed">{contactInfo.address}</span>
+                </div>
               </div>
             </motion.div>
           </motion.div>
