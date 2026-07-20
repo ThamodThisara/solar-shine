@@ -8,6 +8,7 @@ import { SpecializedAreasManager } from './SpecializedAreasManager';
 import { AboutContentManager } from './AboutContentManager';
 import { WhatWeDoManager } from './WhatWeDoManager';
 import { HomeContentManager } from './HomeContentManager';
+import { LegalPagesManager } from './LegalPagesManager';
 import { CompanyInfoManager } from './CompanyInfoManager';
 import { SocialLinksManager } from './SocialLinksManager';
 import { FooterLinksManager } from './FooterLinksManager';
@@ -24,6 +25,8 @@ export const ContentManager: React.FC<ContentManagerProps> = ({ activeSection })
     switch (activeSection) {
       case 'home-content':
         return <HomeContentManager />;
+      case 'legal-pages':
+        return <LegalPagesManager />;
       case 'hero':
         return <HeroSectionManager />;
       case 'services':

@@ -42,6 +42,7 @@ const Admin: React.FC = () => {
       case 'clients':
         return <ClientsSection />;
       case 'home-content':
+      case 'legal-pages':
       case 'hero':
       case 'services':
       case 'specialized-areas':

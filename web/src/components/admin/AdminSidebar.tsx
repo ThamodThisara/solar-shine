@@ -24,7 +24,8 @@ import {
   BadgeCheck,
   Briefcase,
   FolderOpen,
-  ClipboardList
+  ClipboardList,
+  FileText
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -65,6 +66,7 @@ const sidebarItems = [
       {id:'who-we-are',label: 'Who We Are page',icon:Image},
       { id: 'about', label: 'About Content', icon: Info },
       { id: 'what-we-do', label: 'What We Do', icon: BadgeCheck },
+      { id: 'legal-pages', label: 'Legal Pages', icon: FileText },
     ]
   },
   {

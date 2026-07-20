@@ -11,6 +11,7 @@ import ProjectsPage from "./pages/Projects";
 import Blog from "./pages/Blog";
 import BlogPostPage from "./pages/BlogPostPage";
 import Contact from "./pages/Contact";
+import LegalPage from "./pages/LegalPage";
 import Admin from "./pages/Admin";
 import Engineer from "./pages/Engineer";
 import Sales from "./pages/Sales";
@@ -41,6 +42,8 @@ const App = () => (
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPostPage />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/privacy" element={<LegalPage pageType="privacy_policy" />} />
+            <Route path="/terms" element={<LegalPage pageType="terms_of_service" />} />
             <Route path="/login" element={<Login />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route

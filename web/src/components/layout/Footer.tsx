@@ -123,17 +123,17 @@ const Footer: React.FC = () => {
       { name: 'Privacy Policy', url: '/privacy' },
       { name: 'Terms of Service', url: '/terms' },
     ],
-    // 'Our Services': [
-    //   { name: 'Solar Installation', url: '/services#installation' },
-    //   { name: 'Energy Consultation', url: '/services#consultation' },
-    //   { name: 'Maintenance', url: '/services#maintenance' },
-    //   { name: 'System Design', url: '/services#design' },
-    // ],
-    // 'Company': [
-    //   { name: 'About Us', url: '/who-we-are' },
-    //   { name: 'Our Team', url: '/who-we-are#team' },
-    //   { name: 'News', url: '/blog' },
-    // ]
+      // 'Our Services': [
+      //   { name: 'Solar Installation', url: '/services#installation' },
+      //   { name: 'Energy Consultation', url: '/services#consultation' },
+      //   { name: 'Maintenance', url: '/services#maintenance' },
+      //   { name: 'System Design', url: '/services#design' },
+      // ],
+      // 'Company': [
+      //   { name: 'About Us', url: '/who-we-are' },
+      //   { name: 'Our Team', url: '/who-we-are#team' },
+      //   { name: 'News', url: '/blog' },
+      // ]
   };
 
   const sections = Object.keys(groupedFooterLinks).length > 0 ? groupedFooterLinks : defaultSections;

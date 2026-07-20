@@ -1444,6 +1444,56 @@
       "indexes": []
     },
     {
+      "$id": "legal_pages",
+      "$permissions": [
+        "read(\"any\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Legal Pages",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        {
+          "key": "page_type",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 50,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "content",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 1000000,
+          "encrypt": false,
+          "default": null
+        }
+      ],
+      "indexes": [
+        {
+          "key": "page_type_idx",
+          "type": "key",
+          "attributes": ["page_type"],
+          "orders": ["ASC"]
+        }
+      ]
+    },
+    {
       "$id": "about_page",
       "$permissions": [
         "read(\"any\")",
