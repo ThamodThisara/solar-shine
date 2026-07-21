@@ -20,6 +20,7 @@ import type { BlogPost } from '@/types/payload-types';
 import { Loader2, Plus, Edit, Trash2, Save, Calendar } from 'lucide-react';
 import { DATABASE_ID, COLLECTIONS } from '@/lib/appwrite';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchPageHeaders, updatePageHeaders, DEFAULT_PAGE_HEADERS } from '@/services/homeContentService';
 
 export const BlogManager: React.FC = () => {
   const { isAdmin, isLoading: isAuthLoading } = useAuth();
@@ -49,10 +50,47 @@ export const BlogManager: React.FC = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [categoriesInput, setCategoriesInput] = useState<string>('');
   const [tagsInput, setTagsInput] = useState<string>('');
+  const [pageHeader, setPageHeader] = useState({
+    title: DEFAULT_PAGE_HEADERS.blog_page_title,
+    description: DEFAULT_PAGE_HEADERS.blog_page_description,
+  });
+  const [savingHeader, setSavingHeader] = useState(false);
 
   useEffect(() => {
     loadPosts();
+    loadPageHeader();
   }, []);
+
+  const loadPageHeader = async () => {
+    try {
+      const header = await fetchPageHeaders();
+      setPageHeader({
+        title: header.blog_page_title,
+        description: header.blog_page_description,
+      });
+    } catch (error) {
+      console.error('Error loading blog page header:', error);
+    }
+  };
+
+  const handleSavePageHeader = async () => {
+    setSavingHeader(true);
+    try {
+      const success = await updatePageHeaders({
+        blog_page_title: pageHeader.title,
+        blog_page_description: pageHeader.description,
+      });
+      if (success) {
+        toast.success('Blog page header updated successfully');
+      } else {
+        toast.error('Failed to update blog page header');
+      }
+    } catch (error) {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setSavingHeader(false);
+    }
+  };
 
   // Update input fields when form data changes (for normalized display)
   useEffect(() => {
@@ -633,6 +671,57 @@ export const BlogManager: React.FC = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Page Header Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Page Header
+          </CardTitle>
+          <CardDescription>
+            The title and description shown at the top of the public Blog page
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="blog-header-title">Title</Label>
+            <Input
+              id="blog-header-title"
+              value={pageHeader.title}
+              onChange={(e) => setPageHeader(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="Solar Energy Insights & News"
+              maxLength={255}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="blog-header-description">Description</Label>
+            <Textarea
+              id="blog-header-description"
+              value={pageHeader.description}
+              onChange={(e) => setPageHeader(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Stay updated with the latest trends, technologies, and news..."
+              rows={3}
+              maxLength={2000}
+            />
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={handleSavePageHeader} disabled={savingHeader} className="min-w-[120px]">
+              {savingHeader ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Header
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

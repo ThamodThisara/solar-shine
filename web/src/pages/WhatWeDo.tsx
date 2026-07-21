@@ -102,6 +102,12 @@ const fallbackData = {
         label: "Average Energy Bill Reduction"
       }
     ]
+  },
+  cta: {
+    title: "Ready to Harness the Power of Solar Energy?",
+    description: "Contact us today to discuss how our solar solutions can benefit your home or business.",
+    button_text: "Get a Free Consultation",
+    button_route: "/contact"
   }
 };
 
@@ -401,15 +407,17 @@ const WhatWeDo: React.FC = () => {
         {/* CTA Section */}
         <section className="py-16 px-4 bg-brand-dark text-white">
           <div className="container-custom text-center">
-            <h2 className="text-3xl font-bold mb-6">Ready to Harness the Power of Solar Energy?</h2>
+            <h2 className="text-3xl font-bold mb-6">
+              {whatWeDoData.cta?.title || fallbackData.cta.title}
+            </h2>
             <p className="text-lg max-w-2xl mx-auto mb-8 text-white/80">
-              Contact us today to discuss how our solar solutions can benefit your home or business.
+              {whatWeDoData.cta?.description || fallbackData.cta.description}
             </p>
             <a
-              href="/contact"
+              href={whatWeDoData.cta?.button_route || fallbackData.cta.button_route}
               className="bg-primary text-black px-8 py-3 rounded-md inline-block hover:bg-primary/90 transition-colors"
             >
-              Get a Free Consultation
+              {whatWeDoData.cta?.button_text || fallbackData.cta.button_text}
             </a>
           </div>
         </section>

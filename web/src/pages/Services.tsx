@@ -5,7 +5,7 @@ import Footer from '@/components/layout/Footer';
 import { motion } from 'framer-motion';
 import { BadgeCheck, Sun, Battery, Wrench, BarChart3, Zap, Shield, Home, Building, Factory, Settings, Lightbulb, CheckCircle, Star, Heart } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { fetchServicesBanner } from '@/services/servicesBannerService';
+import { fetchServicesBanner, DEFAULT_SERVICES_CONTENT } from '@/services/servicesBannerService';
 import { fetchServiceCards } from '@/services/serviceCardService';
 import { fetchAdditionalServices } from '@/services/additionalServiceService';
 import { fetchServiceProcessSteps } from '@/services/serviceProcessService';
@@ -13,8 +13,6 @@ import { storage, STORAGE_BUCKET_ID } from '@/lib/appwrite';
 import { ServicesBanner, ServiceCard, AdditionalService, ServiceProcessStep } from '@/types/payload-types';
 
 
-
-const processTitle = "Our Service Process";
 
 const Services: React.FC = () => {
   const [activeService, setActiveService] = useState<string | null>(null);
@@ -199,9 +197,11 @@ const Services: React.FC = () => {
         <section className="py-20 px-4">
           <div className="container-custom">
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Our Services</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                {bannerData?.services_title || DEFAULT_SERVICES_CONTENT.services_title}
+              </h2>
               <p className="text-lg text-brand-gray max-w-3xl mx-auto">
-                We provide comprehensive solar solutions tailored to different sectors, each with unique energy requirements and considerations.
+                {bannerData?.services_description || DEFAULT_SERVICES_CONTENT.services_description}
               </p>
             </div>
 
@@ -279,10 +279,10 @@ const Services: React.FC = () => {
 
                           <div className="mt-8">
                             <a
-                              href="/contact"
+                              href={bannerData?.services_button_route || DEFAULT_SERVICES_CONTENT.services_button_route}
                               className="btn-primary inline-block"
                             >
-                              Enquire About This Service
+                              {bannerData?.services_button_text || DEFAULT_SERVICES_CONTENT.services_button_text}
                             </a>
                           </div>
                         </div>
@@ -331,9 +331,11 @@ const Services: React.FC = () => {
         <section className="py-20 px-4 bg-brand-light">
           <div className="container-custom">
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Additional Services</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                {bannerData?.additional_title || DEFAULT_SERVICES_CONTENT.additional_title}
+              </h2>
               <p className="text-lg text-brand-gray max-w-3xl mx-auto">
-                Beyond our core offerings, we provide these specialized services to enhance your solar experience.
+                {bannerData?.additional_description || DEFAULT_SERVICES_CONTENT.additional_description}
               </p>
             </div>
 
@@ -377,9 +379,11 @@ const Services: React.FC = () => {
         <section className="py-20 px-4">
           <div className="container-custom">
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">{processTitle}</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                {bannerData?.process_title || DEFAULT_SERVICES_CONTENT.process_title}
+              </h2>
               <p className="text-lg text-brand-gray max-w-3xl mx-auto">
-                Our streamlined process ensures a smooth experience from initial consultation to system activation.
+                {bannerData?.process_description || DEFAULT_SERVICES_CONTENT.process_description}
               </p>
             </div>
 
@@ -428,15 +432,17 @@ const Services: React.FC = () => {
         {/* CTA Section */}
         <section className="py-16 px-4 bg-primary">
           <div className="container-custom text-center">
-            <h2 className="text-3xl font-bold mb-6">Ready to Get Started?</h2>
+            <h2 className="text-3xl font-bold mb-6">
+              {bannerData?.cta_title || DEFAULT_SERVICES_CONTENT.cta_title}
+            </h2>
             <p className="text-lg max-w-2xl mx-auto mb-8">
-              Contact us today for a free consultation and take the first step towards energy independence.
+              {bannerData?.cta_description || DEFAULT_SERVICES_CONTENT.cta_description}
             </p>
             <a
-              href="/contact"
+              href={bannerData?.cta_button_route || DEFAULT_SERVICES_CONTENT.cta_button_route}
               className="bg-brand-black text-white px-8 py-3 rounded-md inline-block hover:bg-brand-black/90 transition-colors"
             >
-              Request a Free Quote
+              {bannerData?.cta_button_text || DEFAULT_SERVICES_CONTENT.cta_button_text}
             </a>
           </div>
         </section>

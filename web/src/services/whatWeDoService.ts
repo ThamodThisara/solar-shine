@@ -34,6 +34,23 @@ export interface ImpactStat {
   order_index: number;
 }
 
+export interface WhatWeDoCta {
+  title: string;
+  description: string;
+  button_text: string;
+  button_route: string;
+}
+
+// Default copy — mirrors the values that were previously hardcoded on the
+// What We Do page CTA section so the public page never renders empty.
+export const DEFAULT_WHAT_WE_DO_CTA: WhatWeDoCta = {
+  title: 'Ready to Harness the Power of Solar Energy?',
+  description:
+    'Contact us today to discuss how our solar solutions can benefit your home or business.',
+  button_text: 'Get a Free Consultation',
+  button_route: '/contact',
+};
+
 export interface WhatWeDoContent {
   $id?: string;
   hero: WhatWeDoHero;
@@ -56,6 +73,7 @@ export interface WhatWeDoContent {
     description: string;
     stats: ImpactStat[];
   };
+  cta: WhatWeDoCta;
 }
 
 export const fetchWhatWeDoContent = async (): Promise<WhatWeDoContent | null> => {
@@ -75,7 +93,8 @@ export const fetchWhatWeDoContent = async (): Promise<WhatWeDoContent | null> =>
         approach: content.approach ? JSON.parse(content.approach) : { title: '', description: '', steps: [] },
         expertise: content.expertise ? JSON.parse(content.expertise) : { title: '', description: '', areas: [] },
         benefits: content.benefits ? JSON.parse(content.benefits) : { title: '', items: [] },
-        impact: content.impact ? JSON.parse(content.impact) : { title: '', description: '', stats: [] }
+        impact: content.impact ? JSON.parse(content.impact) : { title: '', description: '', stats: [] },
+        cta: content.cta ? { ...DEFAULT_WHAT_WE_DO_CTA, ...JSON.parse(content.cta) } : { ...DEFAULT_WHAT_WE_DO_CTA }
       };
     }
     return null;
@@ -93,7 +112,8 @@ export const updateWhatWeDoContent = async (content: WhatWeDoContent): Promise<b
       approach: JSON.stringify(content.approach),
       expertise: JSON.stringify(content.expertise),
       benefits: JSON.stringify(content.benefits),
-      impact: JSON.stringify(content.impact)
+      impact: JSON.stringify(content.impact),
+      cta: JSON.stringify(content.cta ?? DEFAULT_WHAT_WE_DO_CTA)
     };
 
     if (content.$id) {

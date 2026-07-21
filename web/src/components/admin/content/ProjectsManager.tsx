@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Loader2, Plus, Edit, Trash2, Save, Calendar, Building, Image, Star, Settings, X, GripVertical } from 'lucide-react';
 import { databases, storage, COLLECTIONS } from '@/lib/appwrite';
 import { ID, Query } from 'appwrite';
+import { fetchPageHeaders, updatePageHeaders, DEFAULT_PAGE_HEADERS } from '@/services/homeContentService';
 
 interface Project {
   $id?: string;
@@ -57,6 +58,11 @@ export const ProjectsManager: React.FC = () => {
     name: '',
     color: 'bg-blue-100 text-blue-800'
   });
+  const [pageHeader, setPageHeader] = useState({
+    title: DEFAULT_PAGE_HEADERS.projects_page_title,
+    description: DEFAULT_PAGE_HEADERS.projects_page_description,
+  });
+  const [savingHeader, setSavingHeader] = useState(false);
 
   const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID;
   const collectionId = COLLECTIONS.PORTFOLIO_PROJECTS;
@@ -76,7 +82,39 @@ export const ProjectsManager: React.FC = () => {
   useEffect(() => {
     loadProjects();
     loadCategories();
+    loadPageHeader();
   }, []);
+
+  const loadPageHeader = async () => {
+    try {
+      const header = await fetchPageHeaders();
+      setPageHeader({
+        title: header.projects_page_title,
+        description: header.projects_page_description,
+      });
+    } catch (error) {
+      console.error('Error loading projects page header:', error);
+    }
+  };
+
+  const handleSavePageHeader = async () => {
+    setSavingHeader(true);
+    try {
+      const success = await updatePageHeaders({
+        projects_page_title: pageHeader.title,
+        projects_page_description: pageHeader.description,
+      });
+      if (success) {
+        toast.success('Projects page header updated successfully');
+      } else {
+        toast.error('Failed to update projects page header');
+      }
+    } catch (error) {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setSavingHeader(false);
+    }
+  };
 
   const loadProjects = async () => {
     try {
@@ -648,6 +686,57 @@ export const ProjectsManager: React.FC = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Page Header Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building className="h-5 w-5" />
+            Page Header
+          </CardTitle>
+          <CardDescription>
+            The title and description shown at the top of the public Projects page
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="projects-header-title">Title</Label>
+            <Input
+              id="projects-header-title"
+              value={pageHeader.title}
+              onChange={(e) => setPageHeader(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="Our Solar Projects"
+              maxLength={255}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="projects-header-description">Description</Label>
+            <Textarea
+              id="projects-header-description"
+              value={pageHeader.description}
+              onChange={(e) => setPageHeader(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Explore our portfolio of successfully completed solar installations..."
+              rows={3}
+              maxLength={2000}
+            />
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={handleSavePageHeader} disabled={savingHeader} className="min-w-[120px]">
+              {savingHeader ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Header
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Category Management Section */}
       <Card>

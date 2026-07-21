@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { fetchBlogPosts } from '@/services/blogService';
 import { BlogPost } from '@/types/payload-types';
 import { Link } from 'react-router-dom';
+import { fetchPageHeaders, DEFAULT_PAGE_HEADERS } from '@/services/homeContentService';
 
 const formatDate = (dateString: string) => {
   if (!dateString) return 'N/A';
@@ -37,6 +38,19 @@ const Blog: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'date' | 'title'>('date');
+  const [pageHeader, setPageHeader] = useState(DEFAULT_PAGE_HEADERS);
+
+  useEffect(() => {
+    const loadPageHeader = async () => {
+      try {
+        const header = await fetchPageHeaders();
+        setPageHeader(header);
+      } catch (error) {
+        console.error('Error loading blog page header:', error);
+      }
+    };
+    loadPageHeader();
+  }, []);
 
   useEffect(() => {
     const loadPosts = async () => {
@@ -223,11 +237,10 @@ const Blog: React.FC = () => {
             transition={{ duration: 0.6 }}
           >
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight mb-6">
-              Solar Energy <span className="text-primary">Insights</span> & News
+              {pageHeader.blog_page_title || DEFAULT_PAGE_HEADERS.blog_page_title}
             </h1>
             <p className="max-w-3xl mx-auto text-lg sm:text-xl text-gray-600 leading-relaxed">
-              Stay updated with the latest trends, technologies, and news in the solar energy industry.
-              Discover innovative solutions and industry insights from our expert team.
+              {pageHeader.blog_page_description || DEFAULT_PAGE_HEADERS.blog_page_description}
             </p>
           </motion.div>
 

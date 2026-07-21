@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { fetchProjects } from '@/services/projectService';
 import { Project } from '@/types/payload-types';
 import { Badge } from '@/components/ui/badge';
+import { fetchPageHeaders, DEFAULT_PAGE_HEADERS } from '@/services/homeContentService';
 
 interface Category {
   id: string;
@@ -25,6 +26,19 @@ const ProjectsPage: React.FC = () => {
     { id: 'industrial', name: 'Industrial', color: 'bg-purple-100 text-purple-800', order: 3 },
   ].sort((a, b) => a.order - b.order));
   const [activeCategory, setActiveCategory] = useState("All");
+  const [pageHeader, setPageHeader] = useState(DEFAULT_PAGE_HEADERS);
+
+  useEffect(() => {
+    const loadPageHeader = async () => {
+      try {
+        const header = await fetchPageHeaders();
+        setPageHeader(header);
+      } catch (error) {
+        console.error('Error loading projects page header:', error);
+      }
+    };
+    loadPageHeader();
+  }, []);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -152,9 +166,11 @@ const ProjectsPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">Our Solar Projects</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+              {pageHeader.projects_page_title || DEFAULT_PAGE_HEADERS.projects_page_title}
+            </h1>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              Explore our portfolio of successfully completed solar installations across various sectors.
+              {pageHeader.projects_page_description || DEFAULT_PAGE_HEADERS.projects_page_description}
             </p>
           </motion.div>
         </section>

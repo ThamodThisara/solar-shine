@@ -180,6 +180,114 @@
           "array": false,
           "size": 255,
           "default": null
+        },
+        {
+          "key": "services_title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "services_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 2000,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "services_button_text",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "services_button_route",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "additional_title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "additional_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 2000,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "process_title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "process_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 2000,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "cta_title",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "cta_description",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 2000,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "cta_button_text",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "cta_button_route",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 255,
+          "encrypt": false,
+          "default": null
         }
       ],
       "indexes": []
@@ -1315,6 +1423,15 @@
           "size": 100000,
           "encrypt": false,
           "default": null
+        },
+        {
+          "key": "cta",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100000,
+          "encrypt": false,
+          "default": null
         }
       ],
       "indexes": []
@@ -1437,6 +1554,15 @@
           "required": false,
           "array": false,
           "size": 2000,
+          "encrypt": false,
+          "default": null
+        },
+        {
+          "key": "page_headers",
+          "type": "string",
+          "required": false,
+          "array": false,
+          "size": 100000,
           "encrypt": false,
           "default": null
         }

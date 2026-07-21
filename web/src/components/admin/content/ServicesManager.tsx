@@ -17,7 +17,7 @@ import {
   updateServiceCard,
   deleteServiceCard
 } from '@/services/serviceCardService';
-import { fetchServicesBanner, updateServicesBanner } from '@/services/servicesBannerService';
+import { fetchServicesBanner, updateServicesBanner, updateServicesContent, DEFAULT_SERVICES_CONTENT } from '@/services/servicesBannerService';
 import { storage, STORAGE_BUCKET_ID, ID } from '@/lib/appwrite';
 import { AdditionalServicesManager } from './AdditionalServicesManager';
 import { ServiceProcessManager } from './ServiceProcessManager';
@@ -45,6 +45,11 @@ export const ServicesManager: React.FC = () => {
   const [backgroundImageFile, setBackgroundImageFile] = useState<File | null>(null);
   const [backgroundImagePreview, setBackgroundImagePreview] = useState<string>('');
   const [isSavingBanner, setIsSavingBanner] = useState(false);
+
+  // Editable section headings / call-to-action content for the public Services page.
+  const [sectionContent, setSectionContent] = useState({ ...DEFAULT_SERVICES_CONTENT });
+  const [showSectionContent, setShowSectionContent] = useState(false);
+  const [isSavingSections, setIsSavingSections] = useState(false);
 
   // New state variables for service form
   const [newBenefit, setNewBenefit] = useState('');
@@ -325,6 +330,22 @@ export const ServicesManager: React.FC = () => {
       const data = await fetchServicesBanner();
       if (data) {
         setBannerData(data);
+        // Populate the section-content form, falling back to defaults for any
+        // field the admin has not customised yet.
+        setSectionContent({
+          services_title: data.services_title || DEFAULT_SERVICES_CONTENT.services_title,
+          services_description: data.services_description || DEFAULT_SERVICES_CONTENT.services_description,
+          services_button_text: data.services_button_text || DEFAULT_SERVICES_CONTENT.services_button_text,
+          services_button_route: data.services_button_route || DEFAULT_SERVICES_CONTENT.services_button_route,
+          additional_title: data.additional_title || DEFAULT_SERVICES_CONTENT.additional_title,
+          additional_description: data.additional_description || DEFAULT_SERVICES_CONTENT.additional_description,
+          process_title: data.process_title || DEFAULT_SERVICES_CONTENT.process_title,
+          process_description: data.process_description || DEFAULT_SERVICES_CONTENT.process_description,
+          cta_title: data.cta_title || DEFAULT_SERVICES_CONTENT.cta_title,
+          cta_description: data.cta_description || DEFAULT_SERVICES_CONTENT.cta_description,
+          cta_button_text: data.cta_button_text || DEFAULT_SERVICES_CONTENT.cta_button_text,
+          cta_button_route: data.cta_button_route || DEFAULT_SERVICES_CONTENT.cta_button_route,
+        });
         if (data.background_image) {
           try {
             const imageUrl = getImageUrl(data.background_image);
@@ -336,6 +357,27 @@ export const ServicesManager: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading banner data:', error);
+    }
+  };
+
+  const handleSectionContentChange = (field: keyof typeof DEFAULT_SERVICES_CONTENT, value: string) => {
+    setSectionContent(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveSectionContent = async () => {
+    setIsSavingSections(true);
+    try {
+      const success = await updateServicesContent(sectionContent);
+      if (success) {
+        toast.success('Services page content updated successfully');
+        await loadBannerData();
+      } else {
+        toast.error('Failed to update services page content');
+      }
+    } catch (error) {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsSavingSections(false);
     }
   };
 
@@ -790,6 +832,193 @@ export const ServicesManager: React.FC = () => {
                   </>
                 ) : (
                   'Save Banner'
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Section Headings & Call-to-Action */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Page Section Headings &amp; Buttons</CardTitle>
+              <CardDescription>
+                Edit the titles, descriptions and button text/links shown across the Services page sections
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setShowSectionContent(!showSectionContent)}
+            >
+              {showSectionContent ? 'Hide' : 'Show'} Section Content
+            </Button>
+          </div>
+        </CardHeader>
+        {showSectionContent && (
+          <CardContent className="space-y-8">
+            {/* Section 1 — Our Services */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium border-b pb-2">Section 1 - Main Services</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sec1-title">Title</Label>
+                  <Input
+                    id="sec1-title"
+                    value={sectionContent.services_title}
+                    onChange={(e) => handleSectionContentChange('services_title', e.target.value)}
+                    maxLength={255}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sec1-btn-text">Button Text</Label>
+                  <Input
+                    id="sec1-btn-text"
+                    value={sectionContent.services_button_text}
+                    onChange={(e) => handleSectionContentChange('services_button_text', e.target.value)}
+                    maxLength={255}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sec1-desc">Description</Label>
+                <Textarea
+                  id="sec1-desc"
+                  value={sectionContent.services_description}
+                  onChange={(e) => handleSectionContentChange('services_description', e.target.value)}
+                  rows={2}
+                  maxLength={2000}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sec1-btn-route">Button Route</Label>
+                <Input
+                  id="sec1-btn-route"
+                  value={sectionContent.services_button_route}
+                  onChange={(e) => handleSectionContentChange('services_button_route', e.target.value)}
+                  placeholder="/contact"
+                  maxLength={255}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Section 2 — Additional Services */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium border-b pb-2">Section 2 - Additional Services</h3>
+              <div className="space-y-2">
+                <Label htmlFor="sec2-title">Title</Label>
+                <Input
+                  id="sec2-title"
+                  value={sectionContent.additional_title}
+                  onChange={(e) => handleSectionContentChange('additional_title', e.target.value)}
+                  maxLength={255}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sec2-desc">Description</Label>
+                <Textarea
+                  id="sec2-desc"
+                  value={sectionContent.additional_description}
+                  onChange={(e) => handleSectionContentChange('additional_description', e.target.value)}
+                  rows={2}
+                  maxLength={2000}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Section 3 — Service Process */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium border-b pb-2">Section 3 - Service Process</h3>
+              <div className="space-y-2">
+                <Label htmlFor="sec3-title">Title</Label>
+                <Input
+                  id="sec3-title"
+                  value={sectionContent.process_title}
+                  onChange={(e) => handleSectionContentChange('process_title', e.target.value)}
+                  maxLength={255}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sec3-desc">Description</Label>
+                <Textarea
+                  id="sec3-desc"
+                  value={sectionContent.process_description}
+                  onChange={(e) => handleSectionContentChange('process_description', e.target.value)}
+                  rows={2}
+                  maxLength={2000}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Section 4 — Bottom Call to Action */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium border-b pb-2">Section 4 - Call to Action</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sec4-title">Title</Label>
+                  <Input
+                    id="sec4-title"
+                    value={sectionContent.cta_title}
+                    onChange={(e) => handleSectionContentChange('cta_title', e.target.value)}
+                    maxLength={255}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sec4-btn-text">Button Text</Label>
+                  <Input
+                    id="sec4-btn-text"
+                    value={sectionContent.cta_button_text}
+                    onChange={(e) => handleSectionContentChange('cta_button_text', e.target.value)}
+                    maxLength={255}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sec4-desc">Description</Label>
+                <Textarea
+                  id="sec4-desc"
+                  value={sectionContent.cta_description}
+                  onChange={(e) => handleSectionContentChange('cta_description', e.target.value)}
+                  rows={2}
+                  maxLength={2000}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sec4-btn-route">Button Route</Label>
+                <Input
+                  id="sec4-btn-route"
+                  value={sectionContent.cta_button_route}
+                  onChange={(e) => handleSectionContentChange('cta_button_route', e.target.value)}
+                  placeholder="/contact"
+                  maxLength={255}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button
+                onClick={handleSaveSectionContent}
+                disabled={isSavingSections}
+                className="min-w-[120px]"
+              >
+                {isSavingSections ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Section Content
+                  </>
                 )}
               </Button>
             </div>

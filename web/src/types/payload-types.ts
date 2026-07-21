@@ -21,6 +21,22 @@ export interface ServicesBanner {
   title: string;
   subtitle: string | null;
   background_image: string | null;
+  // Section 1 — main services
+  services_title?: string | null;
+  services_description?: string | null;
+  services_button_text?: string | null;
+  services_button_route?: string | null;
+  // Section 2 — additional services
+  additional_title?: string | null;
+  additional_description?: string | null;
+  // Section 3 — service process
+  process_title?: string | null;
+  process_description?: string | null;
+  // Section 4 — bottom call to action
+  cta_title?: string | null;
+  cta_description?: string | null;
+  cta_button_text?: string | null;
+  cta_button_route?: string | null;
 }
 
 export interface ServiceCard {

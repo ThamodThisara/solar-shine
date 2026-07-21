@@ -23,7 +23,7 @@ import {
     Upload
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { whatWeDoService, WhatWeDoContent } from '@/services/whatWeDoService';
+import { whatWeDoService, WhatWeDoContent, DEFAULT_WHAT_WE_DO_CTA } from '@/services/whatWeDoService';
 import { fileUploadService } from '@/services/appwriteService';
 
 const AVAILABLE_ICONS = [
@@ -39,7 +39,8 @@ export const WhatWeDoManager: React.FC = () => {
         approach: { title: '', description: '', steps: [] },
         expertise: { title: '', description: '', areas: [] },
         benefits: { title: '', items: [] },
-        impact: { title: '', description: '', stats: [] }
+        impact: { title: '', description: '', stats: [] },
+        cta: { ...DEFAULT_WHAT_WE_DO_CTA }
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -49,7 +50,8 @@ export const WhatWeDoManager: React.FC = () => {
         approach: false,
         expertise: false,
         benefits: false,
-        impact: false
+        impact: false,
+        cta: false
     });
     const { toast } = useToast();
 
@@ -132,7 +134,8 @@ export const WhatWeDoManager: React.FC = () => {
                         title: 'Our Environmental Impact',
                         description: 'Through our solar installations, we\'ve helped our clients significantly reduce their carbon footprint while saving on energy costs.',
                         stats: []
-                    }
+                    },
+                    cta: { ...DEFAULT_WHAT_WE_DO_CTA }
                 };
                 setContent(defaultContent);
             }
@@ -1224,6 +1227,115 @@ export const WhatWeDoManager: React.FC = () => {
                                     <>
                                         <Save className="mr-2 h-4 w-4" />
                                         Save Impact Section
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </CardContent>
+                )}
+            </Card>
+
+            {/* Call to Action Section */}
+            <Card className="border border-border/50 hover:border-border transition-all duration-200">
+                <CardHeader
+                    className="cursor-pointer hover:bg-muted/30 transition-colors duration-200 border-b border-border/50"
+                    onClick={() => toggleSection('cta')}
+                >
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <BadgeCheck className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-xl font-semibold">Call to Action</CardTitle>
+                                <p className="text-sm text-muted-foreground">Bottom banner title, description and button</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Badge variant={content.cta?.title ? "default" : "secondary"} className="text-xs">
+                                {content.cta?.title ? 'Configured' : 'Not Set'}
+                            </Badge>
+                            {expandedSections.cta ? (
+                                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                            ) : (
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            )}
+                        </div>
+                    </div>
+                </CardHeader>
+                {expandedSections.cta && (
+                    <CardContent className="pt-6">
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <Label htmlFor="cta-title" className="text-sm font-medium">Title</Label>
+                                <Input
+                                    id="cta-title"
+                                    value={content.cta?.title || ''}
+                                    onChange={(e) => setContent(prev => ({
+                                        ...prev,
+                                        cta: { ...prev.cta, title: e.target.value }
+                                    }))}
+                                    placeholder="Enter CTA title"
+                                    className="mt-2"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="cta-description" className="text-sm font-medium">Description</Label>
+                                <Textarea
+                                    id="cta-description"
+                                    value={content.cta?.description || ''}
+                                    onChange={(e) => setContent(prev => ({
+                                        ...prev,
+                                        cta: { ...prev.cta, description: e.target.value }
+                                    }))}
+                                    placeholder="Enter CTA description"
+                                    rows={3}
+                                    className="mt-2"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="cta-button-text" className="text-sm font-medium">Button Text</Label>
+                                <Input
+                                    id="cta-button-text"
+                                    value={content.cta?.button_text || ''}
+                                    onChange={(e) => setContent(prev => ({
+                                        ...prev,
+                                        cta: { ...prev.cta, button_text: e.target.value }
+                                    }))}
+                                    placeholder="e.g. Get a Free Consultation"
+                                    className="mt-2"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="cta-button-route" className="text-sm font-medium">Button Route</Label>
+                                <Input
+                                    id="cta-button-route"
+                                    value={content.cta?.button_route || ''}
+                                    onChange={(e) => setContent(prev => ({
+                                        ...prev,
+                                        cta: { ...prev.cta, button_route: e.target.value }
+                                    }))}
+                                    placeholder="e.g. /contact"
+                                    className="mt-2"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-6 border-t border-border/50 mt-6">
+                            <Button
+                                onClick={() => handleSave()}
+                                className="px-8"
+                                disabled={saving}
+                            >
+                                {saving ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="mr-2 h-4 w-4" />
+                                        Save Call to Action
                                     </>
                                 )}
                             </Button>
