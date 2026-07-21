@@ -15,6 +15,7 @@
     "seed-db": "tsx src/scripts/seedDatabaseFinal.ts",
     "setup-cli": "echo 'Install Appwrite CLI: npm install -g appwrite-cli' && echo 'Then run: appwrite login && appwrite init project'",
     "push-collections": "appwrite push collections",
+    "gen-favicons": "node scripts/generate-favicons.mjs",
     "dev:runner": "node --watch run-local.js"
   },
   "dependencies": {
@@ -97,7 +98,9 @@
     "globals": "^15.9.0",
     "lovable-tagger": "^1.1.7",
     "node-appwrite": "^26.2.0",
+    "png-to-ico": "^3.0.2",
     "postcss": "^8.4.47",
+    "sharp": "^0.35.3",
     "tailwindcss": "^3.4.11",
     "tsx": "^4.20.3",
     "typescript": "^5.5.3",
