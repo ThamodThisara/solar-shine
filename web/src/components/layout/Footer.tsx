@@ -6,6 +6,7 @@ import {
   Youtube, MessageCircle, Share2, ChevronDown, ChevronUp, Sun,
   ArrowRight, Heart, Shield, FileText
 } from 'lucide-react';
+import { TikTokIcon } from '@/components/icons/TikTokIcon';
 import { useQuery } from '@tanstack/react-query';
 import { fetchCompanyInfo } from '@/services/companyService';
 import { fetchGlobalSettings } from '@/services/settingsService';
@@ -84,7 +85,7 @@ const Footer: React.FC = () => {
       instagram: Instagram,
       linkedin: Linkedin,
       youtube: Youtube,
-      tiktok: MessageCircle,
+      tiktok: TikTokIcon,
       pinterest: Share2,
       snapchat: MessageCircle,
       whatsapp: MessageCircle,
