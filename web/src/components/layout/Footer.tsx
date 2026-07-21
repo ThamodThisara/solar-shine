@@ -164,15 +164,27 @@ const Footer: React.FC = () => {
   };
 
   return (
-    <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white relative overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
+    <footer className="relative overflow-hidden bg-brand-black text-white">
+      {/* Premium base — warm gold-tinted charcoal fading into black */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#241d09] via-[#15120b] to-black" />
+
+      {/* Soft blurred gold / yellow glows for luxurious depth (kept low-opacity so
+          they never compromise text contrast) */}
+      <div className="pointer-events-none absolute -top-40 -left-24 h-[26rem] w-[26rem] rounded-full bg-primary/25 blur-3xl" />
+      <div className="pointer-events-none absolute top-10 right-[-6rem] h-80 w-80 rounded-full bg-yellow-400/15 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl" />
+
+      {/* Shimmering gold hairline along the top edge */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
+
+      {/* Subtle gold dot texture */}
+      <div className="absolute inset-0 opacity-[0.07]">
         <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FEC105' fill-opacity='0.4'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }} />
       </div>
 
-      <div className="relative">
+      <div className="relative z-10">
         {/* Main Footer Content */}
         <div className="container-custom py-12 md:py-16 px-4">
           <motion.div
@@ -227,7 +239,7 @@ const Footer: React.FC = () => {
                   {socialLinksLoading ? (
                     <div className="flex space-x-3">
                       {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="w-10 h-10 bg-gray-700 rounded-lg animate-pulse" />
+                        <div key={i} className="w-10 h-10 bg-white/10 rounded-lg animate-pulse" />
                       ))}
                     </div>
                   ) : (
@@ -239,7 +251,7 @@ const Footer: React.FC = () => {
                           href={social.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="bg-gray-800 hover:bg-orange-500 text-gray-300 hover:text-white p-2.5 rounded-lg transition-all duration-300 transform hover:scale-110 hover:shadow-lg"
+                          className="bg-white/5 hover:bg-primary text-gray-300 hover:text-black p-2.5 rounded-lg transition-all duration-300 transform hover:scale-110 hover:shadow-lg"
                           aria-label={social.name}
                           whileHover={{ y: -2 }}
                           whileTap={{ scale: 0.95 }}
@@ -262,7 +274,7 @@ const Footer: React.FC = () => {
                     <div className="lg:hidden">
                       <button
                         onClick={() => toggleSection(sectionName)}
-                        className="flex items-center justify-between w-full py-3 text-left border-b border-gray-700"
+                        className="flex items-center justify-between w-full py-3 text-left border-b border-white/10"
                       >
                         <h3 className="text-lg font-semibold text-white">{sectionName}</h3>
                         {expandedSections[sectionName] ? (
@@ -332,7 +344,7 @@ const Footer: React.FC = () => {
 
         {/* Bottom Footer */}
         <motion.div
-          className="bg-black py-6 px-4"
+          className="bg-black/50 border-t border-primary/20 py-6 px-4"
           variants={itemVariants}
           initial="hidden"
           whileInView="visible"
