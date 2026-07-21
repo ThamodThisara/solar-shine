@@ -215,7 +215,7 @@ const WhatWeDo: React.FC = () => {
       <Header />
       <main className="pt-20 min-h-screen">
         {/* Hero Section */}
-        <section className="relative h-[50vh] md:h-[60vh] flex items-center justify-center overflow-hidden">
+        <section className="relative flex items-center justify-center overflow-hidden py-20 sm:py-24 min-h-[55vh] md:min-h-[60vh]">
           <div className="absolute inset-0 z-0">
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/40 z-10" />
             {!heroImageUrl && whatWeDoData.hero.image && !whatWeDoData.hero.image.startsWith('http') && (
@@ -241,8 +241,8 @@ const WhatWeDo: React.FC = () => {
             />
           </div>
           <div className="container-custom relative z-20 text-center text-white">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">{whatWeDoData.hero.title}</h1>
-            <p className="text-xl md:text-2xl max-w-3xl mx-auto">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight">{whatWeDoData.hero.title}</h1>
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl max-w-3xl mx-auto">
               {whatWeDoData.hero.subtitle}
             </p>
           </div>
