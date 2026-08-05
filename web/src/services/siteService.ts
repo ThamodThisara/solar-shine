@@ -139,3 +139,41 @@ export async function registerSite(site: SiteRecord): Promise<SiteRecord> {
 
   return mapDocToSite(response);
 }
+
+export async function updateSite(siteId: string, site: Partial<SiteRecord>): Promise<SiteRecord> {
+  const coords = parseCoordinates(site.googleMapsLink);
+
+  const payload: Record<string, unknown> = {};
+  if (site.siteName !== undefined) payload.siteName = site.siteName.trim();
+  if (site.contactPersonName !== undefined) payload.contactPersonName = site.contactPersonName.trim();
+  if (site.contactPersonNumber !== undefined) payload.contactPersonNumber = site.contactPersonNumber.trim();
+  if (site.email !== undefined) payload.email = site.email.trim();
+  if (site.channels !== undefined) payload.channels = site.channels.trim();
+  if (site.address !== undefined) payload.address = site.address.trim();
+  if (site.panelBrand !== undefined) payload.panelBrand = site.panelBrand.trim();
+  if (site.panelModel !== undefined) payload.panelModel = site.panelModel.trim();
+  if (site.panelQuantity !== undefined) payload.panelQuantity = site.panelQuantity;
+  if (site.panelDcCapacity !== undefined) payload.panelDcCapacity = site.panelDcCapacity;
+  if (site.inverterBrand !== undefined) payload.inverterBrand = site.inverterBrand.trim();
+  if (site.inverterModel !== undefined) payload.inverterModel = site.inverterModel.trim();
+  if (site.inverterQuantity !== undefined) payload.inverterQuantity = site.inverterQuantity;
+  if (site.inverterAcCapacity !== undefined) payload.inverterAcCapacity = site.inverterAcCapacity;
+  if (site.description !== undefined) payload.description = site.description.trim();
+
+  if (coords) {
+    payload.latitude = coords.lat;
+    payload.longitude = coords.lng;
+  } else if (site.googleMapsLink === '') {
+    payload.latitude = null;
+    payload.longitude = null;
+  }
+
+  const response = await databases.updateDocument(
+    DATABASE_ID,
+    COLLECTIONS.SITES,
+    siteId,
+    payload
+  );
+
+  return mapDocToSite(response);
+}

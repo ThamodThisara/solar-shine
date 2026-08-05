@@ -10,7 +10,6 @@ import { Combobox } from '@/components/ui/combobox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
-import { canAccessSection } from '@/config/roles';
 import { cn } from '@/lib/utils';
 import { SiteVisit, SiteVisitStatus } from '@/types/payload-types';
 import { STATUS_OPTIONS } from '@/lib/siteVisits';
@@ -55,8 +54,8 @@ interface SiteVisitsSectionProps {
 }
 
 const SiteVisitsSection: React.FC<SiteVisitsSectionProps> = ({ showCreate = true }) => {
-  const { role, isLoading: isAuthLoading, user, isAdmin } = useAuth();
-  const canAccess = canAccessSection('site-visits', role);
+  const { role, isLoading: isAuthLoading, user, isAdmin, hasPermission } = useAuth();
+  const canAccess = hasPermission('sites:view');
   const queryClient = useQueryClient();
 
   const [searchParams] = useSearchParams();
@@ -202,9 +201,7 @@ const SiteVisitsSection: React.FC<SiteVisitsSectionProps> = ({ showCreate = true
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / SITE_VISIT_PAGE_SIZE));
 
-  // Admins and engineers manage everything; sales managers have read-only access.
-  const isEngineer = role === 'project_engineer' || role === 'planning_engineer';
-  const canEditVisit = (_visit: SiteVisit) => isAdmin || isEngineer;
+  const canEditVisit = (_visit: SiteVisit) => hasPermission('sites:edit');
 
   return (
     <div className="space-y-5">
@@ -416,6 +413,7 @@ const SiteVisitsSection: React.FC<SiteVisitsSectionProps> = ({ showCreate = true
         currentUser={{ $id: user?.$id ?? '', name: user?.name ?? 'User' }}
         onSave={(input) => createMutation.mutate(input)}
         isSaving={createMutation.isPending}
+        users={usersList}
       />
 
       {selectedVisit && (

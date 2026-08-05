@@ -85,8 +85,26 @@ const LayoutWrapper: React.FC<LayoutWrapperProps> = ({ children, role, navigate 
 
 const ProjectSummary: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
-  const { role, user } = useAuth();
+  const { role, user, hasPermission } = useAuth();
   const navigate = useNavigate();
+
+  if (!hasPermission('projects:view')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <Card className="w-full max-w-md text-center shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-red-600">Access Denied</CardTitle>
+            <CardDescription className="mt-1.5">
+              You do not have permission to view the project summary details.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Dialog and navigation states for Site Visit Cards
   const [selectedVisit, setSelectedVisit] = useState<any | null>(null);

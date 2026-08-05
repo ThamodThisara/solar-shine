@@ -19,12 +19,13 @@ import { MapPicker } from '@/components/ui/map-picker';
 import { parseCoordinates } from '@/lib/utils';
 import { resolveGoogleMapsLink } from '@/services/teamService';
 import { ClientRecord } from '@/services/clientService';
-import { fetchSitesByClient, generateNextSiteCode, registerSite, SiteRecord } from '@/services/siteService';
+import { fetchSitesByClient, generateNextSiteCode, registerSite, updateSite, SiteRecord } from '@/services/siteService';
 
 interface RegisterSiteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   client: ClientRecord | null;
+  siteToEdit?: SiteRecord | null;
   onSuccess?: (site: SiteRecord) => void;
 }
 
@@ -66,7 +67,7 @@ const emptyForm: SiteForm = {
   description: '',
 };
 
-export const RegisterSiteDialog: React.FC<RegisterSiteDialogProps> = ({ open, onOpenChange, client, onSuccess }) => {
+export const RegisterSiteDialog: React.FC<RegisterSiteDialogProps> = ({ open, onOpenChange, client, siteToEdit, onSuccess }) => {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<SiteForm>(emptyForm);
   const [errors, setErrors] = useState<Partial<Record<keyof SiteForm, string>>>({});
@@ -79,13 +80,31 @@ export const RegisterSiteDialog: React.FC<RegisterSiteDialogProps> = ({ open, on
     enabled: open && !!client?.$id,
   });
 
-  const isFirstSite = sites.length === 0;
   const nextSiteCode = client?.clientCode ? generateNextSiteCode(client.clientCode, sites) : '';
 
   // Prefill/reset the form whenever the dialog opens or the sites data settles.
   useEffect(() => {
     if (!open || !client || sitesLoading) return;
-    if (sites.length === 0) {
+    if (siteToEdit) {
+      setForm({
+        siteName: siteToEdit.siteName || '',
+        contactPersonName: siteToEdit.contactPersonName || '',
+        contactPersonNumber: siteToEdit.contactPersonNumber || '',
+        email: siteToEdit.email || '',
+        channels: siteToEdit.channels || '',
+        googleMapsLink: siteToEdit.googleMapsLink || '',
+        address: siteToEdit.address || '',
+        panelBrand: siteToEdit.panelBrand || '',
+        panelModel: siteToEdit.panelModel || '',
+        panelQuantity: siteToEdit.panelQuantity ? String(siteToEdit.panelQuantity) : '',
+        panelDcCapacity: siteToEdit.panelDcCapacity ? String(siteToEdit.panelDcCapacity) : '',
+        inverterBrand: siteToEdit.inverterBrand || '',
+        inverterModel: siteToEdit.inverterModel || '',
+        inverterQuantity: siteToEdit.inverterQuantity ? String(siteToEdit.inverterQuantity) : '',
+        inverterAcCapacity: siteToEdit.inverterAcCapacity ? String(siteToEdit.inverterAcCapacity) : '',
+        description: siteToEdit.description || '',
+      });
+    } else if (sites.length === 0) {
       setForm({
         ...emptyForm,
         contactPersonName: client.name || '',
@@ -100,7 +119,7 @@ export const RegisterSiteDialog: React.FC<RegisterSiteDialogProps> = ({ open, on
     }
     setErrors({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, client?.$id, sitesLoading]);
+  }, [open, client?.$id, sitesLoading, siteToEdit]);
 
   const setField = (field: keyof SiteForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -198,15 +217,18 @@ export const RegisterSiteDialog: React.FC<RegisterSiteDialogProps> = ({ open, on
         inverterAcCapacity: toNum(form.inverterAcCapacity),
         description: form.description,
       };
+      if (siteToEdit && siteToEdit.$id) {
+        return updateSite(siteToEdit.$id, payload);
+      }
       return registerSite(payload);
     },
     onSuccess: (site) => {
       queryClient.invalidateQueries({ queryKey: ['sites', client?.$id] });
-      toast.success(`Site ${site.siteCode} registered`);
+      toast.success(siteToEdit ? 'Site details updated' : `Site ${site.siteCode} registered`);
       onOpenChange(false);
       onSuccess?.(site);
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to register site'),
+    onError: (err: Error) => toast.error(err.message || (siteToEdit ? 'Failed to update site' : 'Failed to register site')),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -223,9 +245,9 @@ export const RegisterSiteDialog: React.FC<RegisterSiteDialogProps> = ({ open, on
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Register Site</DialogTitle>
+          <DialogTitle>{siteToEdit ? 'Edit Site Details' : 'Register Site'}</DialogTitle>
           <DialogDescription>
-            {client ? <>Add a site for <span className="font-medium text-foreground">{client.name}</span>.</> : 'Add a site.'}
+            {siteToEdit ? 'Modify details for this site location.' : (client ? <>Add a site for <span className="font-medium text-foreground">{client.name}</span>.</> : 'Add a site.')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2" noValidate>
@@ -234,7 +256,7 @@ export const RegisterSiteDialog: React.FC<RegisterSiteDialogProps> = ({ open, on
               <Label htmlFor="site_code">Site Code</Label>
               <Input
                 id="site_code"
-                value={sitesLoading ? 'Generating…' : nextSiteCode}
+                value={siteToEdit ? siteToEdit.siteCode : (sitesLoading ? 'Generating…' : nextSiteCode)}
                 readOnly
                 tabIndex={-1}
                 className="bg-muted text-muted-foreground font-mono cursor-not-allowed"
@@ -409,8 +431,8 @@ export const RegisterSiteDialog: React.FC<RegisterSiteDialogProps> = ({ open, on
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending || sitesLoading}>
-              {mutation.isPending ? 'Registering...' : 'Register Site'}
+            <Button type="submit" disabled={mutation.isPending || (!siteToEdit && sitesLoading)}>
+              {mutation.isPending ? (siteToEdit ? 'Saving...' : 'Registering...') : (siteToEdit ? 'Save Changes' : 'Register Site')}
             </Button>
           </DialogFooter>
         </form>

@@ -13,6 +13,16 @@ interface AdminHeaderProps {
   onMenuClick?: () => void;
 }
 
+const formatRoleName = (role?: string | null): string => {
+  if (!role) return 'User';
+  if (role === 'admin') return 'Administrator';
+  if (role === 'hr') return 'HR';
+  return role
+    .split(/[_-]/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+};
+
 const AdminHeader: React.FC<AdminHeaderProps> = ({ user, onMenuClick }) => {
   return (
     <div className="bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg py-3 px-4">
@@ -36,7 +46,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user, onMenuClick }) => {
             </div>
           </div>
           <Badge variant="secondary" className="bg-blue-500 text-white border-blue-400 hidden sm:inline-flex">
-            Admin
+            {formatRoleName(user?.role)}
           </Badge>
         </div>
 
@@ -56,7 +66,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ user, onMenuClick }) => {
           <div className="flex items-center gap-3 border-l border-blue-400 pl-4">
             <div className="text-right hidden md:block">
               <p className="text-white text-sm font-medium">{user?.name || user?.email}</p>
-              <p className="text-blue-200 text-xs">Administrator</p>
+              <p className="text-blue-200 text-xs">{formatRoleName(user?.role)}</p>
             </div>
             {/* <Button 
               variant="outline" 

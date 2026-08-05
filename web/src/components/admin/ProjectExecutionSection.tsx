@@ -9,7 +9,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { canAccessSection } from '@/config/roles';
 import { cn } from '@/lib/utils';
 import { ProjectExecution, ProjectExecutionStatus } from '@/types/payload-types';
 import { fetchUsers } from '@/services/userService';
@@ -56,8 +55,8 @@ interface ProjectExecutionSectionProps {
 }
 
 const ProjectExecutionSection: React.FC<ProjectExecutionSectionProps> = ({ showCreate = true }) => {
-  const { role, user, isAdmin, isLoading: isAuthLoading } = useAuth();
-  const canAccess = canAccessSection('project-execution', role);
+  const { role, user, isAdmin, isLoading: isAuthLoading, hasPermission } = useAuth();
+  const canAccess = hasPermission('projects:view');
   const queryClient = useQueryClient();
 
   const [filter, setFilter] = useState<ProjectExecutionStatus | 'all'>('all');

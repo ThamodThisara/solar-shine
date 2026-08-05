@@ -13,6 +13,7 @@
     "type-check": "tsc --noEmit",
     "setup-db": "tsx src/scripts/setupDatabase.ts",
     "seed-db": "tsx src/scripts/seedDatabaseFinal.ts",
+    "seed-roles": "tsx src/scripts/seedRoles.ts",
     "setup-cli": "echo 'Install Appwrite CLI: npm install -g appwrite-cli' && echo 'Then run: appwrite login && appwrite init project'",
     "push-collections": "appwrite push collections",
     "gen-favicons": "node scripts/generate-favicons.mjs",

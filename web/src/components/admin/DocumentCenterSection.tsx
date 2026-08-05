@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { Combobox } from '@/components/ui/combobox';
-import { canAccessSection, getDocumentDepartmentForRole } from '@/config/roles';
+import { getDocumentDepartmentForRole } from '@/config/roles';
 import { DocumentRecord } from '@/types/payload-types';
 import {
   fetchDocuments,
@@ -27,8 +27,8 @@ import ManageDocumentTypesDialog from './content-editors/document/ManageDocument
 import ProjectSiteVisitsPanel from './ProjectSiteVisitsPanel';
 
 const DocumentCenterSection: React.FC = () => {
-  const { role, isLoading: isAuthLoading, user, isAdmin } = useAuth();
-  const canAccess = canAccessSection('document-center', role);
+  const { role, isLoading: isAuthLoading, user, isAdmin, hasPermission } = useAuth();
+  const canAccess = hasPermission('documents:view');
   const queryClient = useQueryClient();
 
   const [projectFilter, setProjectFilter] = useState<string>('all');

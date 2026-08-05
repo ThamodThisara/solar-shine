@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -35,8 +36,11 @@ const num = (v?: number | null) => (v === null || v === undefined ? '—' : Stri
 const text = (v?: string) => (v && v.trim() ? v : '—');
 
 export const ClientSitesDialog: React.FC<ClientSitesDialogProps> = ({ open, onOpenChange, client }) => {
+  const { hasPermission } = useAuth();
   const [selectedSiteId, setSelectedSiteId] = useState<string>('');
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [siteToEdit, setSiteToEdit] = useState<SiteRecord | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const { data: sites = [], isLoading } = useQuery({
     queryKey: ['sites', client?.$id],
@@ -73,9 +77,25 @@ export const ClientSitesDialog: React.FC<ClientSitesDialogProps> = ({ open, onOp
             <p className="text-sm text-muted-foreground">
               {isLoading ? 'Loading…' : `${sites.length} site${sites.length === 1 ? '' : 's'}`}
             </p>
-            <Button size="sm" onClick={() => setIsAddOpen(true)} disabled={!client}>
-              <Plus className="mr-1 h-4 w-4" /> Add Site
-            </Button>
+            <div className="flex items-center gap-2">
+              {selectedSite && hasPermission('client-sites:edit') && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSiteToEdit(selectedSite);
+                    setIsEditOpen(true);
+                  }}
+                >
+                  <Edit className="mr-1 h-3.5 w-3.5" /> Edit Site
+                </Button>
+              )}
+              {hasPermission('client-sites:create') && (
+                <Button size="sm" onClick={() => { setSiteToEdit(null); setIsAddOpen(true); }} disabled={!client}>
+                  <Plus className="mr-1 h-4 w-4" /> Add Site
+                </Button>
+              )}
+            </div>
           </div>
 
           {isLoading ? (
@@ -89,7 +109,7 @@ export const ClientSitesDialog: React.FC<ClientSitesDialogProps> = ({ open, onOp
             </div>
           ) : (
             <div className="space-y-4 py-1">
-              {sites.length > 1 && (
+              {sites.length > 0 && (
                 <div className="space-y-1">
                   <Label>Select Site</Label>
                   <Combobox
@@ -183,6 +203,14 @@ export const ClientSitesDialog: React.FC<ClientSitesDialogProps> = ({ open, onOp
         open={isAddOpen}
         onOpenChange={setIsAddOpen}
         client={client}
+        onSuccess={(site) => setSelectedSiteId(site.$id || '')}
+      />
+
+      <RegisterSiteDialog
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        client={client}
+        siteToEdit={siteToEdit}
         onSuccess={(site) => setSelectedSiteId(site.$id || '')}
       />
     </>

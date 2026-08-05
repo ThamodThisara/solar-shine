@@ -48,7 +48,7 @@ export const EngineerSidebar: React.FC<EngineerSidebarProps> = ({
   isMobileOpen,
   onMobileClose,
 }) => {
-  const { role } = useAuth();
+  const { role, departmentName } = useAuth();
   // On mobile the drawer is always full-width, so labels are shown regardless of
   // the desktop collapse state. Collapse only hides labels on lg+ screens.
   const showLabels = isMobileOpen || !isCollapsed;
@@ -85,7 +85,7 @@ export const EngineerSidebar: React.FC<EngineerSidebarProps> = ({
         <div className="flex items-center justify-between">
           {showLabels && (
             <h2 className="text-lg font-semibold text-gray-900">
-              {`${getPanelLabelForRole(role)} Panel`}
+              {departmentName ? `${departmentName} Panel` : `${getPanelLabelForRole(role)} Panel`}
             </h2>
           )}
           {/* Desktop: collapse toggle */}
