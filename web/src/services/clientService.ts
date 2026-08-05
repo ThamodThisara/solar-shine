@@ -15,6 +15,9 @@ export interface ClientRecord {
   longitude?: number;
 }
 
+/** Documents fetched per request when paging through a collection. */
+const PAGE_SIZE = 100;
+
 export function generateNextClientCode(clients: ClientRecord[]): string {
   const PREFIX = 'SM-CL-';
   let maxNum = 0;
@@ -33,26 +36,38 @@ export async function fetchClients(): Promise<ClientRecord[]> {
   const registered: ClientRecord[] = [];
   
   try {
-    const response = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTIONS.CLIENTS,
-      [Query.limit(100)]
-    );
-    
-    const mapped = response.documents.map((doc) => ({
-      $id: doc.$id,
-      clientCode: doc.clientCode || '',
-      name: doc.name,
-      phone: doc.phone,
-      email: doc.email,
-      channels: doc.channels,
-      address: doc.address || '',
-      googleMapsLink: doc.latitude && doc.longitude ? `https://www.google.com/maps?q=${doc.latitude},${doc.longitude}` : '',
-      latitude: doc.latitude,
-      longitude: doc.longitude
-    }));
-    
-    registered.push(...mapped);
+    // Page through the collection — a single request would silently truncate the
+    // list once the client base grows past one page.
+    let cursor: string | undefined;
+
+    for (;;) {
+      const queries = [Query.limit(PAGE_SIZE), Query.orderAsc('$id')];
+      if (cursor) queries.push(Query.cursorAfter(cursor));
+
+      const response = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTIONS.CLIENTS,
+        queries
+      );
+
+      const mapped = response.documents.map((doc) => ({
+        $id: doc.$id,
+        clientCode: doc.clientCode || '',
+        name: doc.name,
+        phone: doc.phone,
+        email: doc.email,
+        channels: doc.channels,
+        address: doc.address || '',
+        googleMapsLink: doc.latitude && doc.longitude ? `https://www.google.com/maps?q=${doc.latitude},${doc.longitude}` : '',
+        latitude: doc.latitude,
+        longitude: doc.longitude
+      }));
+
+      registered.push(...mapped);
+
+      if (response.documents.length < PAGE_SIZE) break;
+      cursor = response.documents[response.documents.length - 1].$id;
+    }
   } catch (error) {
     console.error('Error fetching clients from Appwrite:', error);
   }
