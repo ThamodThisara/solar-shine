@@ -171,7 +171,8 @@ export function getPanelForRole(role?: string | null): PanelDefinition | null {
 
 /** The route a role should be redirected to after a successful login. */
 export function getHomeRoute(role?: string | null): string | null {
-  return getPanelForRole(role)?.path ?? null;
+  if (!role) return null;
+  return '/dashboard';
 }
 
 /** Whether a role may access a specific panel. */

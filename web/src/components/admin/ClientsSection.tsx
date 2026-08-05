@@ -34,8 +34,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { SimplePagination } from '@/components/ui/simple-pagination';
 import { RegisterSiteDialog } from './RegisterSiteDialog';
 import { ClientSitesDialog } from './ClientSitesDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const ClientsSection: React.FC = () => {
+  const { hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const CLIENTS_PAGE_SIZE = 10;
@@ -222,9 +224,11 @@ export const ClientsSection: React.FC = () => {
             <CardTitle>Client Management</CardTitle>
             <CardDescription>View, edit, register and manage clients in the system.</CardDescription>
           </div>
-          <Button onClick={() => { resetForm(); setIsCreateOpen(true); }}>
-            <Plus className="mr-2 h-4 w-4" /> Register Client
-          </Button>
+          {hasPermission('clients:create') && (
+            <Button onClick={() => { resetForm(); setIsCreateOpen(true); }}>
+              <Plus className="mr-2 h-4 w-4" /> Register Client
+            </Button>
+          )}
         </CardHeader>
       </Card>
 
@@ -287,39 +291,45 @@ export const ClientsSection: React.FC = () => {
                           <Button variant="outline" size="sm" onClick={() => openView(client)}>
                             <Eye className="h-3.5 w-3.5 mr-1" /> View
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              if (!client.$id) {
-                                toast.error('This client has no saved record, so sites cannot be managed.');
-                                return;
-                              }
-                              setSitesViewClient(client);
-                              setIsSitesViewOpen(true);
-                            }}
-                          >
-                            <MapPin className="h-3.5 w-3.5 mr-1" /> Sites
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => openEdit(client)}>
-                            <Edit className="h-3.5 w-3.5 mr-1" /> Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (isAssigned) {
-                                toast.error("Cannot delete client because they are currently assigned to a project.");
-                                return;
-                              }
-                              setClientToDelete(client.name);
-                              setIsDeleteConfirmOpen(true);
-                            }}
-                            className="text-destructive hover:text-destructive/90"
-                            title="Delete Client"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {hasPermission('client-sites:view') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (!client.$id) {
+                                  toast.error('This client has no saved record, so sites cannot be managed.');
+                                  return;
+                                }
+                                setSitesViewClient(client);
+                                setIsSitesViewOpen(true);
+                              }}
+                            >
+                              <MapPin className="h-3.5 w-3.5 mr-1" /> Sites
+                            </Button>
+                          )}
+                          {hasPermission('clients:edit') && (
+                            <Button variant="outline" size="sm" onClick={() => openEdit(client)}>
+                              <Edit className="h-3.5 w-3.5 mr-1" /> Edit
+                            </Button>
+                          )}
+                          {hasPermission('clients:delete') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (isAssigned) {
+                                  toast.error("Cannot delete client because they are currently assigned to a project.");
+                                  return;
+                                }
+                                setClientToDelete(client.name);
+                                setIsDeleteConfirmOpen(true);
+                              }}
+                              className="text-destructive hover:text-destructive/90"
+                              title="Delete Client"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

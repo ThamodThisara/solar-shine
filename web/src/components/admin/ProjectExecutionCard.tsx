@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { cn, formatCurrency } from '@/lib/utils';
 import { ProjectExecution, ProjectExecutionStatus } from '@/types/payload-types';
 import { PlatformUser } from '@/services/userService';
+import { useAuth } from '@/contexts/AuthContext';
 
 const statusStyles: Record<ProjectExecutionStatus, string> = {
   pending: 'bg-gray-100 text-gray-800',
@@ -42,6 +43,7 @@ const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({
   onDelete,
   onEdit,
 }) => {
+  const { hasPermission, isAdmin } = useAuth();
   const [expanded, setExpanded] = useState(false);
 
   const siteLabel = project.siteCode
@@ -216,8 +218,9 @@ const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({
               <select
                 id={`status-${project.$id}`}
                 value={project.status}
+                disabled={!hasPermission('projects:edit')}
                 onChange={(e) => onStatusChange(project.$id, e.target.value as ProjectExecutionStatus)}
-                className="h-8 rounded-md border border-input bg-background px-3 text-xs font-medium capitalize focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                className="h-8 rounded-md border border-input bg-background px-3 text-xs font-medium capitalize focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-75 disabled:cursor-not-allowed"
               >
                 {statusOptions.map((s) => (
                   <option key={s} value={s}>{s.replace('_', ' ')}</option>
@@ -235,7 +238,7 @@ const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({
                   View Summary
                 </Link>
               </Button>
-              {onEdit && (
+              {onEdit && hasPermission('projects:edit') && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -244,14 +247,16 @@ const ProjectExecutionCard: React.FC<ProjectExecutionCardProps> = ({
                   Edit
                 </Button>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-red-600 border-red-200 hover:border-red-400 hover:bg-red-50/50"
-                onClick={() => onDelete(project.$id)}
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
-              </Button>
+              {(isAdmin || hasPermission('projects:edit')) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 border-red-200 hover:border-red-400 hover:bg-red-50/50"
+                  onClick={() => onDelete(project.$id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>

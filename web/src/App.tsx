@@ -12,17 +12,14 @@ import Blog from "./pages/Blog";
 import BlogPostPage from "./pages/BlogPostPage";
 import Contact from "./pages/Contact";
 import LegalPage from "./pages/LegalPage";
-import Admin from "./pages/Admin";
-import Engineer from "./pages/Engineer";
-import Sales from "./pages/Sales";
-import Finance from "./pages/Finance";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import ProjectSummary from "./pages/ProjectSummary";
+import DashboardPage from "./pages/DashboardPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-import { PANELS, LOGIN_ALLOWED_ROLES } from "./config/roles";
+import { Navigate } from "react-router-dom";
 
 const queryClient = new QueryClient();
 
@@ -47,57 +44,23 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route
-              path="/admin"
+              path="/dashboard"
               element={
-                <ProtectedRoute allowedRoles={PANELS.admin.roles}>
-                  <Admin />
+                <ProtectedRoute>
+                  <DashboardPage />
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/engineer"
-              element={
-                <ProtectedRoute allowedRoles={PANELS.engineer.roles}>
-                  <Engineer />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/sales"
-              element={
-                <ProtectedRoute allowedRoles={PANELS.sales.roles}>
-                  <Sales />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/hr"
-              element={
-                <ProtectedRoute allowedRoles={PANELS.hr.roles}>
-                  <Engineer />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/finance"
-              element={
-                <ProtectedRoute allowedRoles={PANELS.finance.roles}>
-                  <Finance />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/marketing"
-              element={
-                <ProtectedRoute allowedRoles={PANELS.marketing.roles}>
-                  <Engineer />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/admin" element={<Navigate to="/dashboard?tab=dashboard" replace />} />
+            <Route path="/engineer" element={<Navigate to="/dashboard?tab=project-execution" replace />} />
+            <Route path="/sales" element={<Navigate to="/dashboard?tab=dashboard" replace />} />
+            <Route path="/hr" element={<Navigate to="/dashboard?tab=user-management" replace />} />
+            <Route path="/finance" element={<Navigate to="/dashboard?tab=project-execution" replace />} />
+            <Route path="/marketing" element={<Navigate to="/dashboard?tab=home-content" replace />} />
             <Route
               path="/project-summary/:projectId"
               element={
-                <ProtectedRoute allowedRoles={LOGIN_ALLOWED_ROLES}>
+                <ProtectedRoute>
                   <ProjectSummary />
                 </ProtectedRoute>
               }

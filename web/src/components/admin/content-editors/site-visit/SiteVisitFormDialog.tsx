@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Combobox } from '@/components/ui/combobox';
 import { Save } from 'lucide-react';
 import { CreateSiteVisitInput } from '@/services/siteVisitService';
-import { fetchEngineers } from '@/services/userService';
+import { PlatformUser } from '@/services/userService';
 import { SiteVisitPriority, SiteVisitStatus } from '@/types/payload-types';
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '@/lib/siteVisits';
 import { MultiSelectPopover } from '@/components/ui/multi-select-popover';
@@ -34,6 +33,7 @@ interface SiteVisitFormDialogProps {
   currentUser: { $id: string; name: string };
   onSave: (input: CreateSiteVisitInput) => void;
   isSaving: boolean;
+  users?: PlatformUser[];
 }
 
 interface FormState {
@@ -83,6 +83,21 @@ const validate = (form: FormState): FormErrors => {
   return errors;
 };
 
+const isEngineer = (role?: string | null) => {
+  if (!role) return false;
+  const lower = role.toLowerCase();
+  return lower.includes('engineer') || lower.includes('planning');
+};
+
+const formatRoleLabel = (role?: string | null) => {
+  if (!role) return 'Engineer';
+  if (role === 'hr') return 'HR';
+  return role
+    .split(/[_-]/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+};
+
 const SiteVisitFormDialog: React.FC<SiteVisitFormDialogProps> = ({
   isOpen,
   setIsOpen,
@@ -93,34 +108,19 @@ const SiteVisitFormDialog: React.FC<SiteVisitFormDialogProps> = ({
   currentUser,
   onSave,
   isSaving,
+  users = [],
 }) => {
   const [form, setForm] = useState<FormState>(buildInitialState(lockedProjectId));
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const { data: engineers = [], isLoading: isEngineersLoading } = useQuery({
-    queryKey: ['engineers'],
-    queryFn: () => fetchEngineers(),
-    enabled: isOpen && canAssignEngineer,
-  });
-
-  const selectedProject = projects.find((p) => p.$id === form.project_id);
-  const projectEmails = new Set<string>();
-  if (selectedProject) {
-    if (selectedProject.engineer) {
-      selectedProject.engineer.split(',').forEach((email) => projectEmails.add(email.trim().toLowerCase()));
-    }
-    if (selectedProject.planning_engineer) {
-      selectedProject.planning_engineer.split(',').forEach((email) => projectEmails.add(email.trim().toLowerCase()));
-    }
-  }
-
-  const filteredEngineers = engineers.filter((eng) => projectEmails.has(eng.email.toLowerCase()));
-  const engineerOptions = filteredEngineers.map((eng) => ({
-    value: eng.$id,
-    label: eng.name || eng.email,
-    keywords: eng.email,
-    group: eng.role === 'planning_engineer' ? 'Planning Engineers' : 'Project Engineers',
-  }));
+  const engineerOptions = users
+    .filter((u) => isEngineer(u.role))
+    .map((eng) => ({
+      value: eng.$id,
+      label: eng.name || eng.email,
+      keywords: `${eng.name || ''} ${eng.email}`,
+      group: formatRoleLabel(eng.role) + 's',
+    }));
 
   useEffect(() => {
     if (isOpen) {
@@ -225,7 +225,7 @@ const SiteVisitFormDialog: React.FC<SiteVisitFormDialogProps> = ({
               <div className="col-span-1 md:col-span-2">
                 <MultiSelectPopover
                   label="Assigned Engineers"
-                  placeholder={isEngineersLoading ? 'Loading engineers...' : 'Unassigned (visible to all engineers)'}
+                  placeholder="Unassigned (visible to all engineers)"
                   emptyText="No engineers found."
                   options={engineerOptions}
                   selectedValues={form.assigned_engineer_id ? form.assigned_engineer_id.split(',').filter(Boolean) : []}

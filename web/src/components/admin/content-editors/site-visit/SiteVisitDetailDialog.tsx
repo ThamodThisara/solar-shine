@@ -31,7 +31,7 @@ import { isAllowedFile, ALLOWED_FILE_EXTENSIONS } from '@/lib/documentTypes';
 import { getTypeGroupLabel, typeServesDepartment } from '@/services/documentTypeService';
 import { getDocumentDepartmentForRole } from '@/config/roles';
 import DocumentCard from '@/components/admin/DocumentCard';
-import { PlatformUser, fetchEngineers } from '@/services/userService';
+import { PlatformUser } from '@/services/userService';
 import { useAuth } from '@/contexts/AuthContext';
 import { MultiSelectPopover } from '@/components/ui/multi-select-popover';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -264,30 +264,29 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
     onError: () => toast.error('Failed to delete document'),
   });
 
-  const { data: engineers = [], isLoading: isEngineersLoading } = useQuery({
-    queryKey: ['engineers'],
-    queryFn: () => fetchEngineers(),
-    enabled: isOpen && isEditing,
-  });
+  const isEngineer = (role?: string | null) => {
+    if (!role) return false;
+    const lower = role.toLowerCase();
+    return lower.includes('engineer') || lower.includes('planning');
+  };
 
-  const selectedProject = projects.find((p) => p.$id === visit.project_id);
-  const projectEmails = new Set<string>();
-  if (selectedProject) {
-    if (selectedProject.engineer) {
-      selectedProject.engineer.split(',').forEach((email) => projectEmails.add(email.trim().toLowerCase()));
-    }
-    if (selectedProject.planning_engineer) {
-      selectedProject.planning_engineer.split(',').forEach((email) => projectEmails.add(email.trim().toLowerCase()));
-    }
-  }
+  const formatRoleLabel = (role?: string | null) => {
+    if (!role) return 'Engineer';
+    if (role === 'hr') return 'HR';
+    return role
+      .split(/[_-]/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  };
 
-  const filteredEngineers = engineers.filter((eng) => projectEmails.has(eng.email?.toLowerCase()));
-  const engineerOptions = filteredEngineers.map((eng) => ({
-    value: eng.$id,
-    label: eng.name || eng.email,
-    keywords: eng.email,
-    group: eng.role === 'planning_engineer' ? 'Planning Engineers' : 'Project Engineers',
-  }));
+  const engineerOptions = (users || [])
+    .filter((u) => isEngineer(u.role))
+    .map((eng) => ({
+      value: eng.$id,
+      label: eng.name || eng.email,
+      keywords: `${eng.name || ''} ${eng.email}`,
+      group: formatRoleLabel(eng.role) + 's',
+    }));
 
   const handleSave = () => {
     const saveData: UpdateSiteVisitInput = {
@@ -527,13 +526,13 @@ const SiteVisitDetailDialog: React.FC<SiteVisitDetailDialogProps> = ({
                     <div>
                       <MultiSelectPopover
                         label="Assigned Engineers"
-                        placeholder={isEngineersLoading ? 'Loading engineers...' : 'Unassigned (visible to all engineers)'}
+                        placeholder="Unassigned (visible to all engineers)"
                         emptyText="No engineers found."
                         options={engineerOptions}
                         selectedValues={edit.assigned_engineer_id ? edit.assigned_engineer_id.split(',').filter(Boolean) : []}
                         onChange={(vals) => {
                           const selectedNames = vals.map(val => {
-                            const eng = engineers.find(e => e.$id === val);
+                            const eng = users.find(e => e.$id === val);
                             return eng?.name || eng?.email || val;
                           });
                           setEdit(s => ({

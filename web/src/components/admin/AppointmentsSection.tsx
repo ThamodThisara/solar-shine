@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 
 const AppointmentsSection: React.FC = () => {
-  const { isAdmin, isLoading: isAuthLoading } = useAuth();
+  const { hasPermission, isLoading: isAuthLoading } = useAuth();
   
   const { 
     data: appointments = [],
@@ -18,7 +18,7 @@ const AppointmentsSection: React.FC = () => {
   } = useQuery<AppointmentData[]>({
     queryKey: ['appointments'],
     queryFn: fetchAppointments,
-    enabled: isAdmin,
+    enabled: hasPermission('appointments:view'),
   });
 
   if (isAuthLoading) {
@@ -29,7 +29,7 @@ const AppointmentsSection: React.FC = () => {
     );
   }
 
-  if (!isAdmin) {
+  if (!hasPermission('appointments:view')) {
     return (
       <Card>
         <CardHeader>

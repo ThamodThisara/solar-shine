@@ -14,7 +14,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { fetchClients, registerClient, generateNextClientCode, ClientRecord } from '@/services/clientService';
 import { fetchSitesByClient, SiteRecord } from '@/services/siteService';
 import { fetchProjectTypes } from '@/services/projectTypeService';
-import { fetchUsers, fetchEngineers, PlatformUser } from '@/services/userService';
+import { fetchUsers, PlatformUser } from '@/services/userService';
 import { toast } from 'sonner';
 import { MapPicker } from '@/components/ui/map-picker';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -167,7 +167,6 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
   const [isLoadingSites, setIsLoadingSites] = useState(false);
   const [projectTypesList, setProjectTypesList] = useState<ProjectType[]>([]);
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
-  const [engineersList, setEngineersList] = useState<PlatformUser[]>([]);
   const [usersList, setUsersList] = useState<PlatformUser[]>([]);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({ lat: 6.9271, lng: 79.8612 });
   const [isRegOpen, setIsRegOpen] = useState(false);
@@ -181,7 +180,6 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
     let cancelled = false;
 
     fetchProjectTypes().then((v) => !cancelled && setProjectTypesList(v)).catch(console.error);
-    fetchEngineers().then((v) => !cancelled && setEngineersList(v)).catch(console.error);
     fetchUsers().then((v) => !cancelled && setUsersList(v)).catch(console.error);
 
     (async () => {
@@ -444,20 +442,43 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
     }
   };
 
-  const engineerOptions = engineersList
+  const isEngineer = (role?: string | null) => {
+    if (!role) return false;
+    const lower = role.toLowerCase();
+    return lower.includes('engineer') || lower.includes('planning');
+  };
+
+  const isSales = (role?: string | null) => {
+    if (!role) return false;
+    const lower = role.toLowerCase();
+    return lower.includes('sales');
+  };
+
+  const formatRoleLabel = (role?: string | null) => {
+    if (!role) return 'Engineer';
+    if (role === 'hr') return 'HR';
+    return role
+      .split(/[_-]/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  };
+
+  const engineerOptions = usersList
+    .filter((u) => isEngineer(u.role))
     .map((e) => ({
       value: e.email,
       label: e.name || e.email,
       keywords: `${e.name || ''} ${e.email}`,
-      group: e.role === 'planning_engineer' ? 'Planning Engineers' : 'Project Engineers',
+      group: formatRoleLabel(e.role) + 's',
     }));
 
   const salesManagerOptions = usersList
-    .filter((u) => u.role === 'sales_manager')
+    .filter((u) => isSales(u.role))
     .map((u) => ({
       value: u.email,
       label: u.name || u.email,
       keywords: `${u.name || ''} ${u.email}`,
+      group: formatRoleLabel(u.role) + 's',
     }));
 
   const setField = (key: keyof FormState, value: string) => {
@@ -855,12 +876,12 @@ const ProjectExecutionFormDialog: React.FC<ProjectExecutionFormDialogProps> = ({
               ]}
               onChange={(vals) => {
                 const projectEmails = vals.filter(email => {
-                  const eng = engineersList.find(e => e.email === email);
-                  return eng?.role === 'project_engineer';
+                  const eng = usersList.find(e => e.email === email);
+                  return eng && isEngineer(eng.role) && !eng.role.toLowerCase().includes('planning');
                 });
                 const planningEmails = vals.filter(email => {
-                  const eng = engineersList.find(e => e.email === email);
-                  return eng?.role === 'planning_engineer';
+                  const eng = usersList.find(e => e.email === email);
+                  return eng && isEngineer(eng.role) && eng.role.toLowerCase().includes('planning');
                 });
                 setField('engineer', projectEmails.join(','));
                 setField('planning_engineer', planningEmails.join(','));

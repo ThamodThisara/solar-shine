@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Terminal, Trash2, Users as UsersIcon } from 'lucide-react';
+import { Terminal, Users as UsersIcon, Building, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -17,85 +16,45 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchTeams, createTeam, deleteTeam } from '@/services/teamService';
+import { fetchTeams, createTeam } from '@/services/teamService';
 import type { Models } from 'appwrite';
 import TeamMembersDialog from './user-management/TeamMembersDialog';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-const TEAM_ROLE_OPTIONS = [
-  { value: 'project_engineer', label: 'Project Engineer' },
-  { value: 'planning_engineer', label: 'Planning Engineer' },
-  { value: 'sales_manager', label: 'Sales Manager' },
-  { value: 'admin', label: 'Administrator' },
-  { value: 'hr', label: 'HR' },
-  { value: 'finance_manager', label: 'Finance Manager' },
-  { value: 'marketing_manager', label: 'Marketing Manager' },
-];
+import { fetchDepartments, fetchRoles, RoleRecord } from '@/services/roleService';
 
 const UserManagementSection: React.FC = () => {
   const { isAdmin, isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [newTeamName, setNewTeamName] = useState('');
-  const [newTeamRole, setNewTeamRole] = useState('project_engineer');
   const [selectedTeam, setSelectedTeam] = useState<Models.Team<Models.Preferences> | null>(null);
+  const [isAutoCreatingTeam, setIsAutoCreatingTeam] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['teams', search],
-    queryFn: () => fetchTeams(search || undefined),
+  const { data: departments = [], isLoading: isDeptsLoading } = useQuery({
+    queryKey: ['departments'],
+    queryFn: fetchDepartments,
+    enabled: isAdmin,
+  });
+
+  const { data: roles = [], isLoading: isRolesLoading } = useQuery({
+    queryKey: ['roles'],
+    queryFn: fetchRoles,
+    enabled: isAdmin,
+  });
+
+  const { data, isLoading: isTeamsLoading } = useQuery({
+    queryKey: ['teams'],
+    queryFn: () => fetchTeams(),
     enabled: isAdmin,
     meta: {
-      onError: (error: Error) => toast.error(`Failed to load teams: ${error.message}`),
+      onError: (error: Error) => toast.error(`Failed to load user groups: ${error.message}`),
     },
-  });
-
-  const createMutation = useMutation({
-    mutationFn: ({ name, role }: { name: string; role: string }) => createTeam(name, role),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] });
-      setIsCreateOpen(false);
-      setNewTeamName('');
-      setNewTeamRole('project_engineer');
-      toast.success('Team created');
-    },
-    onError: () => toast.error('Failed to create team'),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteTeam,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] });
-      toast.success('Team deleted');
-    },
-    onError: () => toast.error('Failed to delete team'),
   });
 
   if (isAuthLoading) {
@@ -123,6 +82,25 @@ const UserManagementSection: React.FC = () => {
   }
 
   const teamList = data?.teams ?? [];
+  const isLoading = isDeptsLoading || isRolesLoading || isTeamsLoading;
+
+  const handleManageUsers = async (roleObj: RoleRecord) => {
+    const matchedTeam = teamList.find((t) => t.prefs?.role === roleObj.slug);
+    if (matchedTeam) {
+      setSelectedTeam(matchedTeam);
+    } else {
+      setIsAutoCreatingTeam(roleObj.slug);
+      try {
+        const newTeam = await createTeam(roleObj.name, roleObj.slug);
+        queryClient.invalidateQueries({ queryKey: ['teams'] });
+        setSelectedTeam(newTeam);
+      } catch (error: any) {
+        toast.error(`Failed to initialize role workspace: ${error.message}`);
+      } finally {
+        setIsAutoCreatingTeam(null);
+      }
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -130,19 +108,16 @@ const UserManagementSection: React.FC = () => {
         <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
           <div>
             <CardTitle>User Management</CardTitle>
-            <CardDescription>Create and manage teams, and control who has access to them.</CardDescription>
+            <CardDescription>Manage platform users and assign them to roles department-wise.</CardDescription>
           </div>
-          <Button onClick={() => setIsCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Create Team
-          </Button>
         </CardHeader>
       </Card>
 
       <Input
-        placeholder="Search teams by name..."
+        placeholder="Search roles..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
+        className="max-w-sm shadow-sm"
       />
 
       {isLoading ? (
@@ -151,119 +126,139 @@ const UserManagementSection: React.FC = () => {
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
         </div>
-      ) : teamList.length === 0 ? (
+      ) : departments.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
-            No teams found.
+            No departments found. Please seed or create departments first.
           </CardContent>
         </Card>
       ) : (
-        <Card className="overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="whitespace-nowrap">Name</TableHead>
-                <TableHead className="whitespace-nowrap">Role</TableHead>
-                <TableHead className="whitespace-nowrap">Members</TableHead>
-                <TableHead className="whitespace-nowrap">Created</TableHead>
-                <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {teamList.map((team) => (
-                <TableRow key={team.$id}>
-                  <TableCell className="font-medium">{team.name}</TableCell>
-                  <TableCell>
-                    {team.prefs?.role ? (
-                      <Badge variant="outline" className="capitalize">
-                        {team.prefs.role.replace('_', ' ')}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">No role</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{team.total}</TableCell>
-                  <TableCell>{new Date(team.$createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setSelectedTeam(team)}>
-                        <UsersIcon className="h-3.5 w-3.5 mr-1" /> View Members
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Team</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{team.name}"? This will remove all members and cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deleteMutation.mutate(team.$id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
+        <Accordion type="multiple" className="space-y-4">
+          {departments.map((dept) => {
+            const deptRoles = roles.filter(
+              (r) =>
+                (r.department_id === dept.slug || r.department_id === dept.$id || r.department_id === `dept_${dept.slug}`) &&
+                (search === '' || r.name.toLowerCase().includes(search.toLowerCase()))
+            );
+            if (deptRoles.length === 0 && search !== '') return null;
 
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Team</DialogTitle>
-            <DialogDescription>Give your new team a name and select the default role for its members.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="team-name">Team Name</Label>
-              <Input
-                id="team-name"
-                value={newTeamName}
-                onChange={(e) => setNewTeamName(e.target.value)}
-                placeholder="e.g. Installation Crew"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="team-role">Default Member Role</Label>
-              <Select value={newTeamRole} onValueChange={setNewTeamRole}>
-                <SelectTrigger id="team-role">
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TEAM_ROLE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={() => createMutation.mutate({ name: newTeamName, role: newTeamRole })}
-              disabled={!newTeamName.trim() || createMutation.isPending}
-            >
-              {createMutation.isPending ? 'Creating...' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            return (
+              <AccordionItem key={dept.$id} value={dept.$id ?? dept.slug} className="border rounded-lg bg-white shadow-sm overflow-hidden px-4">
+                <AccordionTrigger className="hover:no-underline py-4">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="p-2 rounded-md bg-blue-50 text-blue-600">
+                      <Building className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-gray-900">{dept.name}</h3>
+                      <p className="text-xs text-muted-foreground">{dept.description || 'No description'}</p>
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4">
+                  {deptRoles.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2 pl-2">No roles defined in this department.</p>
+                  ) : (
+                    <div>
+                      {/* Mobile View: Vertical list of cards */}
+                      <div className="block md:hidden space-y-3">
+                        {deptRoles.map((roleObj) => {
+                          const matchedTeam = teamList.find((t) => t.prefs?.role === roleObj.slug);
+                          const memberCount = matchedTeam ? matchedTeam.total : 0;
+                          const isAutoCreating = isAutoCreatingTeam === roleObj.slug;
+
+                          return (
+                            <div key={roleObj.$id} className="p-3 border rounded-lg bg-white shadow-sm flex flex-col gap-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-sm text-gray-900">{roleObj.name}</span>
+                                <Badge variant={memberCount > 0 ? 'secondary' : 'outline'} className="rounded-full px-2.5 py-0.5 text-xs">
+                                  {memberCount} {memberCount === 1 ? 'user' : 'users'}
+                                </Badge>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full text-xs py-1.5 h-auto flex items-center justify-center gap-1.5"
+                                disabled={isAutoCreating}
+                                onClick={() => handleManageUsers(roleObj)}
+                              >
+                                {isAutoCreating ? (
+                                  <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Initializing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <UsersIcon className="h-3.5 w-3.5" />
+                                    Manage Users
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Desktop/Tablet View: Traditional table */}
+                      <div className="hidden md:block overflow-hidden border rounded-md">
+                        <Table>
+                          <TableHeader className="bg-gray-50/50">
+                            <TableRow>
+                              <TableHead className="w-1/2">Role Name</TableHead>
+                              <TableHead className="w-1/4">Members</TableHead>
+                              <TableHead className="w-1/4 text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {deptRoles.map((roleObj) => {
+                              const matchedTeam = teamList.find((t) => t.prefs?.role === roleObj.slug);
+                              const memberCount = matchedTeam ? matchedTeam.total : 0;
+                              const isAutoCreating = isAutoCreatingTeam === roleObj.slug;
+
+                              return (
+                                <TableRow key={roleObj.$id}>
+                                  <TableCell className="font-medium align-middle">
+                                    {roleObj.name}
+                                  </TableCell>
+                                  <TableCell className="align-middle">
+                                    <Badge variant={memberCount > 0 ? 'secondary' : 'outline'} className="rounded-full px-2.5 py-0.5">
+                                      {memberCount} {memberCount === 1 ? 'user' : 'users'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-right align-middle">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={isAutoCreating}
+                                      onClick={() => handleManageUsers(roleObj)}
+                                    >
+                                      {isAutoCreating ? (
+                                        <>
+                                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                                          Initializing...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <UsersIcon className="h-3.5 w-3.5 mr-1" />
+                                          Manage Users
+                                        </>
+                                      )}
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
+      )}
 
       {selectedTeam && (
         <TeamMembersDialog
