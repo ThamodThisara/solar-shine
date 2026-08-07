@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { Download, ExternalLink, FileText, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Download, ExternalLink, FileText, Image as ImageIcon, Trash2, MailWarning } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,10 +11,20 @@ import { getAuthenticatedFileBlob } from '@/services/documentService';
 
 interface FolderDocumentCardProps {
   doc: FolderDocument;
+  /** Deleting outright is the folder owner's call; pass only for them. */
   onDelete?: (doc: FolderDocument) => void;
+  /** Offered to everyone else in place of deleting. */
+  onRequestDelete?: (doc: FolderDocument) => void;
+  /** True once this viewer has an unresolved request for the document. */
+  hasPendingRequest?: boolean;
 }
 
-const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({ doc, onDelete }) => {
+const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({
+  doc,
+  onDelete,
+  onRequestDelete,
+  hasPendingRequest = false,
+}) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isDownloadLoading, setIsDownloadLoading] = useState(false);
@@ -83,17 +93,39 @@ const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({ doc, onDelete }
             >
               <Download className="mr-1 h-3.5 w-3.5" /> {isDownloadLoading ? 'Loading...' : 'Download'}
             </Button>
-            {onDelete && (
+            {onDelete ? (
               <Button
                 size="sm"
                 variant="outline"
                 className="border-red-600 text-red-600 hover:bg-red-50"
+                title="Delete document"
                 onClick={() => setIsConfirmOpen(true)}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
-            )}
+            ) : onRequestDelete ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-amber-600 border-amber-500/60 hover:bg-amber-50 disabled:opacity-60"
+                title={
+                  hasPendingRequest
+                    ? 'Deletion already requested — waiting on the folder owner'
+                    : 'Request deletion from the folder owner'
+                }
+                disabled={hasPendingRequest}
+                onClick={() => onRequestDelete(doc)}
+              >
+                <MailWarning className="h-3.5 w-3.5" />
+              </Button>
+            ) : null}
           </div>
+
+          {hasPendingRequest && (
+            <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400">
+              Deletion requested awaiting the folder owner's decision.
+            </p>
+          )}
         </CardContent>
       </Card>
 

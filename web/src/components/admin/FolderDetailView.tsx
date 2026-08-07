@@ -20,16 +20,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SimplePagination } from '@/components/ui/simple-pagination';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { DocumentFolder, FolderDocument, FolderType } from '@/types/payload-types';
+import {
+  DocumentDeleteRequest,
+  DocumentFolder,
+  FolderDocument,
+  FolderType,
+} from '@/types/payload-types';
 import {
   FOLDER_DOCUMENT_PAGE_SIZE,
   deleteFolderDocument,
   fetchFolderDocuments,
   uploadFolderDocuments,
 } from '@/services/folderService';
+import {
+  approveDeleteRequest,
+  createDeleteRequest,
+  fetchDeleteRequests,
+  rejectDeleteRequest,
+} from '@/services/documentDeleteRequestService';
 import { canUserManageFolder } from '@/lib/permissions';
 import FolderDocumentCard from './FolderDocumentCard';
+import FolderDeleteRequestsPanel from './FolderDeleteRequestsPanel';
 import FolderUploadDialog from './content-editors/document/FolderUploadDialog';
+import RequestDeletionDialog from './content-editors/document/RequestDeletionDialog';
 
 const TYPE_META: Record<FolderType, { label: string; icon: React.ElementType; className: string }> = {
   personal: { label: 'Personal folder', icon: Lock, className: 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300' },
@@ -59,6 +72,7 @@ const FolderDetailView: React.FC<FolderDetailViewProps> = ({
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [documentToRequest, setDocumentToRequest] = useState<FolderDocument | null>(null);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -88,9 +102,31 @@ const FolderDetailView: React.FC<FolderDetailViewProps> = ({
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / FOLDER_DOCUMENT_PAGE_SIZE));
 
+  // Pending requests drive both the owner's review queue and the "already
+  // requested" state on a card, so both read this one list.
+  const { data: pendingRequests = [] } = useQuery({
+    queryKey: ['folder-delete-requests', folder.$id],
+    queryFn: () => fetchDeleteRequests(folder.$id, 'pending'),
+  });
+
+  const myPendingDocumentIds = useMemo(
+    () =>
+      new Set(
+        pendingRequests
+          .filter((request) => request.requested_by === user?.$id)
+          .map((request) => request.document_id),
+      ),
+    [pendingRequests, user?.$id],
+  );
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['folder-documents', folder.$id] });
     queryClient.invalidateQueries({ queryKey: ['folder-document-counts'] });
+  };
+
+  const invalidateRequests = () => {
+    queryClient.invalidateQueries({ queryKey: ['folder-delete-requests', folder.$id] });
+    queryClient.invalidateQueries({ queryKey: ['folder-pending-request-counts'] });
   };
 
   const uploadMutation = useMutation({
@@ -117,16 +153,51 @@ const FolderDetailView: React.FC<FolderDetailViewProps> = ({
     mutationFn: (doc: FolderDocument) => deleteFolderDocument(doc.$id, doc.file_id),
     onSuccess: () => {
       invalidate();
+      invalidateRequests();
       toast.success('Document deleted');
     },
     onError: () => toast.error('Failed to delete document'),
   });
 
-  // Anyone who can manage the folder may prune it; otherwise a user can only
-  // remove what they uploaded themselves.
-  const canDeleteDocument = (doc: FolderDocument) =>
-    canManage || (!!user?.$id && doc.uploaded_by === user.$id);
+  const requestDeletionMutation = useMutation({
+    mutationFn: ({ doc, reason }: { doc: FolderDocument; reason: string }) =>
+      createDeleteRequest({
+        folder,
+        document: doc,
+        requestedBy: user?.$id ?? '',
+        requestedByName: user?.name || user?.email,
+        reason,
+      }),
+    onSuccess: () => {
+      invalidateRequests();
+      setDocumentToRequest(null);
+      toast.success('Deletion request sent to the folder owner');
+    },
+    onError: (error: Error) => toast.error(error.message || 'Failed to send the deletion request'),
+  });
 
+  const approveMutation = useMutation({
+    mutationFn: (request: DocumentDeleteRequest) => approveDeleteRequest(request, user?.$id ?? ''),
+    onSuccess: () => {
+      invalidate();
+      invalidateRequests();
+      toast.success('Request approved — the document has been deleted');
+    },
+    onError: () => toast.error('Failed to approve the request'),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (request: DocumentDeleteRequest) => rejectDeleteRequest(request, user?.$id ?? ''),
+    onSuccess: () => {
+      invalidateRequests();
+      toast.success('Request declined the document stays in the folder');
+    },
+    onError: () => toast.error('Failed to decline the request'),
+  });
+
+  // Deleting is the folder owner's call alone (admins keep their global
+  // override). Everyone else — including whoever uploaded the document — can
+  // only ask the owner to remove it.
   const meta = TYPE_META[folder.folder_type];
   const TypeIcon = meta.icon;
 
@@ -181,6 +252,15 @@ const FolderDetailView: React.FC<FolderDetailViewProps> = ({
         </CardHeader>
       </Card>
 
+      {canManage && (
+        <FolderDeleteRequestsPanel
+          requests={pendingRequests}
+          onApprove={(request) => approveMutation.mutate(request)}
+          onReject={(request) => rejectMutation.mutate(request)}
+          isBusy={approveMutation.isPending || rejectMutation.isPending}
+        />
+      )}
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -212,7 +292,9 @@ const FolderDetailView: React.FC<FolderDetailViewProps> = ({
             <FolderDocumentCard
               key={doc.$id}
               doc={doc}
-              onDelete={canDeleteDocument(doc) ? (d) => deleteMutation.mutate(d) : undefined}
+              onDelete={canManage ? (d) => deleteMutation.mutate(d) : undefined}
+              onRequestDelete={canManage ? undefined : setDocumentToRequest}
+              hasPendingRequest={myPendingDocumentIds.has(doc.$id)}
             />
           ))}
         </div>
@@ -236,6 +318,17 @@ const FolderDetailView: React.FC<FolderDetailViewProps> = ({
           isUploading={uploadMutation.isPending}
         />
       )}
+
+      <RequestDeletionDialog
+        isOpen={!!documentToRequest}
+        setIsOpen={(open) => { if (!open) setDocumentToRequest(null); }}
+        document={documentToRequest}
+        folderName={folder.name}
+        onSubmit={(reason) => {
+          if (documentToRequest) requestDeletionMutation.mutate({ doc: documentToRequest, reason });
+        }}
+        isSubmitting={requestDeletionMutation.isPending}
+      />
     </div>
   );
 };

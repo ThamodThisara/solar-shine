@@ -5,6 +5,7 @@ import {
   Folder,
   Globe,
   Lock,
+  MailWarning,
   Pin,
   PinOff,
   Settings2,
@@ -26,6 +27,8 @@ const TYPE_META: Record<FolderType, { label: string; icon: React.ElementType; cl
 interface FolderCardProps {
   folder: DocumentFolder;
   documentCount?: number;
+  /** Unresolved deletion requests waiting on the owner; shown only to them. */
+  pendingRequestCount?: number;
   isPinned: boolean;
   canManage: boolean;
   onOpen: (folder: DocumentFolder) => void;
@@ -37,6 +40,7 @@ interface FolderCardProps {
 const FolderCard: React.FC<FolderCardProps> = ({
   folder,
   documentCount,
+  pendingRequestCount = 0,
   isPinned,
   canManage,
   onOpen,
@@ -116,6 +120,16 @@ const FolderCard: React.FC<FolderCardProps> = ({
             <span className="text-muted-foreground">Created</span>
             <span className="font-medium">{format(new Date(folder.created_at), 'MMM d, yyyy')}</span>
           </div>
+          {canManage && pendingRequestCount > 0 && (
+            <button
+              type="button"
+              onClick={() => onOpen(folder)}
+              className="flex w-full items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-[11px] font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:hover:bg-amber-950/50"
+            >
+              <MailWarning className="h-3.5 w-3.5 flex-shrink-0" />
+              {pendingRequestCount} deletion request{pendingRequestCount === 1 ? '' : 's'} to review
+            </button>
+          )}
         </div>
 
         <div className="mt-4 flex gap-2">

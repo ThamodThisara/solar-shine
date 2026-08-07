@@ -1003,6 +1003,50 @@
       ]
     },
     {
+      "$id": "document_delete_requests",
+      "$permissions": [
+        "read(\"users\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Document Delete Requests",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "folder_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "folder_name", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "document_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "file_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "file_name", "type": "string", "required": true, "array": false, "size": 500, "encrypt": false },
+        { "key": "owner_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "requested_by", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "requested_by_name", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        { "key": "reason", "type": "string", "required": true, "array": false, "size": 1000, "encrypt": false },
+        {
+          "key": "status",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 20,
+          "format": "enum",
+          "elements": ["pending", "approved", "rejected"]
+        },
+        { "key": "created_at", "type": "datetime", "required": true, "array": false },
+        { "key": "resolved_at", "type": "datetime", "required": false, "array": false },
+        { "key": "resolved_by", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false }
+      ],
+      "indexes": [
+        { "key": "idx_request_folder_id", "type": "key", "attributes": ["folder_id"], "orders": ["ASC"] },
+        { "key": "idx_request_document_id", "type": "key", "attributes": ["document_id"], "orders": ["ASC"] },
+        { "key": "idx_request_owner_id", "type": "key", "attributes": ["owner_id"], "orders": ["ASC"] },
+        { "key": "idx_request_requested_by", "type": "key", "attributes": ["requested_by"], "orders": ["ASC"] },
+        { "key": "idx_request_status", "type": "key", "attributes": ["status"], "orders": ["ASC"] },
+        { "key": "idx_request_created_at", "type": "key", "attributes": ["created_at"], "orders": ["DESC"] }
+      ]
+    },
+    {
       "$id": "folder_pins",
       "$permissions": [
         "read(\"users\")",

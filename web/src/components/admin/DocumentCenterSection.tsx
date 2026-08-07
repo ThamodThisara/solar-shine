@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Upload, Terminal, FolderPlus, Search, Tags, Folder } from 'lucide-react';
@@ -32,6 +33,7 @@ import {
   setFolderPinned,
   updateFolder,
 } from '@/services/folderService';
+import { fetchPendingRequestCounts } from '@/services/documentDeleteRequestService';
 import { canUserManageFolder } from '@/lib/permissions';
 import { fetchDocumentTypes, getTypeGroupLabel, typeServesDepartment } from '@/services/documentTypeService';
 import { fetchProjectExecutionOptions } from '@/services/projectExecutionService';
@@ -69,6 +71,9 @@ const DocumentCenterSection: React.FC = () => {
   // Folder state: which folder is open, which is being edited/deleted.
   const [openFolderId, setOpenFolderId] = useState<string | null>(null);
   const [isFolderFormOpen, setIsFolderFormOpen] = useState(false);
+  // Notifications about a folder link straight to it via `?folder=<id>`.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const folderParam = searchParams.get('folder');
   const [folderBeingEdited, setFolderBeingEdited] = useState<DocumentFolder | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<DocumentFolder | null>(null);
 
@@ -94,6 +99,20 @@ const DocumentCenterSection: React.FC = () => {
     }, 300);
     return () => clearTimeout(handle);
   }, [searchInput]);
+
+  // Open the folder a notification pointed at. Runs on the param rather than on
+  // mount so a second notification opened from the bell also lands correctly.
+  React.useEffect(() => {
+    if (folderParam) setOpenFolderId(folderParam);
+  }, [folderParam]);
+
+  const closeFolder = () => {
+    setOpenFolderId(null);
+    if (!folderParam) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('folder');
+    setSearchParams(next, { replace: true });
+  };
 
   // Folder visibility can change while the page is open — an owner adding or
   // removing a department/user. Refetch on any folder write so the change lands
@@ -201,6 +220,17 @@ const DocumentCenterSection: React.FC = () => {
     enabled: canAccess && pagedFolderIds.length > 0,
   });
 
+  // Deletion requests are only ever actioned by the folder's owner, so only
+  // their own folders are worth counting.
+  const managedFolderIds = pagedFolders
+    .filter((folder) => canUserManageFolder(folder, folderViewer))
+    .map((folder) => folder.$id);
+  const { data: pendingRequestCounts = {} } = useQuery({
+    queryKey: ['folder-pending-request-counts', managedFolderIds],
+    queryFn: () => fetchPendingRequestCounts(managedFolderIds),
+    enabled: canAccess && managedFolderIds.length > 0,
+  });
+
   const openFolder = folders.find((f) => f.$id === openFolderId) ?? null;
 
   const invalidateFolders = () => {
@@ -227,7 +257,7 @@ const DocumentCenterSection: React.FC = () => {
     onSuccess: (_result, folder) => {
       invalidateFolders();
       queryClient.invalidateQueries({ queryKey: ['folder-pins'] });
-      if (openFolderId === folder.$id) setOpenFolderId(null);
+      if (openFolderId === folder.$id) closeFolder();
       setFolderToDelete(null);
       toast.success('Folder deleted');
     },
@@ -380,7 +410,7 @@ const DocumentCenterSection: React.FC = () => {
         <FolderDetailView
           folder={openFolder}
           isPinned={isPinned(openFolder.$id)}
-          onBack={() => setOpenFolderId(null)}
+          onBack={closeFolder}
           onTogglePin={handleTogglePin}
           onEdit={handleEditFolder}
         />
@@ -474,6 +504,7 @@ const DocumentCenterSection: React.FC = () => {
                 key={folder.$id}
                 folder={folder}
                 documentCount={folderCounts[folder.$id] ?? 0}
+                pendingRequestCount={pendingRequestCounts[folder.$id] ?? 0}
                 isPinned={isPinned(folder.$id)}
                 canManage={canUserManageFolder(folder, folderViewer)}
                 onOpen={(f) => setOpenFolderId(f.$id)}

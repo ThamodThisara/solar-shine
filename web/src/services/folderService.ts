@@ -106,9 +106,20 @@ export async function updateFolder(folderId: string, input: FolderInput): Promis
   }
 }
 
+/** Removes every row in `collectionId` whose `folder_id` is `folderId`. */
+async function deleteFolderScopedRows(collectionId: string, folderId: string): Promise<void> {
+  const rows = await databases.listDocuments(DATABASE_ID, collectionId, [
+    Query.equal('folder_id', folderId),
+    Query.limit(FOLDER_FETCH_LIMIT),
+  ]);
+  for (const row of rows.documents) {
+    await databases.deleteDocument(DATABASE_ID, collectionId, row.$id).catch(() => {});
+  }
+}
+
 /**
  * Deletes a folder along with everything filed inside it — records, stored
- * files, and any pins pointing at it.
+ * files, and the pins and deletion requests pointing at it.
  */
 export async function deleteFolder(folderId: string): Promise<boolean> {
   try {
@@ -117,15 +128,8 @@ export async function deleteFolder(folderId: string): Promise<boolean> {
       await deleteFolderDocument(doc.$id, doc.file_id);
     }
 
-    const pins = await databases.listDocuments(DATABASE_ID, COLLECTIONS.FOLDER_PINS, [
-      Query.equal('folder_id', folderId),
-      Query.limit(FOLDER_FETCH_LIMIT),
-    ]);
-    for (const pin of pins.documents) {
-      await databases
-        .deleteDocument(DATABASE_ID, COLLECTIONS.FOLDER_PINS, pin.$id)
-        .catch(() => {});
-    }
+    await deleteFolderScopedRows(COLLECTIONS.FOLDER_PINS, folderId);
+    await deleteFolderScopedRows(COLLECTIONS.DOCUMENT_DELETE_REQUESTS, folderId);
 
     await databases.deleteDocument(DATABASE_ID, COLLECTIONS.DOCUMENT_FOLDERS, folderId);
     return true;

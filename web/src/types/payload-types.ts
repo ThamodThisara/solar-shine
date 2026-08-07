@@ -238,6 +238,34 @@ export interface FolderDocument {
   status?: DocumentStatus;
 }
 
+/** Lifecycle of a request to have a folder document deleted. */
+export type DeleteRequestStatus = "pending" | "approved" | "rejected";
+
+/**
+ * A request from someone who cannot delete a folder document themselves, asking
+ * the folder owner to remove it. The document's identifying details are copied
+ * onto the request so it stays readable after the document is gone.
+ */
+export interface DocumentDeleteRequest {
+  $id: string;
+  folder_id: string;
+  folder_name: string;
+  /** `$id` of the `FolderDocument` the request is about. */
+  document_id: string;
+  /** Storage file id, kept so approval can remove the file directly. */
+  file_id: string;
+  file_name: string;
+  /** Folder owner at the time of the request — the person who must decide. */
+  owner_id: string;
+  requested_by: string;
+  requested_by_name?: string | null;
+  reason: string;
+  status: DeleteRequestStatus;
+  created_at: string;
+  resolved_at?: string | null;
+  resolved_by?: string | null;
+}
+
 /** A per-user pin keeping a folder at the top of the Document Center. */
 export interface FolderPin {
   $id: string;
