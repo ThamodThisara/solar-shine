@@ -1,5 +1,6 @@
-import { DocumentRecord } from '@/types/payload-types';
-import { getAccessDepartmentForRole } from '@/config/roles';
+import { DocumentFolder, DocumentRecord } from '@/types/payload-types';
+import { getAccessDepartmentForRole, getDocumentDepartmentForRole } from '@/config/roles';
+import { OWNER_DEPARTMENT } from '@/lib/documentTypes';
 
 /**
  * Checks if a specific user is authorized to read/view a given document record
@@ -62,4 +63,83 @@ export function filterAccessibleDocuments(
 ): DocumentRecord[] {
   if (userRole === 'admin') return documents;
   return documents.filter((doc) => canUserAccessDocument(doc, userId, userRole));
+}
+
+/** Identity of the current viewer, as needed to resolve folder visibility. */
+export interface FolderViewer {
+  userId?: string | null;
+  role?: string | null;
+  /**
+   * Slug of the department the user's role belongs to, from the `departments`
+   * collection (see `AuthContext.departmentSlug`). Optional — a role mapped in
+   * `ROLE_DOCUMENT_DEPARTMENT` still resolves without it.
+   */
+  departmentSlug?: string | null;
+}
+
+/**
+ * Every department key that identifies the viewer's department, lowercased.
+ *
+ * A department is spelled differently across the app's three taxonomies (the
+ * `departments` collection slug "engineering", the document-type key "engineer",
+ * and the Document `department` value "Engineering"), and a folder stores
+ * whichever key the creator picked. Matching against this set means a folder
+ * shared with a department resolves regardless of which spelling was saved.
+ */
+export function getUserDepartmentKeys(viewer: FolderViewer): string[] {
+  const keys = new Set<string>();
+  if (viewer.departmentSlug) keys.add(viewer.departmentSlug.toLowerCase());
+
+  const typeDept = getDocumentDepartmentForRole(viewer.role);
+  if (typeDept) {
+    keys.add(typeDept.toLowerCase());
+    const accessDept = OWNER_DEPARTMENT[typeDept];
+    if (accessDept) keys.add(accessDept.toLowerCase());
+  }
+
+  const accessDept = getAccessDepartmentForRole(viewer.role);
+  if (accessDept) keys.add(accessDept.toLowerCase());
+
+  return Array.from(keys);
+}
+
+/**
+ * Whether a user may see a folder and the documents inside it. Folder documents
+ * carry no permissions of their own — access is entirely the folder's.
+ */
+export function canUserAccessFolder(folder: DocumentFolder, viewer: FolderViewer): boolean {
+  // Admins see every folder, including other users' personal ones.
+  if (viewer.role === 'admin') return true;
+
+  // The owner always keeps access to what they created.
+  if (viewer.userId && folder.owner_id === viewer.userId) return true;
+
+  if (folder.folder_type === 'public') return true;
+  if (folder.folder_type === 'personal') return false;
+
+  // Dynamic: shared with named users, named departments, or both.
+  if (viewer.userId && folder.allowed_users?.includes(viewer.userId)) return true;
+
+  const allowedDepts = (folder.allowed_departments ?? []).map((d) => d.toLowerCase());
+  if (allowedDepts.length === 0) return false;
+  return getUserDepartmentKeys(viewer).some((key) => allowedDepts.includes(key));
+}
+
+/** Filters folders down to the ones the viewer is allowed to see. */
+export function filterAccessibleFolders(
+  folders: DocumentFolder[],
+  viewer: FolderViewer
+): DocumentFolder[] {
+  if (viewer.role === 'admin') return folders;
+  return folders.filter((folder) => canUserAccessFolder(folder, viewer));
+}
+
+/**
+ * Whether the viewer may rename a folder, change its visibility, upload into it,
+ * or delete it. Sharing a folder grants read access only — edits stay with the
+ * owner (and admins).
+ */
+export function canUserManageFolder(folder: DocumentFolder, viewer: FolderViewer): boolean {
+  if (viewer.role === 'admin') return true;
+  return !!viewer.userId && folder.owner_id === viewer.userId;
 }

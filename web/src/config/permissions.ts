@@ -3,6 +3,8 @@
  * Grouped by module/category for rendering in the admin permission matrix.
  */
 
+import { FolderType } from '@/types/payload-types';
+
 export interface PermissionDefinition {
   key: string;
   label: string;
@@ -57,6 +59,20 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     ]
   },
   {
+    id: 'documents',
+    title: 'Document Center',
+    permissions: [
+      { key: 'documents:view', label: 'View Document Center', description: 'Open the Document Center and browse accessible documents and folders' },
+      { key: 'documents:upload', label: 'Upload Documents', description: 'Upload project documents into the Document Center' },
+      { key: 'documents:manage_types', label: 'Manage Document Types', description: 'Create, edit, and delete the document types available when uploading' },
+      { key: 'documents:manage_permissions', label: 'Manage Document Permissions', description: 'Change which departments and users can view an uploaded document' },
+      { key: 'folders:create', label: 'Create Folder', description: 'Create folders in the Document Center and upload documents into them' },
+      { key: 'folders:create_personal', label: 'Create Personal Folder', description: 'Create private folders visible only to their owner' },
+      { key: 'folders:create_public', label: 'Create Public Folder', description: 'Create folders visible to every user across all departments' },
+      { key: 'folders:create_dynamic', label: 'Create Dynamic Folder', description: 'Create folders shared with selected departments and/or users' }
+    ]
+  },
+  {
     id: 'cms',
     title: 'Content Management',
     permissions: [
@@ -84,17 +100,35 @@ export const PERMISSION_MODULES: PermissionModule[] = [
 export const ALL_PERMISSIONS_KEYS = PERMISSION_MODULES.flatMap(m => m.permissions.map(p => p.key));
 
 /**
+ * The permission gating each folder type, on top of the `folders:create` grant.
+ * A role needs both to offer that type in the create-folder dialog.
+ */
+export const FOLDER_TYPE_PERMISSIONS: Record<FolderType, string> = {
+  personal: 'folders:create_personal',
+  public: 'folders:create_public',
+  dynamic: 'folders:create_dynamic'
+};
+
+/**
+ * Document Center grants every staff role starts with: browse and upload, plus
+ * folders for their own and shared use. Public folders and document-type
+ * management are withheld by default — an administrator opts a role into them
+ * from the permission matrix.
+ */
+const DEFAULT_DOCUMENT_PERMISSIONS = [
+  'documents:view',
+  'documents:upload',
+  'folders:create',
+  'folders:create_personal',
+  'folders:create_dynamic'
+];
+
+/**
  * Hardcoded default permissions mapping for the fallback roles.
  * If the database collections aren't initialized yet, the app falls back to this mapping.
  */
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-  admin: [
-    ...ALL_PERMISSIONS_KEYS,
-    'cms:manage',
-    'documents:view',
-    'documents:upload',
-    'documents:manage_permissions'
-  ],
+  admin: [...ALL_PERMISSIONS_KEYS],
   project_engineer: [
     'dashboard:view',
     'appointments:view',
@@ -102,7 +136,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'client-sites:view',
     'projects:view',
     'projects:edit',
-    'documents:view'
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   planning_engineer: [
     'dashboard:view',
@@ -111,7 +145,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'client-sites:view',
     'projects:view',
     'projects:edit',
-    'documents:view'
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   sales_manager: [
     'dashboard:view',
@@ -126,7 +160,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'sites:create',
     'sites:edit',
     'projects:view',
-    'documents:view'
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   hr: [
     'dashboard:view',
@@ -134,19 +168,19 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'sites:view',
     'client-sites:view',
     'projects:view',
-    'documents:view',
-    'teams:manage'
+    'teams:manage',
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   finance_manager: [
     'dashboard:view',
     'appointments:view',
     'projects:view',
-    'documents:view'
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   marketing_manager: [
     'dashboard:view',
     'appointments:view',
-    'documents:view'
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   engineering_manager: [
     'dashboard:view',
@@ -161,6 +195,6 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'projects:view',
     'projects:create',
     'projects:edit',
-    'documents:view'
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ]
 };

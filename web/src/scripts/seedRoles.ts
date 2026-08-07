@@ -37,24 +37,33 @@ const DEFAULT_DEPARTMENTS = [
   { name: 'Administration', slug: 'admin', description: 'System administrators and managers' }
 ];
 
-// Flat lists of all permission keys grouped for default roles
+// Flat lists of all permission keys grouped for default roles. Mirrors
+// `src/config/permissions.ts` — this script runs on node-appwrite outside the
+// Vite alias, so the definitions cannot be imported. Keep the two in step.
 const ALL_PERMISSIONS_KEYS = [
   'dashboard:view', 'appointments:view',
   'clients:view', 'clients:create', 'clients:edit', 'clients:delete',
   'client-sites:view', 'client-sites:create', 'client-sites:edit',
   'sites:view', 'sites:create', 'sites:edit', 'sites:assign',
   'projects:view', 'projects:create', 'projects:edit',
+  'documents:view', 'documents:upload', 'documents:manage_types', 'documents:manage_permissions',
+  'folders:create', 'folders:create_personal', 'folders:create_public', 'folders:create_dynamic',
   'cms:manage', 'settings:manage',
   'teams:manage', 'roles:manage'
 ];
 
+// Document Center grants every staff role starts with. Public folders and
+// document-type management are left to an administrator to hand out.
+const DEFAULT_DOCUMENT_PERMISSIONS = [
+  'documents:view',
+  'documents:upload',
+  'folders:create',
+  'folders:create_personal',
+  'folders:create_dynamic'
+];
+
 const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-  admin: [
-    ...ALL_PERMISSIONS_KEYS,
-    'documents:view',
-    'documents:upload',
-    'documents:manage_permissions'
-  ],
+  admin: [...ALL_PERMISSIONS_KEYS],
   project_engineer: [
     'dashboard:view',
     'appointments:view',
@@ -62,7 +71,7 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'client-sites:view',
     'projects:view',
     'projects:edit',
-    'documents:view'
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   planning_engineer: [
     'dashboard:view',
@@ -71,7 +80,7 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'client-sites:view',
     'projects:view',
     'projects:edit',
-    'documents:view'
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   engineering_manager: [
     'dashboard:view',
@@ -86,8 +95,7 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'projects:view',
     'projects:create',
     'projects:edit',
-    'documents:view',
-    'documents:upload'
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   sales_manager: [
     'dashboard:view',
@@ -102,7 +110,7 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'sites:create',
     'sites:edit',
     'projects:view',
-    'documents:view'
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   hr_manager: [
     'dashboard:view',
@@ -110,20 +118,20 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'sites:view',
     'client-sites:view',
     'projects:view',
-    'documents:view',
-    'teams:manage'
+    'teams:manage',
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   finance_manager: [
     'dashboard:view',
     'appointments:view',
     'projects:view',
-    'documents:view'
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   marketing_manager: [
     'dashboard:view',
     'appointments:view',
     'cms:manage',
-    'documents:view'
+    ...DEFAULT_DOCUMENT_PERMISSIONS
   ]
 };
 

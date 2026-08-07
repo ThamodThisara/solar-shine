@@ -190,6 +190,62 @@ export interface DocumentRecord {
   status: DocumentStatus;
 }
 
+/**
+ * Who a document folder is visible to.
+ * - `personal`: only its owner.
+ * - `public`: every authenticated user, regardless of department or role.
+ * - `dynamic`: the departments and/or individual users named on the folder.
+ */
+export type FolderType = "personal" | "public" | "dynamic";
+
+/**
+ * A user-created folder in the Document Center. Folders live alongside project
+ * documents and carry their own visibility rules; the documents filed inside one
+ * (see `FolderDocument`) inherit the folder's access entirely.
+ */
+export interface DocumentFolder {
+  $id: string;
+  name: string;
+  description?: string | null;
+  folder_type: FolderType;
+  /** Appwrite user id of the creator, who always retains access. */
+  owner_id: string;
+  /**
+   * Department keys granted access on a `dynamic` folder. These are department
+   * slugs from the `departments` collection (e.g. "engineering"), matched
+   * case-insensitively — see `getUserDepartmentKeys`.
+   */
+  allowed_departments?: string[] | null;
+  /** User ids granted access on a `dynamic` folder. */
+  allowed_users?: string[] | null;
+  created_at: string;
+  updated_at?: string | null;
+  status?: DocumentStatus;
+}
+
+/** A document stored inside a `DocumentFolder`. */
+export interface FolderDocument {
+  $id: string;
+  folder_id: string;
+  file_name: string;
+  file_path: string;
+  file_id: string;
+  file_size: number;
+  file_type: string;
+  uploaded_by: string;
+  uploaded_at: string;
+  updated_at?: string | null;
+  status?: DocumentStatus;
+}
+
+/** A per-user pin keeping a folder at the top of the Document Center. */
+export interface FolderPin {
+  $id: string;
+  folder_id: string;
+  user_id: string;
+  pinned_at: string;
+}
+
 /** Priority of a site visit / inspection. */
 export type SiteVisitPriority = "low" | "medium" | "high" | "critical";
 
