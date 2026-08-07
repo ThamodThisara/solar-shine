@@ -935,6 +935,96 @@
       ]
     },
     {
+      "$id": "document_folders",
+      "$permissions": [
+        "read(\"users\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Document Folders",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "name", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "description", "type": "string", "required": false, "array": false, "size": 1000, "encrypt": false },
+        {
+          "key": "folder_type",
+          "type": "string",
+          "required": true,
+          "array": false,
+          "size": 20,
+          "format": "enum",
+          "elements": ["personal", "public", "dynamic"]
+        },
+        { "key": "owner_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "allowed_departments", "type": "string", "required": false, "array": true, "size": 100, "encrypt": false },
+        { "key": "allowed_users", "type": "string", "required": false, "array": true, "size": 255, "encrypt": false },
+        { "key": "created_at", "type": "datetime", "required": true, "array": false },
+        { "key": "updated_at", "type": "datetime", "required": false, "array": false },
+        { "key": "status", "type": "string", "required": false, "array": false, "size": 20, "default": "Active", "encrypt": false }
+      ],
+      "indexes": [
+        { "key": "idx_owner_id", "type": "key", "attributes": ["owner_id"], "orders": ["ASC"] },
+        { "key": "idx_folder_type", "type": "key", "attributes": ["folder_type"], "orders": ["ASC"] },
+        { "key": "idx_folder_name", "type": "key", "attributes": ["name"], "orders": ["ASC"] },
+        { "key": "idx_folder_created_at", "type": "key", "attributes": ["created_at"], "orders": ["DESC"] }
+      ]
+    },
+    {
+      "$id": "folder_documents",
+      "$permissions": [
+        "read(\"users\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Folder Documents",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "folder_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "file_name", "type": "string", "required": true, "array": false, "size": 500, "encrypt": false },
+        { "key": "file_path", "type": "string", "required": true, "array": false, "size": 1000, "encrypt": false },
+        { "key": "file_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "file_size", "type": "integer", "required": true, "array": false },
+        { "key": "file_type", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "uploaded_by", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "uploaded_at", "type": "datetime", "required": true, "array": false },
+        { "key": "updated_at", "type": "datetime", "required": false, "array": false },
+        { "key": "status", "type": "string", "required": false, "array": false, "size": 20, "default": "Active", "encrypt": false }
+      ],
+      "indexes": [
+        { "key": "idx_folder_id", "type": "key", "attributes": ["folder_id"], "orders": ["ASC"] },
+        { "key": "idx_folder_doc_uploaded_at", "type": "key", "attributes": ["uploaded_at"], "orders": ["DESC"] },
+        { "key": "idx_folder_doc_name", "type": "key", "attributes": ["file_name"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "folder_pins",
+      "$permissions": [
+        "read(\"users\")",
+        "create(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Folder Pins",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "folder_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "user_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "pinned_at", "type": "datetime", "required": true, "array": false }
+      ],
+      "indexes": [
+        { "key": "idx_pin_user_id", "type": "key", "attributes": ["user_id"], "orders": ["ASC"] },
+        { "key": "idx_pin_folder_id", "type": "key", "attributes": ["folder_id"], "orders": ["ASC"] }
+      ]
+    },
+    {
       "$id": "document_types",
       "$permissions": [
         "read(\"users\")",

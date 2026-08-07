@@ -19,6 +19,12 @@ interface AuthContextType {
   isEngineer: boolean;
   permissions: string[];
   departmentName: string | null;
+  /**
+   * Slug of the department the user's role belongs to (e.g. "engineering"), used
+   * to resolve department-scoped folder access. Null when the role is not mapped
+   * to a department.
+   */
+  departmentSlug: string | null;
   /** Returns true when the current user's role is one of `roles`. */
   hasRole: (roles: string[]) => boolean;
   /** Returns true when the current user has the specified permission. */
@@ -34,7 +40,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<UserProfile | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [departmentName, setDepartmentName] = useState<string | null>(null);
+  const [departmentSlug, setDepartmentSlug] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const applyDepartment = (dept: { name: string; slug: string } | null | undefined) => {
+    setDepartmentName(dept ? dept.name : null);
+    setDepartmentSlug(dept ? dept.slug : null);
+  };
 
   // Helper to load permissions for a role
   const loadPermissionsForRole = async (userRole: string) => {
@@ -49,15 +61,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             d.slug === matchedRole.department_id ||
             `dept_${d.slug}` === matchedRole.department_id
         );
-        setDepartmentName(matchedDept ? matchedDept.name : null);
+        applyDepartment(matchedDept);
       } else {
         setPermissions([]);
-        setDepartmentName(null);
+        applyDepartment(null);
       }
     } catch (error) {
       console.warn('Failed to fetch dynamic roles or departments:', error);
       setPermissions([]);
-      setDepartmentName(null);
+      applyDepartment(null);
     }
   };
 
@@ -73,13 +85,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } else {
           setUser(null);
           setPermissions([]);
-          setDepartmentName(null);
+          applyDepartment(null);
         }
       } catch (error) {
         console.error('Auth check error:', error);
         setUser(null);
         setPermissions([]);
-        setDepartmentName(null);
+        applyDepartment(null);
       } finally {
         setIsLoading(false);
       }
@@ -110,7 +122,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 d.slug === roleDoc.department_id ||
                 `dept_${d.slug}` === roleDoc.department_id
             );
-            setDepartmentName(matchedDept ? matchedDept.name : null);
+            applyDepartment(matchedDept);
           } catch (e) {
             console.warn('Failed to fetch departments on realtime update:', e);
           }
@@ -183,7 +195,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       setUser(null);
       setPermissions([]);
-      setDepartmentName(null);
+      applyDepartment(null);
       toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
@@ -212,6 +224,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isEngineer: !!role && ENGINEER_ROLES.includes(role),
         permissions,
         departmentName,
+        departmentSlug,
         hasRole: (roles: string[]) => !!role && roles.includes(role),
         hasPermission,
         login,

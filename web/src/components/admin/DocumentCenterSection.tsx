@@ -1,34 +1,58 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Upload, Terminal, ChevronLeft, ChevronRight, FolderOpen, Search, Tags } from 'lucide-react';
+import { Upload, Terminal, FolderPlus, Search, Tags, Folder } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { SimplePagination } from '@/components/ui/simple-pagination';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { client, COLLECTIONS, DATABASE_ID } from '@/lib/appwrite';
 import { Combobox } from '@/components/ui/combobox';
 import { getDocumentDepartmentForRole } from '@/config/roles';
-import { DocumentRecord } from '@/types/payload-types';
+import { FOLDER_TYPE_PERMISSIONS } from '@/config/permissions';
+import { DocumentFolder, DocumentRecord, FolderType } from '@/types/payload-types';
 import {
   fetchDocuments,
-  fetchRecentDocuments,
   searchDocuments,
   uploadDocuments,
   deleteDocumentRecord,
   DOCUMENT_PAGE_SIZE,
 } from '@/services/documentService';
+import {
+  FolderInput,
+  createFolder,
+  deleteFolder,
+  fetchAccessibleFolders,
+  fetchFolderDocumentCounts,
+  fetchPinnedFolderIds,
+  setFolderPinned,
+  updateFolder,
+} from '@/services/folderService';
+import { canUserManageFolder } from '@/lib/permissions';
 import { fetchDocumentTypes, getTypeGroupLabel, typeServesDepartment } from '@/services/documentTypeService';
 import { fetchProjectExecutionOptions } from '@/services/projectExecutionService';
 import DocumentCard from './DocumentCard';
+import FolderCard from './FolderCard';
+import FolderDetailView from './FolderDetailView';
 import DocumentUploadDialog from './content-editors/document/DocumentUploadDialog';
+import FolderFormDialog from './content-editors/document/FolderFormDialog';
 import ManageDocumentTypesDialog from './content-editors/document/ManageDocumentTypesDialog';
 import ProjectSiteVisitsPanel from './ProjectSiteVisitsPanel';
 
+/** Folders shown per page in the folders grid. */
+const FOLDER_PAGE_SIZE = 8;
+
+const ALL_FOLDER_TYPES: FolderType[] = ['personal', 'public', 'dynamic'];
+
 const DocumentCenterSection: React.FC = () => {
-  const { role, isLoading: isAuthLoading, user, isAdmin, hasPermission } = useAuth();
+  const { role, isLoading: isAuthLoading, user, isAdmin, hasPermission, departmentSlug } = useAuth();
   const canAccess = hasPermission('documents:view');
+  const canUpload = hasPermission('documents:upload');
+  const canManageTypes = hasPermission('documents:manage_types');
   const queryClient = useQueryClient();
 
   const [projectFilter, setProjectFilter] = useState<string>('all');
@@ -38,17 +62,50 @@ const DocumentCenterSection: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
+  const [folderPage, setFolderPage] = useState(0);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isManageTypesOpen, setIsManageTypesOpen] = useState(false);
+
+  // Folder state: which folder is open, which is being edited/deleted.
+  const [openFolderId, setOpenFolderId] = useState<string | null>(null);
+  const [isFolderFormOpen, setIsFolderFormOpen] = useState(false);
+  const [folderBeingEdited, setFolderBeingEdited] = useState<DocumentFolder | null>(null);
+  const [folderToDelete, setFolderToDelete] = useState<DocumentFolder | null>(null);
+
+  // Folder types this role may create; the dialog offers only these. Kept
+  // referentially stable (the dialog seeds its form off it) by memoising on a
+  // signature of the grants rather than on `hasPermission`, which is rebuilt on
+  // every auth render.
+  const folderTypeGrants = ALL_FOLDER_TYPES
+    .map((type) => (hasPermission(FOLDER_TYPE_PERMISSIONS[type]) ? '1' : '0'))
+    .join('');
+  const allowedFolderTypes = useMemo(
+    () => ALL_FOLDER_TYPES.filter((_type, index) => folderTypeGrants[index] === '1'),
+    [folderTypeGrants],
+  );
+  const canCreateFolder = hasPermission('folders:create') && allowedFolderTypes.length > 0;
 
   // Debounce the search input so we don't recompute on every keystroke.
   React.useEffect(() => {
     const handle = setTimeout(() => {
       setSearch(searchInput.trim());
       setPage(0);
+      setFolderPage(0);
     }, 300);
     return () => clearTimeout(handle);
   }, [searchInput]);
+
+  // Folder visibility can change while the page is open — an owner adding or
+  // removing a department/user. Refetch on any folder write so the change lands
+  // for everyone immediately rather than on the next navigation.
+  React.useEffect(() => {
+    if (!canAccess) return;
+    const unsubscribe = client.subscribe(
+      `databases.${DATABASE_ID}.collections.${COLLECTIONS.DOCUMENT_FOLDERS}.documents`,
+      () => queryClient.invalidateQueries({ queryKey: ['document-folders'] }),
+    );
+    return () => unsubscribe();
+  }, [canAccess, queryClient]);
 
   const { data: projects = [] } = useQuery({
     queryKey: ['project-execution-options'],
@@ -81,7 +138,6 @@ const DocumentCenterSection: React.FC = () => {
     return undefined;
   }, [documentTypeFilter]);
 
-  const hasFilters = !isAdmin || projectFilter !== 'all' || departmentFilter !== 'all' || documentTypeFilter !== 'all' || visibilityFilter !== 'all';
   const isSearching = search.length > 0;
   // When a single project is in focus, its site-visit documents are shown in a
   // dedicated panel, so they're excluded from the main grid to avoid duplication.
@@ -89,13 +145,123 @@ const DocumentCenterSection: React.FC = () => {
 
   const documentTypeById = (id: string) => documentTypes.find((dt) => dt.$id === id);
 
-  const { data: recentDocuments, isLoading: isRecentLoading } = useQuery({
-    queryKey: ['documents-recent', user?.$id, role],
-    queryFn: () => fetchRecentDocuments(user?.$id, role || undefined),
-    enabled: canAccess && !hasFilters && !isSearching,
+  /* ------------------------------- Folders ------------------------------- */
+
+  const folderViewer = useMemo(
+    () => ({ userId: user?.$id, role, departmentSlug }),
+    [user?.$id, role, departmentSlug],
+  );
+
+  const { data: folders = [], isLoading: isFoldersLoading } = useQuery({
+    queryKey: ['document-folders', user?.$id, role, departmentSlug],
+    queryFn: () => fetchAccessibleFolders(folderViewer),
+    enabled: canAccess,
   });
 
-  const { data: filteredData, isLoading: isFilteredLoading } = useQuery({
+  const { data: pinnedFolderIds = [] } = useQuery({
+    queryKey: ['folder-pins', user?.$id],
+    queryFn: () => fetchPinnedFolderIds(user?.$id),
+    enabled: canAccess && !!user?.$id,
+  });
+
+  const isPinned = (folderId: string) => pinnedFolderIds.includes(folderId);
+
+  // Pinned folders float to the top; the rest keep the newest-first order the
+  // service returns. The search box matches folder names and descriptions.
+  const visibleFolders = useMemo(() => {
+    const query = search.toLowerCase();
+    const matched = query
+      ? folders.filter(
+          (f) =>
+            f.name.toLowerCase().includes(query) ||
+            (f.description ?? '').toLowerCase().includes(query),
+        )
+      : folders;
+
+    return [...matched].sort((a, b) => {
+      const pinDiff = Number(isPinned(b.$id)) - Number(isPinned(a.$id));
+      if (pinDiff !== 0) return pinDiff;
+      return 0;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folders, search, pinnedFolderIds]);
+
+  const folderTotalPages = Math.max(1, Math.ceil(visibleFolders.length / FOLDER_PAGE_SIZE));
+  const pagedFolders = visibleFolders.slice(
+    folderPage * FOLDER_PAGE_SIZE,
+    folderPage * FOLDER_PAGE_SIZE + FOLDER_PAGE_SIZE,
+  );
+
+  // Counted one page at a time: a count costs a query per folder, so only the
+  // cards actually on screen are worth asking about.
+  const pagedFolderIds = pagedFolders.map((f) => f.$id);
+  const { data: folderCounts = {} } = useQuery({
+    queryKey: ['folder-document-counts', pagedFolderIds],
+    queryFn: () => fetchFolderDocumentCounts(pagedFolderIds),
+    enabled: canAccess && pagedFolderIds.length > 0,
+  });
+
+  const openFolder = folders.find((f) => f.$id === openFolderId) ?? null;
+
+  const invalidateFolders = () => {
+    queryClient.invalidateQueries({ queryKey: ['document-folders'] });
+    queryClient.invalidateQueries({ queryKey: ['folder-document-counts'] });
+  };
+
+  const saveFolderMutation = useMutation({
+    mutationFn: (input: FolderInput) =>
+      folderBeingEdited
+        ? updateFolder(folderBeingEdited.$id, input)
+        : createFolder(input, user?.$id ?? ''),
+    onSuccess: (folder) => {
+      invalidateFolders();
+      setIsFolderFormOpen(false);
+      toast.success(folderBeingEdited ? 'Folder updated' : `Folder "${folder.name}" created`);
+      setFolderBeingEdited(null);
+    },
+    onError: (error: Error) => toast.error(`Failed to save folder: ${error.message}`),
+  });
+
+  const deleteFolderMutation = useMutation({
+    mutationFn: (folder: DocumentFolder) => deleteFolder(folder.$id),
+    onSuccess: (_result, folder) => {
+      invalidateFolders();
+      queryClient.invalidateQueries({ queryKey: ['folder-pins'] });
+      if (openFolderId === folder.$id) setOpenFolderId(null);
+      setFolderToDelete(null);
+      toast.success('Folder deleted');
+    },
+    onError: (error: Error) => toast.error(`Failed to delete folder: ${error.message}`),
+  });
+
+  const pinMutation = useMutation({
+    mutationFn: ({ folder, pinned }: { folder: DocumentFolder; pinned: boolean }) =>
+      setFolderPinned(folder.$id, user?.$id ?? '', pinned),
+    onSuccess: (_result, { pinned }) => {
+      queryClient.invalidateQueries({ queryKey: ['folder-pins'] });
+      toast.success(pinned ? 'Folder pinned' : 'Folder unpinned');
+    },
+    onError: () => toast.error('Failed to update pin'),
+  });
+
+  const handleTogglePin = (folder: DocumentFolder) => {
+    if (!user?.$id) return;
+    pinMutation.mutate({ folder, pinned: !isPinned(folder.$id) });
+  };
+
+  const handleCreateFolder = () => {
+    setFolderBeingEdited(null);
+    setIsFolderFormOpen(true);
+  };
+
+  const handleEditFolder = (folder: DocumentFolder) => {
+    setFolderBeingEdited(folder);
+    setIsFolderFormOpen(true);
+  };
+
+  /* ------------------------------ Documents ------------------------------ */
+
+  const { data: filteredData, isLoading: isDocumentsLoading } = useQuery({
     queryKey: ['documents', projectFilter, departmentFilter, documentTypeFilter, visibilityFilter, allowedTypeIds, page, user?.$id, role],
     queryFn: () => fetchDocuments({
       page,
@@ -107,7 +273,7 @@ const DocumentCenterSection: React.FC = () => {
       currentUserId: user?.$id,
       currentUserRole: role || undefined,
     }),
-    enabled: canAccess && hasFilters && !isSearching,
+    enabled: canAccess && !isSearching,
   });
 
   // While searching, fetch a batch honouring the active filters and match by
@@ -148,26 +314,22 @@ const DocumentCenterSection: React.FC = () => {
     total = matchedDocuments.length;
     documents = matchedDocuments.slice(page * DOCUMENT_PAGE_SIZE, page * DOCUMENT_PAGE_SIZE + DOCUMENT_PAGE_SIZE);
     isLoading = isSearchLoading;
-  } else if (hasFilters) {
+  } else {
     documents = filteredData?.documents ?? [];
     total = filteredData?.total ?? 0;
-    isLoading = isFilteredLoading;
-  } else {
-    documents = recentDocuments ?? [];
-    total = 0;
-    isLoading = isRecentLoading;
+    isLoading = isDocumentsLoading;
   }
   const totalPages = Math.max(1, Math.ceil(total / DOCUMENT_PAGE_SIZE));
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['documents-recent'] });
+  const invalidateDocuments = () => {
     queryClient.invalidateQueries({ queryKey: ['documents'] });
+    queryClient.invalidateQueries({ queryKey: ['documents-search'] });
   };
 
   const uploadMutation = useMutation({
     mutationFn: uploadDocuments,
     onSuccess: ({ succeeded, failed }) => {
-      invalidate();
+      invalidateDocuments();
       setIsUploadOpen(false);
       if (succeeded.length > 0) {
         toast.success(`${succeeded.length} document${succeeded.length === 1 ? '' : 's'} uploaded successfully`);
@@ -180,7 +342,7 @@ const DocumentCenterSection: React.FC = () => {
   const deleteMutation = useMutation({
     mutationFn: ({ id, fileId }: { id: string; fileId: string }) => deleteDocumentRecord(id, fileId),
     onSuccess: () => {
-      invalidate();
+      invalidateDocuments();
       toast.success('Document deleted');
     },
     onError: () => toast.error('Failed to delete document'),
@@ -210,23 +372,57 @@ const DocumentCenterSection: React.FC = () => {
     );
   }
 
+  // Browsing inside a folder replaces the whole section, so the folder's own
+  // search and pagination don't compete with the project-document ones.
+  if (openFolder) {
+    return (
+      <>
+        <FolderDetailView
+          folder={openFolder}
+          isPinned={isPinned(openFolder.$id)}
+          onBack={() => setOpenFolderId(null)}
+          onTogglePin={handleTogglePin}
+          onEdit={handleEditFolder}
+        />
+        <FolderFormDialog
+          isOpen={isFolderFormOpen}
+          setIsOpen={(open) => {
+            setIsFolderFormOpen(open);
+            if (!open) setFolderBeingEdited(null);
+          }}
+          folder={folderBeingEdited}
+          allowedTypes={allowedFolderTypes}
+          onSubmit={(input) => saveFolderMutation.mutate(input)}
+          isSaving={saveFolderMutation.isPending}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
           <div>
             <CardTitle>Document Center</CardTitle>
-            <CardDescription>Preview, download, and upload documents for your projects.</CardDescription>
+            <CardDescription>Preview, download, and upload documents for your projects and folders.</CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {isAdmin && (
+            {canManageTypes && (
               <Button variant="outline" onClick={() => setIsManageTypesOpen(true)}>
                 <Tags className="mr-2 h-4 w-4" /> Manage Document Types
               </Button>
             )}
-            <Button onClick={() => setIsUploadOpen(true)}>
-              <Upload className="mr-2 h-4 w-4" /> Upload Document
-            </Button>
+            {canCreateFolder && (
+              <Button variant="outline" onClick={handleCreateFolder}>
+                <FolderPlus className="mr-2 h-4 w-4" /> Create Folder
+              </Button>
+            )}
+            {canUpload && (
+              <Button onClick={() => setIsUploadOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" /> Upload Document
+              </Button>
+            )}
           </div>
         </CardHeader>
       </Card>
@@ -236,12 +432,68 @@ const DocumentCenterSection: React.FC = () => {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="Search by project ID, project name or document name..."
+          placeholder="Search folders, project ID, project name or document name..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="pl-9"
         />
       </div>
+
+      {/* Folders */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold flex items-center gap-1.5">
+            <Folder className="h-4 w-4 text-muted-foreground" /> Folders
+            {visibleFolders.length > 0 && (
+              <span className="text-xs font-normal text-muted-foreground">({visibleFolders.length})</span>
+            )}
+          </h3>
+        </div>
+
+        {isFoldersLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <Skeleton className="h-44 w-full" />
+            <Skeleton className="h-44 w-full" />
+            <Skeleton className="h-44 w-full" />
+            <Skeleton className="h-44 w-full" />
+          </div>
+        ) : pagedFolders.length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground">
+              {isSearching
+                ? `No folders match "${search}".`
+                : canCreateFolder
+                  ? 'No folders yet. Create one to organise documents outside of projects.'
+                  : 'No folders have been shared with you yet.'}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {pagedFolders.map((folder) => (
+              <FolderCard
+                key={folder.$id}
+                folder={folder}
+                documentCount={folderCounts[folder.$id] ?? 0}
+                isPinned={isPinned(folder.$id)}
+                canManage={canUserManageFolder(folder, folderViewer)}
+                onOpen={(f) => setOpenFolderId(f.$id)}
+                onTogglePin={handleTogglePin}
+                onEdit={handleEditFolder}
+                onDelete={setFolderToDelete}
+              />
+            ))}
+          </div>
+        )}
+
+        <SimplePagination
+          page={folderPage}
+          totalPages={folderTotalPages}
+          totalItems={visibleFolders.length}
+          pageSize={FOLDER_PAGE_SIZE}
+          onPageChange={setFolderPage}
+          label="folders"
+        />
+      </section>
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -290,16 +542,14 @@ const DocumentCenterSection: React.FC = () => {
         />
       </div>
 
-      {!hasFilters && !isSearching && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <FolderOpen className="h-3.5 w-3.5" /> Showing the 6 most recently uploaded documents
-        </p>
-      )}
-      {isSearching && !isLoading && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <Search className="h-3.5 w-3.5" /> {total} result{total === 1 ? '' : 's'} for "{search}"
-        </p>
-      )}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h3 className="text-sm font-semibold">Project Documents</h3>
+        {isSearching && !isLoading && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Search className="h-3.5 w-3.5" /> {total} document result{total === 1 ? '' : 's'} for "{search}"
+          </p>
+        )}
+      </div>
 
       {/* Documents */}
       {isLoading ? (
@@ -328,22 +578,14 @@ const DocumentCenterSection: React.FC = () => {
         </div>
       )}
 
-      {/* Pagination */}
-      {(hasFilters || isSearching) && total > DOCUMENT_PAGE_SIZE && (
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            Page {page + 1} of {totalPages} ({total} documents)
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-              <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Previous
-            </Button>
-            <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
-              Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <SimplePagination
+        page={page}
+        totalPages={totalPages}
+        totalItems={total}
+        pageSize={DOCUMENT_PAGE_SIZE}
+        onPageChange={setPage}
+        label="documents"
+      />
 
       {/* Site visit documents + history for the focused project, shown separately */}
       {isProjectSelected && !isSearching && (
@@ -354,17 +596,47 @@ const DocumentCenterSection: React.FC = () => {
         />
       )}
 
-      <DocumentUploadDialog
-        isOpen={isUploadOpen}
-        setIsOpen={setIsUploadOpen}
-        projects={projects}
-        documentTypes={documentTypes}
-        uploadedBy={user?.$id ?? ''}
-        onUpload={(input) => uploadMutation.mutate(input)}
-        isUploading={uploadMutation.isPending}
+      {canUpload && (
+        <DocumentUploadDialog
+          isOpen={isUploadOpen}
+          setIsOpen={setIsUploadOpen}
+          projects={projects}
+          documentTypes={documentTypes}
+          uploadedBy={user?.$id ?? ''}
+          onUpload={(input) => uploadMutation.mutate(input)}
+          isUploading={uploadMutation.isPending}
+        />
+      )}
+
+      <FolderFormDialog
+        isOpen={isFolderFormOpen}
+        setIsOpen={(open) => {
+          setIsFolderFormOpen(open);
+          if (!open) setFolderBeingEdited(null);
+        }}
+        folder={folderBeingEdited}
+        allowedTypes={allowedFolderTypes}
+        onSubmit={(input) => saveFolderMutation.mutate(input)}
+        isSaving={saveFolderMutation.isPending}
       />
 
-      {isAdmin && (
+      <ConfirmDialog
+        open={!!folderToDelete}
+        onOpenChange={(open) => { if (!open) setFolderToDelete(null); }}
+        title="Delete Folder?"
+        description={
+          folderToDelete
+            ? `Delete "${folderToDelete.name}" and every document stored inside it? This action cannot be undone.`
+            : ''
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={deleteFolderMutation.isPending}
+        onConfirm={() => { if (folderToDelete) deleteFolderMutation.mutate(folderToDelete); }}
+      />
+
+      {canManageTypes && (
         <ManageDocumentTypesDialog
           isOpen={isManageTypesOpen}
           setIsOpen={setIsManageTypesOpen}

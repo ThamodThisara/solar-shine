@@ -29,7 +29,7 @@ interface DocumentCardProps {
 }
 
 const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentType, onDelete }) => {
-  const { user, role } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
   const isImage = doc.file_type.startsWith('image/');
@@ -39,7 +39,9 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentT
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isDownloadLoading, setIsDownloadLoading] = useState(false);
 
-  const canManagePermissions = role === 'admin' || (user?.$id && doc.uploaded_by === user.$id);
+  // Uploaders always control their own document; other roles need the grant.
+  const canManagePermissions =
+    hasPermission('documents:manage_permissions') || (user?.$id && doc.uploaded_by === user.$id);
 
   const handlePreview = async () => {
     setIsPreviewLoading(true);

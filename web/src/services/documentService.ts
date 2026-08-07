@@ -5,8 +5,22 @@ import { isAllowedFile } from '@/lib/documentTypes';
 import { filterAccessibleDocuments } from '@/lib/permissions';
 
 const PAGE_SIZE = 9;
-const RECENT_LIMIT = 6;
-const SEARCH_LIMIT = 100;
+/** Documents listed for a single site visit — far fewer than a page holds. */
+const SITE_VISIT_DOCUMENT_LIMIT = 100;
+/** Rows pulled per request while scanning the collection client-side. */
+const SCAN_BATCH_SIZE = 100;
+/**
+ * Safety cap on a client-side scan. Access rules for non-admins are evaluated on
+ * the client, so paging past the newest rows means walking the collection; this
+ * bounds that walk to 20 requests.
+ */
+const MAX_SCANNED_DOCUMENTS = 2000;
+
+/**
+ * Root prefix for project uploads inside the shared `documents` bucket. Folder
+ * uploads sit next to it under `Folder Documents/` (see `folderService`).
+ */
+export const PROJECT_STORAGE_ROOT = 'Project Documents';
 
 export interface DocumentListParams {
   page?: number;
@@ -35,39 +49,63 @@ function buildFilterQueries(params: Omit<DocumentListParams, 'page'>) {
   return queries;
 }
 
+/**
+ * Walks the documents collection newest-first, honouring `params`' filters, and
+ * returns every row the user may see. Used for the non-admin paths: their access
+ * is decided per document on the client, so a page of results can't be asked for
+ * by offset — the accessible set has to be built first.
+ */
+async function scanAccessibleDocuments(
+  params: Omit<DocumentListParams, 'page'>,
+): Promise<DocumentRecord[]> {
+  const accessible: DocumentRecord[] = [];
+  let scanned = 0;
+  let cursor: string | undefined;
+
+  while (scanned < MAX_SCANNED_DOCUMENTS) {
+    const queries = [
+      Query.orderDesc('uploaded_at'),
+      Query.limit(SCAN_BATCH_SIZE),
+      ...buildFilterQueries(params),
+    ];
+    if (cursor) queries.push(Query.cursorAfter(cursor));
+
+    const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, queries);
+    const batch = response.documents as unknown as DocumentRecord[];
+    if (batch.length === 0) break;
+
+    accessible.push(...filterAccessibleDocuments(batch, params.currentUserId, params.currentUserRole));
+    scanned += batch.length;
+    if (batch.length < SCAN_BATCH_SIZE) break;
+    cursor = batch[batch.length - 1].$id;
+  }
+
+  return accessible;
+}
+
 export async function fetchDocuments(
   params: DocumentListParams = {}
 ): Promise<DocumentListResult> {
-  const { page = 0, currentUserId, currentUserRole } = params;
+  const { page = 0, currentUserRole } = params;
   try {
-    const isAdmin = currentUserRole === 'admin';
-    const limit = isAdmin ? PAGE_SIZE : 100;
-    const offset = isAdmin ? page * PAGE_SIZE : 0;
-
-    const queries = [
-      Query.orderDesc('uploaded_at'),
-      Query.limit(limit),
-      Query.offset(offset),
-      ...buildFilterQueries(params),
-    ];
-
-    const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, queries);
-    const docs = response.documents as unknown as DocumentRecord[];
-
-    if (isAdmin) {
+    // Admins see everything, so the server can page for them directly.
+    if (currentUserRole === 'admin') {
+      const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, [
+        Query.orderDesc('uploaded_at'),
+        Query.limit(PAGE_SIZE),
+        Query.offset(page * PAGE_SIZE),
+        ...buildFilterQueries(params),
+      ]);
       return {
-        documents: docs,
+        documents: response.documents as unknown as DocumentRecord[],
         total: response.total,
       };
     }
 
-    // Client-side filtering and pagination for non-admins
-    const filteredDocs = filterAccessibleDocuments(docs, currentUserId, currentUserRole);
-    const paginatedDocs = filteredDocs.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-
+    const accessible = await scanAccessibleDocuments(params);
     return {
-      documents: paginatedDocs,
-      total: filteredDocs.length,
+      documents: accessible.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+      total: accessible.length,
     };
   } catch (error) {
     console.error('Error fetching documents:', error);
@@ -76,44 +114,20 @@ export async function fetchDocuments(
 }
 
 /**
- * Fetches a batch of documents (honouring the active filters) for client-side
- * search. Project name and document name are not indexed for full-text search
- * on the server — and the project name is not even stored on the document —
- * so the matching is performed in the component over this result set.
+ * Fetches the documents (honouring the active filters) a user may see, for
+ * client-side search. Project name and document name are not indexed for
+ * full-text search on the server — and the project name is not even stored on
+ * the document — so the matching is performed in the component over this result
+ * set. Scanning the collection rather than only its newest page means older
+ * documents stay findable.
  */
 export async function searchDocuments(
   params: Omit<DocumentListParams, 'page'> = {}
 ): Promise<DocumentRecord[]> {
   try {
-    const queries = [
-      Query.orderDesc('uploaded_at'),
-      Query.limit(SEARCH_LIMIT),
-      ...buildFilterQueries(params),
-    ];
-
-    const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, queries);
-    const docs = response.documents as unknown as DocumentRecord[];
-    return filterAccessibleDocuments(docs, params.currentUserId, params.currentUserRole);
+    return await scanAccessibleDocuments(params);
   } catch (error) {
     console.error('Error searching documents:', error);
-    throw error;
-  }
-}
-
-export async function fetchRecentDocuments(userId?: string, userRole?: string): Promise<DocumentRecord[]> {
-  try {
-    const limit = userRole === 'admin' ? RECENT_LIMIT : 100;
-    const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, [
-      Query.orderDesc('uploaded_at'),
-      Query.limit(limit),
-    ]);
-    const docs = response.documents as unknown as DocumentRecord[];
-    if (userRole === 'admin') return docs;
-
-    // Filter and return at most RECENT_LIMIT
-    return filterAccessibleDocuments(docs, userId, userRole).slice(0, RECENT_LIMIT);
-  } catch (error) {
-    console.error('Error fetching recent documents:', error);
     throw error;
   }
 }
@@ -124,7 +138,7 @@ export async function fetchDocumentsBySiteVisit(siteVisitId: string, userId?: st
     const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENTS, [
       Query.equal('site_visit_id', siteVisitId),
       Query.orderDesc('uploaded_at'),
-      Query.limit(SEARCH_LIMIT),
+      Query.limit(SITE_VISIT_DOCUMENT_LIMIT),
     ]);
     const docs = response.documents as unknown as DocumentRecord[];
     return filterAccessibleDocuments(docs, userId, userRole);
@@ -159,8 +173,8 @@ export async function uploadDocument(input: UploadDocumentInput): Promise<Docume
       project_id: input.projectId,
       file_name: input.file.name,
       file_path: input.siteVisitId
-        ? `projects/${input.projectId}/site-visits/${input.siteVisitId}/${input.file.name}`
-        : `projects/${input.projectId}/${input.documentTypeId}/${input.file.name}`,
+        ? `${PROJECT_STORAGE_ROOT}/${input.projectId}/site-visits/${input.siteVisitId}/${input.file.name}`
+        : `${PROJECT_STORAGE_ROOT}/${input.projectId}/${input.documentTypeId}/${input.file.name}`,
       file_id: fileId,
       file_size: input.file.size,
       file_type: input.file.type,
