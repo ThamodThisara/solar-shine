@@ -119,6 +119,7 @@ export const COLLECTIONS = {
   DOCUMENT_FOLDERS: 'document_folders',
   FOLDER_DOCUMENTS: 'folder_documents',
   FOLDER_PINS: 'folder_pins',
+  DOCUMENT_DELETE_REQUESTS: 'document_delete_requests',
   PROJECT_TYPES: 'project_types',
   SITE_VISITS: 'site_visits',
   SITE_VISIT_UPDATES: 'site_visit_updates',
