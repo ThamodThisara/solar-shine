@@ -83,6 +83,40 @@ export async function createDepartment(name: string, description?: string): Prom
 }
 
 /**
+ * Updates a department's name/description.
+ */
+export async function updateDepartment(departmentId: string, updates: Partial<Pick<DepartmentRecord, 'name' | 'description'>>): Promise<DepartmentRecord> {
+  try {
+    const doc = await databases.updateDocument(
+      DATABASE_ID,
+      DEPARTMENTS_COL_ID,
+      departmentId,
+      updates
+    );
+    return doc as unknown as DepartmentRecord;
+  } catch (error) {
+    console.error(`Error updating department ${departmentId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Deletes a department. Caller is responsible for ensuring no roles reference it first.
+ */
+export async function deleteDepartment(departmentId: string): Promise<void> {
+  try {
+    await databases.deleteDocument(
+      DATABASE_ID,
+      DEPARTMENTS_COL_ID,
+      departmentId
+    );
+  } catch (error) {
+    console.error(`Error deleting department ${departmentId}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Fetches all roles. Returns empty array if database fails.
  */
 export async function fetchRoles(): Promise<RoleRecord[]> {

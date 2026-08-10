@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Shield, Plus, Building, Key, Check, AlertTriangle, ShieldCheck, ChevronRight, ChevronDown, Trash2, ArrowLeft } from 'lucide-react';
+import { Shield, Plus, Building, Key, Check, AlertTriangle, ShieldCheck, ChevronRight, ChevronDown, Trash2, ArrowLeft, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,8 @@ import {
   fetchDepartments,
   fetchRoles,
   createDepartment,
+  updateDepartment,
+  deleteDepartment,
   createRole,
   updateRole,
   deleteRole,
@@ -61,11 +63,30 @@ export const RolePermissionManagementSection: React.FC = () => {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<RoleRecord | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  
+
+  // Selection state (controls hidden-by-default edit/delete icons)
+  const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
+
+  // Edit department modal
+  const [isEditDeptModalOpen, setIsEditDeptModalOpen] = useState(false);
+  const [deptBeingEdited, setDeptBeingEdited] = useState<DepartmentRecord | null>(null);
+  const [editDeptName, setEditDeptName] = useState('');
+  const [editDeptDesc, setEditDeptDesc] = useState('');
+
+  // Delete department confirm
+  const [departmentToDelete, setDepartmentToDelete] = useState<DepartmentRecord | null>(null);
+  const [isDeptDeleteConfirmOpen, setIsDeptDeleteConfirmOpen] = useState(false);
+
+  // Edit role modal
+  const [isEditRoleModalOpen, setIsEditRoleModalOpen] = useState(false);
+  const [roleBeingEdited, setRoleBeingEdited] = useState<RoleRecord | null>(null);
+  const [editRoleName, setEditRoleName] = useState('');
+  const [editRoleDept, setEditRoleDept] = useState('');
+
   // New entry fields
   const [newDeptName, setNewDeptName] = useState('');
   const [newDeptDesc, setNewDeptDesc] = useState('');
-  
+
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleDept, setNewRoleDept] = useState('');
   const [newRolePerms, setNewRolePerms] = useState<string[]>([]);
@@ -116,6 +137,33 @@ export const RolePermissionManagementSection: React.FC = () => {
     setIsDeleteConfirmOpen(true);
   };
 
+  const openEditRoleModal = (roleObj: RoleRecord) => {
+    setRoleBeingEdited(roleObj);
+    setEditRoleName(roleObj.name);
+    const dept = departments.find(
+      (d) => `dept_${d.slug}` === roleObj.department_id || d.slug === roleObj.department_id || d.$id === roleObj.department_id
+    );
+    setEditRoleDept(dept?.slug || roleObj.department_id);
+    setIsEditRoleModalOpen(true);
+  };
+
+  const openEditDeptModal = (dept: DepartmentRecord) => {
+    setDeptBeingEdited(dept);
+    setEditDeptName(dept.name);
+    setEditDeptDesc(dept.description || '');
+    setIsEditDeptModalOpen(true);
+  };
+
+  const handleDeleteDepartment = (dept: DepartmentRecord) => {
+    const deptRoleCount = getRolesForDepartment(dept).length;
+    if (deptRoleCount > 0) {
+      toast.error(`Cannot delete department "${dept.name}" because it has ${deptRoleCount} role(s) assigned. Delete those roles first.`);
+      return;
+    }
+    setDepartmentToDelete(dept);
+    setIsDeptDeleteConfirmOpen(true);
+  };
+
   const isStructureEmpty = departments.length === 0 && roles.length === 0;
 
   const seedMutation = useMutation({
@@ -145,6 +193,34 @@ export const RolePermissionManagementSection: React.FC = () => {
     },
   });
 
+  const updateDeptMutation = useMutation({
+    mutationFn: ({ id, name, description }: { id: string; name: string; description?: string }) =>
+      updateDepartment(id, { name, description }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      setIsEditDeptModalOpen(false);
+      setDeptBeingEdited(null);
+      toast.success('Department updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to update department: ${error.message}`);
+    },
+  });
+
+  const deleteDeptMutation = useMutation({
+    mutationFn: (id: string) => deleteDepartment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      setSelectedDeptId(null);
+      setDepartmentToDelete(null);
+      setIsDeptDeleteConfirmOpen(false);
+      toast.success('Department deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to delete department: ${error.message}`);
+    },
+  });
+
   const createRoleMutation = useMutation({
     mutationFn: () => createRole(newRoleName, newRoleDept, newRolePerms),
     onSuccess: (data) => {
@@ -170,6 +246,22 @@ export const RolePermissionManagementSection: React.FC = () => {
     },
     onError: (error: any) => {
       toast.error(`Failed to save permissions: ${error.message}`);
+    },
+  });
+
+  const editRoleMutation = useMutation({
+    mutationFn: ({ id, name, departmentId }: { id: string; name: string; departmentId: string }) => {
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_+|_+$)/g, '');
+      return updateRole(id, { name, slug, department_id: departmentId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      setIsEditRoleModalOpen(false);
+      setRoleBeingEdited(null);
+      toast.success('Role updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to update role: ${error.message}`);
     },
   });
 
@@ -294,12 +386,51 @@ export const RolePermissionManagementSection: React.FC = () => {
               <ScrollArea className="h-[550px] px-4 py-2">
                 {departments.map((dept) => {
                   const deptRoles = getRolesForDepartment(dept);
+                  const isDeptSelected = selectedDeptId === dept.$id;
                   return (
                     <div key={dept.$id} className="py-3 border-b border-gray-50 last:border-0 dark:border-slate-900">
-                      <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <Building className="h-3.5 w-3.5 text-muted-foreground" />
-                        {dept.name}
-                      </h3>
+                      <div
+                        onClick={() => setSelectedDeptId((prev) => (prev === dept.$id ? null : dept.$id || null))}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            setSelectedDeptId((prev) => (prev === dept.$id ? null : dept.$id || null));
+                          }
+                        }}
+                        className="flex items-center justify-between mb-2 cursor-pointer select-none"
+                      >
+                        <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Building className="h-3.5 w-3.5 text-muted-foreground" />
+                          {dept.name}
+                        </h3>
+                        {isDeptSelected && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditDeptModal(dept);
+                              }}
+                              className="p-1 rounded hover:bg-gray-200/70 dark:hover:bg-slate-800 text-gray-500 hover:text-primary"
+                              aria-label={`Edit ${dept.name}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteDepartment(dept);
+                              }}
+                              className="p-1 rounded hover:bg-destructive/10 text-gray-500 hover:text-destructive"
+                              aria-label={`Delete ${dept.name}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                       {deptRoles.length === 0 ? (
                         <p className="text-xs text-muted-foreground italic px-5 py-1">No roles added yet.</p>
                       ) : (
@@ -307,10 +438,17 @@ export const RolePermissionManagementSection: React.FC = () => {
                           {deptRoles.map((role) => {
                             const isSelected = selectedRoleId === role.$id;
                             return (
-                              <button
+                              <div
                                 key={role.$id}
                                 onClick={() => setSelectedRoleId(role.$id || null)}
-                                className={`w-full flex items-center justify-between text-left px-3 py-2 rounded-md transition-colors text-sm ${
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    setSelectedRoleId(role.$id || null);
+                                  }
+                                }}
+                                className={`w-full flex items-center justify-between text-left px-3 py-2 rounded-md transition-colors text-sm cursor-pointer ${
                                   isSelected
                                     ? 'bg-primary/10 text-primary font-medium'
                                     : 'hover:bg-gray-50 dark:hover:bg-slate-900 text-gray-700 dark:text-slate-300'
@@ -320,8 +458,36 @@ export const RolePermissionManagementSection: React.FC = () => {
                                   <Key className={`h-3.5 w-3.5 ${isSelected ? 'text-primary' : 'text-gray-400'}`} />
                                   {role.name}
                                 </span>
-                                <ChevronRight className="h-3 w-3 opacity-60" />
-                              </button>
+                                <span className="flex items-center gap-1">
+                                  {isSelected && !role.is_system && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openEditRoleModal(role);
+                                        }}
+                                        className="p-1 rounded hover:bg-gray-200/70 dark:hover:bg-slate-800 text-gray-500 hover:text-primary"
+                                        aria-label={`Edit ${role.name}`}
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteRole(role);
+                                        }}
+                                        className="p-1 rounded hover:bg-destructive/10 text-gray-500 hover:text-destructive"
+                                        aria-label={`Delete ${role.name}`}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </>
+                                  )}
+                                  <ChevronRight className="h-3 w-3 opacity-60" />
+                                </span>
+                              </div>
                             );
                           })}
                         </div>
@@ -365,15 +531,25 @@ export const RolePermissionManagementSection: React.FC = () => {
                     </Badge>
                   )}
                   {!selectedRole.is_system && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDeleteRole(selectedRole)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1.5" />
-                      Delete Role
-                    </Button>
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditRoleModal(selectedRole)}
+                      >
+                        <Pencil className="h-4 w-4 mr-1.5" />
+                        Update Role
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeleteRole(selectedRole)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1.5" />
+                        Delete Role
+                      </Button>
+                    </>
                   )}
                 </div>
               )}
@@ -513,6 +689,52 @@ export const RolePermissionManagementSection: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Department Dialog */}
+      <Dialog open={isEditDeptModalOpen} onOpenChange={setIsEditDeptModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Department</DialogTitle>
+            <DialogDescription>
+              Update the department's name and description.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-dept-name">Department Name</Label>
+              <Input
+                id="edit-dept-name"
+                placeholder="e.g., Engineering, Logistics"
+                value={editDeptName}
+                onChange={(e) => setEditDeptName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-dept-desc">Description</Label>
+              <Input
+                id="edit-dept-desc"
+                placeholder="Brief summary of duties"
+                value={editDeptDesc}
+                onChange={(e) => setEditDeptDesc(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDeptModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() =>
+                deptBeingEdited?.$id &&
+                updateDeptMutation.mutate({ id: deptBeingEdited.$id, name: editDeptName, description: editDeptDesc })
+              }
+              disabled={!editDeptName || updateDeptMutation.isPending}
+            >
+              {updateDeptMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Add Role Dialog */}
       <Dialog open={isRoleModalOpen} onOpenChange={setIsRoleModalOpen}>
         <DialogContent className="sm:max-w-[550px]">
@@ -599,6 +821,58 @@ export const RolePermissionManagementSection: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Role Dialog */}
+      <Dialog open={isEditRoleModalOpen} onOpenChange={setIsEditRoleModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Role</DialogTitle>
+            <DialogDescription>
+              Update the role's name or reassign it to a different department.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-role-name">Role Name</Label>
+              <Input
+                id="edit-role-name"
+                placeholder="e.g., Senior Project Engineer"
+                value={editRoleName}
+                onChange={(e) => setEditRoleName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-role-dept">Department</Label>
+              <Select value={editRoleDept} onValueChange={setEditRoleDept}>
+                <SelectTrigger id="edit-role-dept">
+                  <SelectValue placeholder="Select Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.$id} value={dept.slug || ''}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditRoleModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() =>
+                roleBeingEdited?.$id &&
+                editRoleMutation.mutate({ id: roleBeingEdited.$id, name: editRoleName, departmentId: editRoleDept })
+              }
+              disabled={!editRoleName || !editRoleDept || editRoleMutation.isPending}
+            >
+              {editRoleMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <ConfirmDialog
         open={isDeleteConfirmOpen}
         onOpenChange={setIsDeleteConfirmOpen}
@@ -611,6 +885,22 @@ export const RolePermissionManagementSection: React.FC = () => {
         onConfirm={() => {
           if (roleToDelete?.$id) {
             deleteRoleMutation.mutate(roleToDelete.$id);
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={isDeptDeleteConfirmOpen}
+        onOpenChange={setIsDeptDeleteConfirmOpen}
+        title="Delete Department?"
+        description={departmentToDelete ? `Are you sure you want to delete the department "${departmentToDelete.name}"? This action cannot be undone.` : ''}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={deleteDeptMutation.isPending}
+        onConfirm={() => {
+          if (departmentToDelete?.$id) {
+            deleteDeptMutation.mutate(departmentToDelete.$id);
           }
         }}
       />
