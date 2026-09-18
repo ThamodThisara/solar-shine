@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { Download, ExternalLink, FileText, Image as ImageIcon, Trash2, MailWarning } from 'lucide-react';
+import { Download, ExternalLink, FileText, Image as ImageIcon, Trash2, MailWarning, Video, Music, Archive } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { formatFileSize } from '@/lib/utils';
 import { FolderDocument } from '@/types/payload-types';
 import { getAuthenticatedFileBlob } from '@/services/documentService';
+import MediaPreviewDialog from './MediaPreviewDialog';
+import { getFileCategory, isPreviewableInBrowser, needsMediaPlayer } from '@/lib/fileTypeUtils';
 
 interface FolderDocumentCardProps {
   doc: FolderDocument;
@@ -19,6 +21,15 @@ interface FolderDocumentCardProps {
   hasPendingRequest?: boolean;
 }
 
+function FileIcon({ mimeType, className }: { mimeType: string; className?: string }) {
+  const cat = getFileCategory(mimeType);
+  if (cat === 'image') return <ImageIcon className={className} />;
+  if (cat === 'video') return <Video className={className} />;
+  if (cat === 'audio') return <Music className={className} />;
+  if (cat === 'archive') return <Archive className={className} />;
+  return <FileText className={className} />;
+}
+
 const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({
   doc,
   onDelete,
@@ -28,13 +39,22 @@ const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isDownloadLoading, setIsDownloadLoading] = useState(false);
-  const isImage = doc.file_type.startsWith('image/');
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [isMediaOpen, setIsMediaOpen] = useState(false);
+
+  const canPreview = isPreviewableInBrowser(doc.file_type);
+  const usePlayer = needsMediaPlayer(doc.file_type);
 
   const handlePreview = async () => {
     setIsPreviewLoading(true);
     try {
       const url = await getAuthenticatedFileBlob(doc.file_id, false);
-      window.open(url, '_blank');
+      if (usePlayer) {
+        setMediaUrl(url);
+        setIsMediaOpen(true);
+      } else {
+        window.open(url, '_blank');
+      }
     } catch {
       toast.error('Failed to load document preview');
     } finally {
@@ -65,7 +85,7 @@ const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
             <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10">
-              {isImage ? <ImageIcon className="h-5 w-5 text-primary" /> : <FileText className="h-5 w-5 text-primary" />}
+              <FileIcon mimeType={doc.file_type} className="h-5 w-5 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold" title={doc.file_name}>{doc.file_name}</p>
@@ -76,22 +96,25 @@ const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({
           </div>
 
           <div className="mt-4 flex gap-2">
+            {canPreview && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 text-xs"
+                onClick={handlePreview}
+                disabled={isPreviewLoading}
+              >
+                <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                {isPreviewLoading ? 'Loading...' : usePlayer ? 'Play' : 'Preview'}
+              </Button>
+            )}
             <Button
               size="sm"
-              variant="outline"
-              className="flex-1 text-xs"
-              onClick={handlePreview}
-              disabled={isPreviewLoading}
-            >
-              <ExternalLink className="mr-1 h-3.5 w-3.5" /> {isPreviewLoading ? 'Loading...' : 'Preview'}
-            </Button>
-            <Button
-              size="sm"
-              className="flex-1 text-xs"
+              className={`text-xs ${canPreview ? 'flex-1' : 'flex-[2]'}`}
               onClick={handleDownload}
               disabled={isDownloadLoading}
             >
-              <Download className="mr-1 h-3.5 w-3.5" /> {isDownloadLoading ? 'Loading...' : 'Download'}
+              <Download className="mr-1 h-3.5 w-3.5" /> {isDownloadLoading ? 'Downloading...' : 'Download'}
             </Button>
             {onDelete ? (
               <Button
@@ -141,6 +164,16 @@ const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({
           setIsConfirmOpen(false);
           onDelete?.(doc);
         }}
+      />
+      <MediaPreviewDialog
+        isOpen={isMediaOpen}
+        onOpenChange={(open) => {
+          if (!open) setMediaUrl(null);
+          setIsMediaOpen(open);
+        }}
+        blobUrl={mediaUrl}
+        fileName={doc.file_name}
+        mimeType={doc.file_type}
       />
     </>
   );

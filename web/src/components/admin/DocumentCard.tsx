@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { FileText, Image as ImageIcon, Download, ExternalLink, Trash2, Building2, Shield } from 'lucide-react';
+import { FileText, Image as ImageIcon, Download, ExternalLink, Trash2, Building2, Shield, Video, Music, Archive } from 'lucide-react';
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,8 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { ManagePermissionsDialog } from './content-editors/document/ManagePermissionsDialog';
+import MediaPreviewDialog from './MediaPreviewDialog';
+import { getFileCategory, isPreviewableInBrowser, needsMediaPlayer } from '@/lib/fileTypeUtils';
 
 const departmentStyles: Record<string, string> = {
   Marketing: 'text-violet-600 bg-violet-50',
@@ -28,16 +31,28 @@ interface DocumentCardProps {
   onDelete?: (doc: DocumentRecord) => void;
 }
 
+function FileIcon({ mimeType, className }: { mimeType: string; className?: string }) {
+  const cat = getFileCategory(mimeType);
+  if (cat === 'image') return <ImageIcon className={className} />;
+  if (cat === 'video') return <Video className={className} />;
+  if (cat === 'audio') return <Music className={className} />;
+  if (cat === 'archive') return <Archive className={className} />;
+  return <FileText className={className} />;
+}
+
 const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentType, onDelete }) => {
   const { user, hasPermission } = useAuth();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
-  const isImage = doc.file_type.startsWith('image/');
-  const typeCode = documentType?.type ?? 'Unknown';
-  const typeName = documentType?.name ?? 'Unknown Type';
-
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isDownloadLoading, setIsDownloadLoading] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [isMediaOpen, setIsMediaOpen] = useState(false);
+
+  const typeCode = documentType?.type ?? 'Unknown';
+  const typeName = documentType?.name ?? 'Unknown Type';
+  const canPreview = isPreviewableInBrowser(doc.file_type);
+  const usePlayer = needsMediaPlayer(doc.file_type);
 
   // Uploaders always control their own document; other roles need the grant.
   const canManagePermissions =
@@ -47,7 +62,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentT
     setIsPreviewLoading(true);
     try {
       const url = await getAuthenticatedFileBlob(doc.file_id, false);
-      window.open(url, '_blank');
+      if (usePlayer) {
+        setMediaUrl(url);
+        setIsMediaOpen(true);
+      } else {
+        window.open(url, '_blank');
+      }
     } catch (error) {
       toast.error('Failed to load document preview');
     } finally {
@@ -78,7 +98,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentT
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
             <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-              {isImage ? <ImageIcon className="h-5 w-5 text-primary" /> : <FileText className="h-5 w-5 text-primary" />}
+              <FileIcon mimeType={doc.file_type} className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
@@ -116,22 +136,25 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentT
           </div>
 
           <div className="mt-4 flex gap-2">
+            {canPreview && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 text-xs"
+                onClick={handlePreview}
+                disabled={isPreviewLoading}
+              >
+                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                {isPreviewLoading ? 'Loading...' : usePlayer ? 'Play' : 'Preview'}
+              </Button>
+            )}
             <Button
               size="sm"
-              variant="outline"
-              className="flex-1 text-xs"
-              onClick={handlePreview}
-              disabled={isPreviewLoading}
-            >
-              <ExternalLink className="h-3.5 w-3.5 mr-1" /> {isPreviewLoading ? 'Loading...' : 'Preview'}
-            </Button>
-            <Button
-              size="sm"
-              className="flex-1 text-xs"
+              className={`text-xs ${canPreview ? 'flex-1' : 'flex-[2]'}`}
               onClick={handleDownload}
               disabled={isDownloadLoading}
             >
-              <Download className="h-3.5 w-3.5 mr-1" /> {isDownloadLoading ? 'Loading...' : 'Download'}
+              <Download className="h-3.5 w-3.5 mr-1" /> {isDownloadLoading ? 'Downloading...' : 'Download'}
             </Button>
             {onDelete && (
               <Button size="sm" variant="outline" className="text-red-600 border-red-600 hover:bg-red-50" onClick={() => setIsConfirmOpen(true)}>
@@ -151,6 +174,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentT
           )}
         </CardContent>
       </Card>
+
       <ConfirmDialog
         open={isConfirmOpen}
         onOpenChange={setIsConfirmOpen}
@@ -171,6 +195,16 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, projectName, documentT
           onOpenChange={setIsPermissionsOpen}
         />
       )}
+      <MediaPreviewDialog
+        isOpen={isMediaOpen}
+        onOpenChange={(open) => {
+          if (!open) setMediaUrl(null);
+          setIsMediaOpen(open);
+        }}
+        blobUrl={mediaUrl}
+        fileName={doc.file_name}
+        mimeType={doc.file_type}
+      />
     </>
   );
 };
