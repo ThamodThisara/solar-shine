@@ -100,7 +100,9 @@ export function getTypeGroupLabel(dt: Pick<DocumentType, 'department' | 'departm
 
 export const ALLOWED_FILE_EXTENSIONS = [
   '.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.svg',
-  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.odt', '.ods', '.odp',
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.odt', '.ods', '.odp', '.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.flv',
+  '.m4v', '.mpeg', '.mpg', '.3gp', '.3g2', '.ts', '.mts', '.m2ts', '.zip', '.rar', '.7z', '.tar', '.gz', '.gzip', '.tgz', '.bz2', '.xz', '.mp3', '.wav', '.aac', '.m4a', '.flac', '.ogg',
+  '.opus', '.wma', '.amr',
 ];
 
 export const ALLOWED_MIME_TYPES = [
