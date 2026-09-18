@@ -99,18 +99,40 @@ export function getTypeGroupLabel(dt: Pick<DocumentType, 'department' | 'departm
 }
 
 export const ALLOWED_FILE_EXTENSIONS = [
+  // Images
   '.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.svg',
+  // Office / text documents
   '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.odt', '.ods', '.odp',
+  // Video
+  '.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.flv',
+  '.m4v', '.mpeg', '.mpg', '.3gp', '.3g2', '.ts', '.mts', '.m2ts',
+  // Archives
+  '.zip', '.rar', '.7z', '.tar', '.gz', '.gzip', '.tgz', '.bz2', '.xz',
+  // Audio
+  '.mp3', '.wav', '.aac', '.m4a', '.flac', '.ogg', '.opus', '.wma', '.amr',
 ];
 
 export const ALLOWED_MIME_TYPES = [
+  // Images
   'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml',
+  // Documents
   'application/pdf',
   'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'text/plain',
   'application/vnd.oasis.opendocument.text', 'application/vnd.oasis.opendocument.spreadsheet', 'application/vnd.oasis.opendocument.presentation',
+  // Video (.mp4, .mov, .avi, .mkv, .webm, .wmv, .flv, .m4v, .mpeg/.mpg, .3gp, .3g2, .ts/.mts/.m2ts)
+  'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/webm',
+  'video/x-ms-wmv', 'video/x-flv', 'video/x-m4v', 'video/mpeg', 'video/3gpp', 'video/3gpp2',
+  'video/mp2t',
+  // Archives (.zip, .rar, .7z, .tar, .gz/.gzip/.tgz, .bz2, .xz)
+  'application/zip', 'application/x-zip-compressed', 'application/x-rar-compressed',
+  'application/vnd.rar', 'application/x-7z-compressed', 'application/x-tar',
+  'application/gzip', 'application/x-gzip', 'application/x-bzip2', 'application/x-xz',
+  // Audio (.mp3, .wav, .aac, .m4a, .flac, .ogg, .opus, .wma, .amr)
+  'audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/aac', 'audio/mp4', 'audio/x-m4a',
+  'audio/flac', 'audio/x-flac', 'audio/ogg', 'audio/opus', 'audio/x-ms-wma', 'audio/amr',
 ];
 
 export function isAllowedFile(file: File): boolean {
