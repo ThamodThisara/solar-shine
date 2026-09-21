@@ -1,12 +1,15 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { Loader2 } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
 
 interface FileProgressOverlayProps {
   /** Whether the overlay is visible. */
   isVisible: boolean;
-  /** Progress from 0 to 100. Pass -1 for indeterminate (spinner only). */
+  /**
+   * Progress from 0 to 100.
+   * Pass -1 (or any negative number) for indeterminate mode — the bar shows a
+   * shimmer animation instead of a fill.
+   */
   progress: number;
   /** Short description shown below the spinner, e.g. "Downloading..." */
   label?: string;
@@ -26,7 +29,7 @@ const FileProgressOverlay: React.FC<FileProgressOverlayProps> = ({
   if (!isVisible) return null;
 
   const isIndeterminate = progress < 0;
-  const displayPercent = isIndeterminate ? null : Math.min(100, Math.round(progress));
+  const pct = isIndeterminate ? 0 : Math.min(100, Math.round(progress));
 
   const overlay = (
     <div
@@ -46,26 +49,62 @@ const FileProgressOverlay: React.FC<FileProgressOverlayProps> = ({
       >
         {/* Spinner */}
         <Loader2
-          className="h-10 w-10 animate-spin text-primary"
+          className="h-10 w-10 animate-spin"
           strokeWidth={2.2}
+          style={{ color: '#FEC105' }}
         />
 
         {/* Label */}
-        <p className="text-center text-sm font-semibold text-foreground leading-snug">
+        <p className="text-center text-sm font-semibold leading-snug" style={{ color: '#111827' }}>
           {label}
         </p>
 
         {/* Progress bar + percentage */}
         <div className="w-full space-y-2">
-          <Progress
-            value={isIndeterminate ? undefined : displayPercent ?? 0}
-            className="h-2"
-          />
-          <p className="text-center text-xs font-medium text-muted-foreground tabular-nums">
-            {isIndeterminate ? 'Please wait…' : `${displayPercent}%`}
+          {/* Track */}
+          <div
+            className="relative w-full overflow-hidden rounded-full"
+            style={{ height: '8px', backgroundColor: '#e5e7eb' }}
+          >
+            {isIndeterminate ? (
+              /* Shimmer stripe for indeterminate state */
+              <div
+                className="absolute inset-y-0 rounded-full"
+                style={{
+                  width: '40%',
+                  backgroundColor: '#FEC105',
+                  animation: 'file-progress-shimmer 1.4s ease-in-out infinite',
+                }}
+              />
+            ) : (
+              /* Determinate fill */
+              <div
+                className="absolute inset-y-0 left-0 rounded-full"
+                style={{
+                  width: `${pct}%`,
+                  backgroundColor: '#FEC105',
+                  transition: 'width 0.25s ease-out',
+                }}
+              />
+            )}
+          </div>
+
+          <p
+            className="text-center text-xs font-medium tabular-nums"
+            style={{ color: '#6b7280' }}
+          >
+            {isIndeterminate ? 'Please wait…' : `${pct}%`}
           </p>
         </div>
       </div>
+
+      {/* Keyframes injected once alongside the portal */}
+      <style>{`
+        @keyframes file-progress-shimmer {
+          0%   { left: -45%; }
+          100% { left: 105%; }
+        }
+      `}</style>
     </div>
   );
 
@@ -73,4 +112,3 @@ const FileProgressOverlay: React.FC<FileProgressOverlayProps> = ({
 };
 
 export default FileProgressOverlay;
-
