@@ -10,6 +10,7 @@ import { FolderDocument } from '@/types/payload-types';
 import { getAuthenticatedFileBlob } from '@/services/documentService';
 import MediaPreviewDialog from './MediaPreviewDialog';
 import { getFileCategory, isPreviewableInBrowser, needsMediaPlayer } from '@/lib/fileTypeUtils';
+import FileProgressOverlay from '@/components/ui/file-progress-overlay';
 
 interface FolderDocumentCardProps {
   doc: FolderDocument;
@@ -42,13 +43,24 @@ const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [isMediaOpen, setIsMediaOpen] = useState(false);
 
+  // Full-screen progress overlay state
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const [overlayProgress, setOverlayProgress] = useState(0);
+  const [overlayLabel, setOverlayLabel] = useState('');
+
   const canPreview = isPreviewableInBrowser(doc.file_type);
   const usePlayer = needsMediaPlayer(doc.file_type);
 
   const handlePreview = async () => {
     setIsPreviewLoading(true);
+    setOverlayProgress(0);
+    setOverlayLabel(usePlayer ? `Loading ${doc.file_name}…` : `Loading preview…`);
+    setOverlayVisible(true);
     try {
-      const url = await getAuthenticatedFileBlob(doc.file_id, false);
+      const url = await getAuthenticatedFileBlob(doc.file_id, false, (pct) => {
+        setOverlayProgress(pct);
+      });
+      setOverlayVisible(false);
       if (usePlayer) {
         setMediaUrl(url);
         setIsMediaOpen(true);
@@ -56,6 +68,7 @@ const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({
         window.open(url, '_blank');
       }
     } catch {
+      setOverlayVisible(false);
       toast.error('Failed to load document preview');
     } finally {
       setIsPreviewLoading(false);
@@ -64,8 +77,14 @@ const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({
 
   const handleDownload = async () => {
     setIsDownloadLoading(true);
+    setOverlayProgress(0);
+    setOverlayLabel(`Downloading ${doc.file_name}…`);
+    setOverlayVisible(true);
     try {
-      const url = await getAuthenticatedFileBlob(doc.file_id, true);
+      const url = await getAuthenticatedFileBlob(doc.file_id, true, (pct) => {
+        setOverlayProgress(pct);
+      });
+      setOverlayVisible(false);
       const link = document.createElement('a');
       link.href = url;
       link.download = doc.file_name;
@@ -73,6 +92,7 @@ const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({
       link.click();
       document.body.removeChild(link);
     } catch {
+      setOverlayVisible(false);
       toast.error('Failed to download document');
     } finally {
       setIsDownloadLoading(false);
@@ -81,6 +101,11 @@ const FolderDocumentCard: React.FC<FolderDocumentCardProps> = ({
 
   return (
     <>
+      <FileProgressOverlay
+        isVisible={overlayVisible}
+        progress={overlayProgress}
+        label={overlayLabel}
+      />
       <Card className="transition-shadow hover:shadow-md">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">

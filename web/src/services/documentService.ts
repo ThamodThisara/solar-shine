@@ -258,7 +258,17 @@ export function getDocumentDownloadUrl(fileId: string): string {
   return storage.getFileDownload(DOCUMENTS_BUCKET_ID, fileId);
 }
 
-export async function getAuthenticatedFileBlob(fileId: string, isDownload = false): Promise<string> {
+/**
+ * Fetches a file from Appwrite storage using a short-lived JWT, then returns a
+ * local object URL. An optional `onProgress` callback receives values from 0
+ * to 100 as bytes arrive. When the server does not send a `Content-Length`
+ * header the callback receives -1 (indeterminate) on every chunk.
+ */
+export async function getAuthenticatedFileBlob(
+  fileId: string,
+  isDownload = false,
+  onProgress?: (percent: number) => void,
+): Promise<string> {
   const url = isDownload 
     ? storage.getFileDownload(DOCUMENTS_BUCKET_ID, fileId)
     : storage.getFileView(DOCUMENTS_BUCKET_ID, fileId);
@@ -278,6 +288,29 @@ export async function getAuthenticatedFileBlob(fileId: string, isDownload = fals
       throw new Error(`Failed to fetch file: ${response.statusText}`);
     }
 
+    // Stream the response body so we can report byte-level progress.
+    if (onProgress && response.body) {
+      const contentLength = Number(response.headers.get('Content-Length') ?? '0');
+      const hasLength = contentLength > 0;
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = [];
+      let loaded = 0;
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loaded += value.byteLength;
+        onProgress(hasLength ? Math.min(99, Math.round((loaded / contentLength) * 100)) : -1);
+      }
+
+      // Signal completion before building the blob URL.
+      onProgress(100);
+      const blob = new Blob(chunks);
+      return URL.createObjectURL(blob);
+    }
+
+    // No progress tracking needed — simple blob read.
     const blob = await response.blob();
     return URL.createObjectURL(blob);
   } catch (error) {

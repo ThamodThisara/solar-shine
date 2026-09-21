@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn, formatFileSize } from '@/lib/utils';
 import { ALLOWED_FILE_EXTENSIONS, isAllowedFile } from '@/lib/documentTypes';
+import FileProgressOverlay from '@/components/ui/file-progress-overlay';
 
 interface FolderUploadDialogProps {
   isOpen: boolean;
@@ -38,6 +39,39 @@ export const FolderUploadDialog: React.FC<FolderUploadDialogProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  // Upload progress overlay state
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadLabel, setUploadLabel] = useState('');
+  const uploadAnimRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Animate progress from 0 → 90 while uploading, snap to 100 on finish.
+  useEffect(() => {
+    if (uploadAnimRef.current) clearInterval(uploadAnimRef.current);
+    if (isUploading) {
+      const total = files.length;
+      setUploadProgress(0);
+      setUploadLabel(
+        total === 1
+          ? `Uploading ${files[0]?.name ?? 'file'}\u2026`
+          : `Uploading ${total} files\u2026`,
+      );
+      uploadAnimRef.current = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) return prev;
+          const step = Math.max(0.5, (90 - prev) * 0.06);
+          return Math.min(90, prev + step);
+        });
+      }, 200);
+    } else {
+      setUploadProgress(100);
+      const t = setTimeout(() => setUploadProgress(0), 600);
+      return () => clearTimeout(t);
+    }
+    return () => {
+      if (uploadAnimRef.current) clearInterval(uploadAnimRef.current);
+    };
+  }, [isUploading]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!isOpen) setFiles([]);
   }, [isOpen]);
@@ -56,7 +90,13 @@ export const FolderUploadDialog: React.FC<FolderUploadDialogProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <>
+      <FileProgressOverlay
+        isVisible={isUploading}
+        progress={uploadProgress}
+        label={uploadLabel}
+      />
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Upload to {folderName}</DialogTitle>
@@ -152,6 +192,7 @@ export const FolderUploadDialog: React.FC<FolderUploadDialogProps> = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
 };
 

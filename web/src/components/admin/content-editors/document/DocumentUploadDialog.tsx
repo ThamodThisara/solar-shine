@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,7 @@ import {
   typeServesDepartment,
 } from '@/services/documentTypeService';
 import { useAuth } from '@/contexts/AuthContext';
+import FileProgressOverlay from '@/components/ui/file-progress-overlay';
 
 interface ProjectOption {
   $id: string;
@@ -55,6 +56,42 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // Upload progress overlay state
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadLabel, setUploadLabel] = useState('');
+  const uploadAnimRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Animate progress from 0 → 90 while uploading, snap to 100 on finish.
+  useEffect(() => {
+    if (uploadAnimRef.current) clearInterval(uploadAnimRef.current);
+    if (isUploading) {
+      const total = state.files.length;
+      setUploadProgress(0);
+      setUploadLabel(
+        total === 1
+          ? `Uploading ${state.files[0]?.name ?? 'file'}\u2026`
+          : `Uploading ${total} files\u2026`,
+      );
+      // Simulate progress crawling toward 90% (never reaching it).
+      uploadAnimRef.current = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) return prev;
+          // Decelerate as we approach 90.
+          const step = Math.max(0.5, (90 - prev) * 0.06);
+          return Math.min(90, prev + step);
+        });
+      }, 200);
+    } else {
+      // Upload finished — jump to 100 briefly then clear.
+      setUploadProgress(100);
+      const t = setTimeout(() => setUploadProgress(0), 600);
+      return () => clearTimeout(t);
+    }
+    return () => {
+      if (uploadAnimRef.current) clearInterval(uploadAnimRef.current);
+    };
+  }, [isUploading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
     if (!isOpen) {
@@ -124,7 +161,13 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
     state.files.length > 0;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => (open ? setIsOpen(true) : close())}>
+    <>
+      <FileProgressOverlay
+        isVisible={isUploading}
+        progress={uploadProgress}
+        label={uploadLabel}
+      />
+      <Dialog open={isOpen} onOpenChange={(open) => (open ? setIsOpen(true) : close())}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Upload Documents</DialogTitle>
@@ -264,7 +307,9 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
 };
+
 
 export default DocumentUploadDialog;
