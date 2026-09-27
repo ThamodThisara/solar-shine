@@ -1,7 +1,7 @@
 import { databases, storage, COLLECTIONS, DATABASE_ID, DOCUMENTS_BUCKET_ID, account } from '@/lib/appwrite';
 import { ID, Query } from 'appwrite';
 import { DocumentRecord, DocumentVisibility, Department } from '@/types/payload-types';
-import { isAllowedFile } from '@/lib/documentTypes';
+import { isAllowedFile, validateFile } from '@/lib/documentTypes';
 import { filterAccessibleDocuments } from '@/lib/permissions';
 
 const PAGE_SIZE = 9;
@@ -160,8 +160,9 @@ export interface UploadDocumentInput {
 }
 
 export async function uploadDocument(input: UploadDocumentInput): Promise<DocumentRecord> {
-  if (!isAllowedFile(input.file)) {
-    throw new Error('This file format is not supported.');
+  const fileError = validateFile(input.file);
+  if (fileError) {
+    throw new Error(fileError);
   }
 
   const fileId = ID.unique();
@@ -293,7 +294,7 @@ export async function getAuthenticatedFileBlob(
       const contentLength = Number(response.headers.get('Content-Length') ?? '0');
       const hasLength = contentLength > 0;
       const reader = response.body.getReader();
-      const chunks: Uint8Array[] = [];
+      const chunks: BlobPart[] = [];
       let loaded = 0;
 
       for (;;) {

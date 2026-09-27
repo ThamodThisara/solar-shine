@@ -1,7 +1,7 @@
 import { databases, storage, COLLECTIONS, DATABASE_ID, DOCUMENTS_BUCKET_ID } from '@/lib/appwrite';
 import { ID, Query } from 'appwrite';
 import { DocumentFolder, FolderDocument, FolderPin, FolderType } from '@/types/payload-types';
-import { isAllowedFile } from '@/lib/documentTypes';
+import { isAllowedFile, validateFile } from '@/lib/documentTypes';
 import { FolderViewer, filterAccessibleFolders } from '@/lib/permissions';
 
 /** Documents per page inside a folder. */
@@ -243,8 +243,9 @@ async function uploadFolderDocument(
   file: File,
   input: Omit<UploadFolderDocumentsInput, 'files'>,
 ): Promise<FolderDocument> {
-  if (!isAllowedFile(file)) {
-    throw new Error('This file format is not supported.');
+  const fileError = validateFile(file);
+  if (fileError) {
+    throw new Error(fileError);
   }
 
   const fileId = ID.unique();

@@ -135,7 +135,30 @@ export const ALLOWED_MIME_TYPES = [
   'audio/flac', 'audio/x-flac', 'audio/ogg', 'audio/opus', 'audio/x-ms-wma', 'audio/amr',
 ];
 
+/**
+ * Maximum file size accepted for upload. Must match (or be lower than) the
+ * limit configured in the Appwrite Storage bucket. Raise this constant
+ * together with the bucket setting whenever the limit changes.
+ */
+export const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024; // 1 GB
+
 export function isAllowedFile(file: File): boolean {
   const extension = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`;
   return ALLOWED_FILE_EXTENSIONS.includes(extension) || ALLOWED_MIME_TYPES.includes(file.type);
+}
+
+/**
+ * Returns `null` when the file is acceptable, or a human-readable error string
+ * when it should be rejected. Prefer this over `isAllowedFile` in upload paths
+ * so users always get a clear, specific failure reason.
+ */
+export function validateFile(file: File): string | null {
+  const extension = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`;
+  const typeOk = ALLOWED_FILE_EXTENSIONS.includes(extension) || ALLOWED_MIME_TYPES.includes(file.type);
+  if (!typeOk) return 'This file format is not supported.';
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    const limitMB = MAX_FILE_SIZE_BYTES / (1024 * 1024);
+    return `File is too large. Maximum allowed size is ${limitMB} MB.`;
+  }
+  return null;
 }
