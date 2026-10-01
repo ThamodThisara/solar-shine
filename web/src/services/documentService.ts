@@ -4,6 +4,93 @@ import { DocumentRecord, DocumentVisibility, Department } from '@/types/payload-
 import { isAllowedFile, validateFile } from '@/lib/documentTypes';
 import { filterAccessibleDocuments } from '@/lib/permissions';
 
+// ── Upload helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Describes the state of an upload attempt. Consumed by the UI layer
+ * (e.g. DocumentUploadDialog) to show appropriate feedback without the
+ * service layer needing to know about toast or React state.
+ */
+export type UploadStatus =
+  | { type: 'uploading'; fileName: string; percent: number }
+  | { type: 'offline_waiting' }
+  | { type: 'retrying'; attempt: number; totalAttempts: number; fileName: string }
+  | { type: 'failed'; fileName: string; error: string };
+
+/**
+ * Returns true for transient errors that are worth retrying:
+ *   - Network-level failures (TypeError: "Failed to fetch", etc.)
+ *   - HTTP 500 / 502 / 503 / 504
+ *
+ * Returns false for errors that retrying would never fix:
+ *   - AbortError (user cancellation)
+ *   - HTTP 400 / 401 / 403 / 404 / 413 (auth, validation, size, etc.)
+ */
+function isRetryableError(err: unknown): boolean {
+  // User cancellation — do not retry.
+  if (err instanceof DOMException && err.name === 'AbortError') return false;
+  // Network-level failure with no HTTP response.
+  if (err instanceof TypeError) return true;
+  // Appwrite SDK wraps HTTP errors as AppwriteException with a numeric `code`.
+  const code = (err as any)?.code ?? (err as any)?.status;
+  if (typeof code === 'number') {
+    if (code >= 500 && code < 600) return true;   // 5xx — transient server error
+    if (code >= 400 && code < 500) return false;  // 4xx — permanent client error
+  }
+  // Unknown error shape — retry cautiously.
+  return true;
+}
+
+/**
+ * Resolves immediately when the browser is online. When offline, waits
+ * indefinitely for the browser `online` event (no hard timeout).
+ * Rejects with AbortError if the signal fires before coming back online.
+ *
+ * NOTE: Cannot cancel any active Appwrite storage.createFile() fetch.
+ * The Appwrite Web SDK v18.1.1 has no AbortSignal support in createFile().
+ */
+function waitForOnline(signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.reject(new DOMException('Upload cancelled', 'AbortError'));
+  }
+  if (navigator.onLine) return Promise.resolve();
+
+  return new Promise<void>((resolve, reject) => {
+    const onOnline = () => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    };
+    const onAbort = () => {
+      window.removeEventListener('online', onOnline);
+      reject(new DOMException('Upload cancelled', 'AbortError'));
+    };
+    window.addEventListener('online', onOnline, { once: true });
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+/**
+ * Resolves after `ms` milliseconds, or rejects early with AbortError if the
+ * signal fires. Removes the abort listener when the timer completes normally
+ * so listeners do not remain attached unnecessarily.
+ */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.reject(new DOMException('Upload cancelled', 'AbortError'));
+  }
+  return new Promise<void>((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new DOMException('Upload cancelled', 'AbortError'));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 const PAGE_SIZE = 9;
 /** Documents listed for a single site visit — far fewer than a page holds. */
 const SITE_VISIT_DOCUMENT_LIMIT = 100;
@@ -157,44 +244,217 @@ export interface UploadDocumentInput {
   uploadedBy: string;
   /** When set, links the document to a site visit (still stored under the project). */
   siteVisitId?: string;
+  /**
+   * Real chunk-level progress 0–100, driven by Appwrite's built-in onProgress
+   * callback. Only fires for files > 5 MB — smaller files are sent in a single
+   * request and will not trigger this callback.
+   */
+  onProgress?: (percent: number) => void;
+  /**
+   * Upload lifecycle status changes. Kept separate from onProgress so the UI
+   * can respond to state transitions (retrying, offline) independently of
+   * byte-level progress ticks. No toast or UI calls are made inside the service.
+   */
+  onStatusChange?: (status: UploadStatus) => void;
+  /**
+   * Cancels waitForOnline() and sleep() waits, and the post-success / pre-DB
+   * abort checks. Cannot cancel an active Appwrite storage.createFile() fetch —
+   * the Appwrite Web SDK v18.1.1 provides no AbortSignal support in createFile().
+   */
+  abortSignal?: AbortSignal;
 }
 
+/**
+ * Uploads a single file to Appwrite Storage and creates its database record.
+ *
+ * Structure:
+ *   Phase 1 — Storage upload retry loop (handles ONLY storage.createFile).
+ *             Retries on transient network / 5xx errors with exponential back-off.
+ *             Every failed attempt is treated as potentially partial and cleaned up
+ *             before the error is classified — regardless of whether onProgress fired.
+ *             Uses a fresh fileId per attempt to avoid unverified server-side
+ *             duplicate-chunk behaviour.
+ *   Phase 2 — DB record creation, outside the retry loop. A DB failure cleans up
+ *             the already-uploaded file and throws — it never triggers a re-upload.
+ *
+ * Limitation: This is NOT a true resumable upload. A mid-upload failure restarts
+ * from byte 0. True resumability requires server-side chunk-state query support
+ * that is not currently documented for this SDK version.
+ */
 export async function uploadDocument(input: UploadDocumentInput): Promise<DocumentRecord> {
+  // Local validation — no network call, so no storage cleanup is ever needed here.
   const fileError = validateFile(input.file);
-  if (fileError) {
-    throw new Error(fileError);
+  if (fileError) throw new Error(fileError);
+
+  const MAX_ATTEMPTS = 4; // 1 initial + 3 retries
+  const BASE_DELAY_MS = 1500;
+
+  // ── Phase 1: Storage upload ──────────────────────────────────────────────────────
+  let successfulFileId: string | null = null;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const fileId = ID.unique(); // always fresh per attempt
+    const fileMB = (input.file.size / (1024 * 1024)).toFixed(2);
+
+    console.info(
+      `[Upload] "${input.file.name}" (${fileMB} MB) storage attempt ${attempt}/${MAX_ATTEMPTS} — fileId=${fileId}`,
+    );
+
+    try {
+      // storage.createFile automatically chunks files > 5 MB (Appwrite SDK v16+).
+      // The 5th argument is Appwrite's built-in chunk-progress callback.
+      await storage.createFile(
+        DOCUMENTS_BUCKET_ID,
+        fileId,
+        input.file,
+        [],
+        (progress) => {
+          const pct = progress.progress ?? 0;
+          console.info(
+            `[Upload] "${input.file.name}" chunk ${progress.chunksUploaded}/${progress.chunksTotal} — ${pct}%`,
+          );
+          input.onStatusChange?.({ type: 'uploading', fileName: input.file.name, percent: pct });
+          input.onProgress?.(pct);
+        },
+      );
+
+      // Storage confirmed successful. However, the SDK cannot cancel an active
+      // fetch, so the user may have clicked Cancel while this was in flight.
+      // Check the signal immediately before accepting the result.
+      if (input.abortSignal?.aborted) {
+        console.info(
+          `[Upload] "${input.file.name}" storage succeeded but upload was cancelled — cleaning up fileId=${fileId}`,
+        );
+        await storage.deleteFile(DOCUMENTS_BUCKET_ID, fileId).catch((e) => {
+          console.warn(`[Upload] Cleanup of cancelled fileId=${fileId} failed:`, e);
+        });
+        throw new DOMException('Upload cancelled', 'AbortError');
+      }
+
+      successfulFileId = fileId;
+      console.info(`[Upload] "${input.file.name}" storage succeeded — fileId=${fileId}`);
+      break; // exit the storage retry loop
+
+    } catch (err: unknown) {
+      lastError = err;
+      const code = (err as any)?.code ?? (err as any)?.status ?? 'network';
+      const isLast = attempt >= MAX_ATTEMPTS;
+
+      console.error(
+        `[Upload] "${input.file.name}" storage attempt ${attempt} failed`,
+        { code, isLast, fileId, error: err },
+      );
+
+      // Best-effort cleanup BEFORE classifying the error. Every failed attempt
+      // is treated as potentially partial — a chunk response can be lost in
+      // transit after the server has already stored the bytes, meaning
+      // onProgress never fires even though data was written. A 404 here means
+      // nothing was stored and is expected; log it but do not throw.
+      await storage.deleteFile(DOCUMENTS_BUCKET_ID, fileId).catch((cleanupErr) => {
+        console.warn(
+          `[Upload] Cleanup of potentially-partial fileId=${fileId} failed (404 expected if nothing was stored):`,
+          cleanupErr,
+        );
+      });
+
+      // Classify error AFTER cleanup.
+      const retryable = isRetryableError(err);
+
+      // Non-retryable (AbortError, 4xx): surface immediately without further attempts.
+      if (!retryable) throw err;
+
+      if (isLast) throw lastError;
+
+      // Check for cancellation before scheduling the next attempt.
+      if (input.abortSignal?.aborted) {
+        throw new DOMException('Upload cancelled', 'AbortError');
+      }
+
+      // Notify UI of the upcoming retry.
+      input.onStatusChange?.({
+        type: 'retrying',
+        attempt: attempt + 1,
+        totalAttempts: MAX_ATTEMPTS,
+        fileName: input.file.name,
+      });
+
+      // If offline: wait indefinitely for reconnection (cancellable via signal).
+      // NOTE: The signal cannot cancel any fetch already in flight.
+      if (!navigator.onLine) {
+        input.onStatusChange?.({ type: 'offline_waiting' });
+        await waitForOnline(input.abortSignal);
+      }
+
+      // Exponential back-off: 1.5 s → 3 s → 6 s.
+      const delay = BASE_DELAY_MS * 2 ** (attempt - 1);
+      console.info(`[Upload] "${input.file.name}" retrying in ${delay} ms`);
+      await sleep(delay, input.abortSignal);
+    }
   }
 
-  const fileId = ID.unique();
-  await storage.createFile(DOCUMENTS_BUCKET_ID, fileId, input.file);
+  if (!successfulFileId) throw lastError;
 
+  // Final abort check before DB creation. There is a narrow window where
+  // cancellation can occur between the post-storage abort check above and
+  // this point. Catch it so no orphaned storage file with a missing DB
+  // record is ever created.
+  if (input.abortSignal?.aborted) {
+    console.info(
+      `[Upload] "${input.file.name}" cancelled before DB record creation — cleaning up fileId=${successfulFileId}`,
+    );
+    await storage.deleteFile(DOCUMENTS_BUCKET_ID, successfulFileId).catch((e) => {
+      console.warn(`[Upload] Pre-DB cleanup failed (fileId=${successfulFileId}):`, e);
+    });
+    throw new DOMException('Upload cancelled', 'AbortError');
+  }
+
+  // ── Phase 2: DB record creation ────────────────────────────────────────────────────
+  // Runs ONLY after storage is confirmed. DB errors never trigger a re-upload.
   try {
     const now = new Date().toISOString();
-    const response = await databases.createDocument(DATABASE_ID, COLLECTIONS.DOCUMENTS, ID.unique(), {
-      project_id: input.projectId,
-      file_name: input.file.name,
-      file_path: input.siteVisitId
-        ? `${PROJECT_STORAGE_ROOT}/${input.projectId}/site-visits/${input.siteVisitId}/${input.file.name}`
-        : `${PROJECT_STORAGE_ROOT}/${input.projectId}/${input.documentTypeId}/${input.file.name}`,
-      file_id: fileId,
-      file_size: input.file.size,
-      file_type: input.file.type,
-      document_visibility: input.visibility,
-      department: input.visibility === 'internal' ? input.department ?? null : null,
-      allowed_departments: input.visibility === 'internal' && input.department ? [input.department] : [],
-      allowed_users: [],
-      document_type_id: input.documentTypeId,
-      site_visit_id: input.siteVisitId ?? null,
-      uploaded_by: input.uploadedBy,
-      uploaded_at: now,
-      updated_at: now,
-      status: 'Active',
-    });
+    const response = await databases.createDocument(
+      DATABASE_ID,
+      COLLECTIONS.DOCUMENTS,
+      ID.unique(),
+      {
+        project_id: input.projectId,
+        file_name: input.file.name,
+        file_path: input.siteVisitId
+          ? `${PROJECT_STORAGE_ROOT}/${input.projectId}/site-visits/${input.siteVisitId}/${input.file.name}`
+          : `${PROJECT_STORAGE_ROOT}/${input.projectId}/${input.documentTypeId}/${input.file.name}`,
+        file_id: successfulFileId,
+        file_size: input.file.size,
+        file_type: input.file.type,
+        document_visibility: input.visibility,
+        department: input.visibility === 'internal' ? (input.department ?? null) : null,
+        allowed_departments:
+          input.visibility === 'internal' && input.department ? [input.department] : [],
+        allowed_users: [],
+        document_type_id: input.documentTypeId,
+        site_visit_id: input.siteVisitId ?? null,
+        uploaded_by: input.uploadedBy,
+        uploaded_at: now,
+        updated_at: now,
+        status: 'Active',
+      },
+    );
+    console.info(`[Upload] "${input.file.name}" DB record created — docId=${response.$id}`);
     return response as unknown as DocumentRecord;
-  } catch (error) {
-    await storage.deleteFile(DOCUMENTS_BUCKET_ID, fileId).catch(() => {});
-    console.error('Error creating document record:', error);
-    throw error;
+  } catch (dbError) {
+    // Storage succeeded but DB record creation failed. Clean up the stored
+    // file to avoid orphaned storage objects. Never retry the storage upload.
+    console.error(
+      `[Upload] "${input.file.name}" DB record failed (fileId=${successfulFileId}), cleaning up storage`,
+      dbError,
+    );
+    await storage.deleteFile(DOCUMENTS_BUCKET_ID, successfulFileId).catch((cleanupErr) => {
+      console.warn(
+        `[Upload] Storage cleanup also failed (fileId=${successfulFileId}):`,
+        cleanupErr,
+      );
+    });
+    throw dbError;
   }
 }
 
@@ -207,6 +467,15 @@ export interface UploadDocumentsInput {
   uploadedBy: string;
   /** When set, links every uploaded document to a site visit. */
   siteVisitId?: string;
+  /**
+   * Per-file chunk progress. Receives the file index (0-based), file name,
+   * and percent 0–100. Only fires for files > 5 MB (Appwrite SDK limitation).
+   */
+  onProgress?: (fileIndex: number, fileName: string, percent: number) => void;
+  /** Upload lifecycle status, forwarded from uploadDocument. */
+  onStatusChange?: (status: UploadStatus) => void;
+  /** Cancels waitForOnline() and sleep() waits. Cannot abort active Appwrite fetches. */
+  abortSignal?: AbortSignal;
 }
 
 export interface UploadDocumentsResult {
@@ -218,7 +487,9 @@ export async function uploadDocuments(input: UploadDocumentsInput): Promise<Uplo
   const succeeded: DocumentRecord[] = [];
   const failed: { fileName: string; error: string }[] = [];
 
-  for (const file of input.files) {
+  for (let i = 0; i < input.files.length; i++) {
+    const file = input.files[i];
+    console.info(`[Upload] Processing file ${i + 1}/${input.files.length}: "${file.name}"`);
     try {
       const doc = await uploadDocument({
         file,
@@ -228,13 +499,27 @@ export async function uploadDocuments(input: UploadDocumentsInput): Promise<Uplo
         documentTypeId: input.documentTypeId,
         uploadedBy: input.uploadedBy,
         siteVisitId: input.siteVisitId,
+        onProgress: (percent) => input.onProgress?.(i, file.name, percent),
+        onStatusChange: input.onStatusChange,
+        abortSignal: input.abortSignal,
       });
       succeeded.push(doc);
     } catch (error) {
-      failed.push({ fileName: file.name, error: error instanceof Error ? error.message : 'Upload failed' });
+      // If the user cancelled, stop processing further files silently.
+      // Do not add to failed[] — the dialog is already closing via close().
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.info('[Upload] Upload cancelled by user — stopping batch.');
+        break;
+      }
+      const message = error instanceof Error ? error.message : 'Upload failed';
+      console.error(`[Upload] "${file.name}" failed permanently:`, error);
+      failed.push({ fileName: file.name, error: message });
     }
   }
 
+  console.info(
+    `[Upload] Batch complete — succeeded: ${succeeded.length}, failed: ${failed.length}`,
+  );
   return { succeeded, failed };
 }
 

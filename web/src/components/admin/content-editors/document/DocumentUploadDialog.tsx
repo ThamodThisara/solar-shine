@@ -57,41 +57,32 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Upload progress overlay state
+  // Real upload progress driven by Appwrite's chunk-level callback.
+  // For files ≤ 5 MB the SDK sends a single request with no chunking,
+  // so onProgress never fires and the bar stays in indeterminate mode.
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadLabel, setUploadLabel] = useState('');
-  const uploadAnimRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Animate progress from 0 → 90 while uploading, snap to 100 on finish.
+  // AbortController for the active upload. Its signal is passed to
+  // uploadDocuments to cancel inter-attempt waits and abort checks.
+  // NOTE: Cannot cancel an active Appwrite storage.createFile() fetch —
+  // the Appwrite Web SDK v18.1.1 provides no AbortSignal support.
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Reset overlay state when the upload finishes (isUploading → false).
   useEffect(() => {
-    if (uploadAnimRef.current) clearInterval(uploadAnimRef.current);
-    if (isUploading) {
-      const total = state.files.length;
+    if (!isUploading) {
       setUploadProgress(0);
-      setUploadLabel(
-        total === 1
-          ? `Uploading ${state.files[0]?.name ?? 'file'}\u2026`
-          : `Uploading ${total} files\u2026`,
-      );
-      // Simulate progress crawling toward 90% (never reaching it).
-      uploadAnimRef.current = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 90) return prev;
-          // Decelerate as we approach 90.
-          const step = Math.max(0.5, (90 - prev) * 0.06);
-          return Math.min(90, prev + step);
-        });
-      }, 200);
-    } else {
-      // Upload finished — jump to 100 briefly then clear.
-      setUploadProgress(100);
-      const t = setTimeout(() => setUploadProgress(0), 600);
-      return () => clearTimeout(t);
+      setUploadLabel('');
     }
+  }, [isUploading]);
+
+  // Abort any in-progress waits when the component unmounts.
+  useEffect(() => {
     return () => {
-      if (uploadAnimRef.current) clearInterval(uploadAnimRef.current);
+      abortControllerRef.current?.abort();
     };
-  }, [isUploading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   React.useEffect(() => {
     if (!isOpen) {
@@ -109,6 +100,8 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
   const reset = () => setState(initialState);
 
   const close = () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     setIsOpen(false);
     reset();
   };
@@ -143,6 +136,20 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
     // when the type maps to exactly one. Types spanning several departments (or
     // "all") are ambiguous and leave it unset, as "all" always has.
     const derivedDept = getTypeOwnerDepartment(selectedType) ?? undefined;
+    const total = state.files.length;
+
+    // Show indeterminate shimmer immediately. For files ≤ 5 MB the Appwrite
+    // SDK sends a single fetch with no onProgress callback, so the bar will
+    // stay indeterminate for the whole upload. For larger files it transitions
+    // to real chunk percent once the first chunk response arrives.
+    setUploadProgress(-1);
+    setUploadLabel(
+      total === 1
+        ? `Uploading ${state.files[0]?.name ?? 'file'}…`
+        : `Uploading ${total} files…`,
+    );
+
+    abortControllerRef.current = new AbortController();
 
     onUpload({
       files: state.files,
@@ -151,6 +158,25 @@ const DocumentUploadDialog: React.FC<DocumentUploadDialogProps> = ({
       department: state.visibility === 'internal' ? (derivedDept as Department) : undefined,
       documentTypeId: state.documentTypeId,
       uploadedBy,
+      abortSignal: abortControllerRef.current.signal,
+      onProgress: (fileIndex, fileName, percent) => {
+        setUploadProgress(percent);
+        setUploadLabel(
+          total === 1
+            ? `Uploading ${fileName} — ${percent}%`
+            : `File ${fileIndex + 1} of ${total} — ${fileName} — ${percent}%`,
+        );
+      },
+      onStatusChange: (status) => {
+        if (status.type === 'offline_waiting') {
+          setUploadProgress(-1);
+          setUploadLabel('Connection lost — waiting to reconnect…');
+        } else if (status.type === 'retrying') {
+          setUploadProgress(-1);
+          setUploadLabel('Connection interrupted — retrying upload…');
+          toast.warning(`Upload interrupted — retrying "${status.fileName}"…`);
+        }
+      },
     });
   };
 
