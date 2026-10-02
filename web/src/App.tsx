@@ -13,6 +13,8 @@ import BlogPostPage from "./pages/BlogPostPage";
 import Contact from "./pages/Contact";
 import LegalPage from "./pages/LegalPage";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import ProjectSummary from "./pages/ProjectSummary";
@@ -42,6 +44,8 @@ const App = () => (
             <Route path="/privacy" element={<LegalPage pageType="privacy_policy" />} />
             <Route path="/terms" element={<LegalPage pageType="terms_of_service" />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route
               path="/dashboard"

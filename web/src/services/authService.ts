@@ -1,5 +1,5 @@
-import { account } from '@/lib/appwrite';
-import { ID } from 'appwrite';
+import { account, functions, TEAM_MANAGEMENT_FUNCTION_ID } from '@/lib/appwrite';
+import { ID, ExecutionMethod } from 'appwrite';
 
 interface LoginCredentials {
   email: string;
@@ -107,4 +107,62 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
 export const checkIsAuthenticated = async (): Promise<boolean> => {
   const user = await getCurrentUser();
   return !!user;
+};
+
+/**
+ * Sends a branded password-reset email via the team-management Appwrite Function.
+ *
+ * The function uses the same SMTP configuration (SMTP_HOST / SMTP_USERNAME /
+ * SMTP_PASSWORD / SMTP_FROM) that is already used when an admin adds a new user,
+ * so all outbound email is routed through a single, consistent SMTP channel.
+ *
+ * The route is intentionally unauthenticated — the user can't provide a session
+ * token because they've forgotten their password.
+ */
+export const sendPasswordReset = async (
+  email: string,
+  redirectOrigin: string
+): Promise<{ error: string | null }> => {
+  try {
+    const execution = await functions.createExecution(
+      TEAM_MANAGEMENT_FUNCTION_ID,
+      JSON.stringify({ email, redirectOrigin }),
+      false,           // synchronous
+      '/auth/forgot-password',
+      ExecutionMethod.POST
+    );
+
+    // The function always returns 200 (to prevent email enumeration), so any
+    // non-2xx status code indicates a genuine infrastructure problem.
+    if (execution.responseStatusCode >= 500) {
+      const parsed = execution.responseBody
+        ? JSON.parse(execution.responseBody)
+        : null;
+      return { error: parsed?.error || 'Failed to send password reset email' };
+    }
+
+    return { error: null };
+  } catch (err: any) {
+    console.error('Password reset request error:', err);
+    return { error: err.message || 'Failed to send password reset email' };
+  }
+};
+
+
+/**
+ * Completes the password-reset flow.
+ * `userId` and `secret` come from the Appwrite-generated reset link.
+ */
+export const confirmPasswordReset = async (
+  userId: string,
+  secret: string,
+  newPassword: string
+): Promise<{ error: string | null }> => {
+  try {
+    await account.updateRecovery(userId, secret, newPassword);
+    return { error: null };
+  } catch (error: any) {
+    console.error('Password reset confirmation error:', error);
+    return { error: error.message || 'Failed to reset password' };
+  }
 };

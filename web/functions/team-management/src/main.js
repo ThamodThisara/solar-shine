@@ -76,6 +76,113 @@ export default async ({ req, res, log, error }) => {
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
     .setKey(process.env.APPWRITE_FUNCTION_API_KEY ?? req.headers['x-appwrite-key'] ?? '');
 
+  // ─── Public route: password reset request ────────────────────────────────
+  // This route is intentionally unauthenticated — the user has forgotten their
+  // password and therefore cannot provide a session token. It uses the
+  // server-side API-key client (already initialised above with APPWRITE_FUNCTION_API_KEY)
+  // to look up the user and generate a recovery token, then delivers the branded
+  // reset email via the same SMTP stack used for new-user onboarding.
+  if (req.method === 'POST' && req.path === '/auth/forgot-password') {
+    const parseBodyPublic = () => {
+      if (!req.bodyRaw) return {};
+      try { return JSON.parse(req.bodyRaw); } catch { return {}; }
+    };
+    const { email, redirectOrigin } = parseBodyPublic();
+
+    if (!email) {
+      return res.json({ error: 'Missing email' }, 400);
+    }
+
+    try {
+      const usersApi = new Users(client);
+      const accountApi = new Account(client);
+
+      // Check whether a user with this email exists in the project.
+      // Always respond with a generic 200 so we don't leak which emails
+      // are registered (email-enumeration protection).
+      const userList = await usersApi.list([Query.equal('email', email), Query.limit(1)]);
+      if (userList.total === 0) {
+        // Return success without doing anything – caller cannot distinguish this
+        // from the real success path.
+        log(`Forgot-password: no user found for email ${email} — silently ignoring`);
+        return res.json({ success: true });
+      }
+
+      const userObj = userList.users[0];
+      const userName = userObj.name || email;
+
+      // Build the reset URL that points back to our /reset-password page.
+      const origin = redirectOrigin || 'https://solarmaps.lk';
+      const resetUrl = `${origin.replace(/\/$/, '')}/reset-password`;
+
+      // Generate the Appwrite recovery token. Appwrite appends ?userId=…&secret=…
+      // to resetUrl when it constructs the link internally; we reconstruct it
+      // ourselves below so we control the email body.
+      const recoveryToken = await accountApi.createRecovery(email, resetUrl);
+      const resetLink = `${resetUrl}?userId=${recoveryToken.userId}&secret=${recoveryToken.secret}`;
+
+      // ── SMTP email ──────────────────────────────────────────────────────────
+      const smtpUser = process.env.SMTP_USERNAME;
+      const smtpPass = process.env.SMTP_PASSWORD;
+      const smtpFrom = process.env.SMTP_FROM;
+      if (!smtpUser || !smtpPass || !smtpFrom) {
+        throw new Error('SMTP_USERNAME, SMTP_PASSWORD, or SMTP_FROM is not configured in the function environment variables');
+      }
+
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
+        secure: false,
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+
+      const mailSubject = `[Solar Shine] Reset Your Password`;
+      const mailHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8F8F8; padding: 40px 20px; text-align: center; color: #333;">
+          <div style="max-width: 580px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); text-align: left;">
+            <div style="margin-bottom: 24px; border-bottom: 1px solid #F3F4F6; padding-bottom: 16px;">
+              <span style="font-size: 24px; font-weight: bold; color: #000000; letter-spacing: -0.5px;">Solar <span style="color: #FEC105;">Maps</span></span>
+            </div>
+
+            <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin-top: 0; margin-bottom: 12px; line-height: 1.25;">Reset Your Password</h2>
+            <p style="font-size: 15px; color: #4B5563; margin-top: 0; margin-bottom: 20px; line-height: 1.5;">Hello <strong>${userName}</strong>,</p>
+            <p style="font-size: 15px; color: #4B5563; margin-top: 0; margin-bottom: 24px; line-height: 1.5;">We received a request to reset the password for your Solar Shine account. Click the button below to choose a new password. This link is valid for <strong>1 hour</strong>.</p>
+
+            <div style="text-align: center; margin-bottom: 28px;">
+              <a href="${resetLink}" style="display: inline-block; padding: 12px 28px; background-color: #FEC105; color: #000000; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Reset Password</a>
+            </div>
+
+            <p style="font-size: 14px; color: #6B7280; margin-bottom: 8px; line-height: 1.5;">Or copy and paste this URL into your browser:</p>
+            <p style="font-size: 13px; word-break: break-all; color: #2563EB; background-color: #F3F4F6; padding: 12px; border-radius: 6px; margin-bottom: 28px;">${resetLink}</p>
+
+            <p style="font-size: 13px; color: #9CA3AF; margin-bottom: 24px; line-height: 1.5;">If you did not request a password reset, you can safely ignore this email — your password will remain unchanged.</p>
+
+            <p style="font-size: 12px; color: #9CA3AF; margin: 0; border-top: 1px solid #F3F4F6; padding-top: 16px; line-height: 1.4;">
+              This is an automated notification. Please do not reply directly to this email.<br/>
+              &copy; ${new Date().getFullYear()} Solar Shine Team.
+            </p>
+          </div>
+        </div>
+      `;
+
+      await transporter.sendMail({
+        from: `"Solar Shine" <${smtpFrom}>`,
+        to: email,
+        subject: mailSubject,
+        text: `Hello ${userName},\n\nWe received a request to reset the password for your Solar Shine account.\n\nReset your password by opening this link (valid for 1 hour):\n${resetLink}\n\nIf you did not request this, please ignore this email.\n\nBest regards,\nSolar Shine Team`,
+        html: mailHtml,
+      });
+
+      log(`Forgot-password: reset email sent to ${email}`);
+      return res.json({ success: true });
+    } catch (e) {
+      error(`Forgot-password error: ${e.message}`);
+      // Still return success to the client to prevent email enumeration
+      return res.json({ success: true });
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const callerUserId = req.headers['x-appwrite-user-id'];
   if (!callerUserId) {
     return res.json({ error: 'Unauthorized' }, 401);
