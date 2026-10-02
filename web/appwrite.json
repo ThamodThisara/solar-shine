@@ -961,6 +961,7 @@
         { "key": "owner_id", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
         { "key": "allowed_departments", "type": "string", "required": false, "array": true, "size": 100, "encrypt": false },
         { "key": "allowed_users", "type": "string", "required": false, "array": true, "size": 255, "encrypt": false },
+        { "key": "parent_folder_id", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false },
         { "key": "created_at", "type": "datetime", "required": true, "array": false },
         { "key": "updated_at", "type": "datetime", "required": false, "array": false },
         { "key": "status", "type": "string", "required": false, "array": false, "size": 20, "default": "Active", "encrypt": false }
@@ -969,7 +970,8 @@
         { "key": "idx_owner_id", "type": "key", "attributes": ["owner_id"], "orders": ["ASC"] },
         { "key": "idx_folder_type", "type": "key", "attributes": ["folder_type"], "orders": ["ASC"] },
         { "key": "idx_folder_name", "type": "key", "attributes": ["name"], "orders": ["ASC"] },
-        { "key": "idx_folder_created_at", "type": "key", "attributes": ["created_at"], "orders": ["DESC"] }
+        { "key": "idx_folder_created_at", "type": "key", "attributes": ["created_at"], "orders": ["DESC"] },
+        { "key": "idx_parent_folder_id", "type": "key", "attributes": ["parent_folder_id"], "orders": ["ASC"] }
       ]
     },
     {

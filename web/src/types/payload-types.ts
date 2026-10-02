@@ -218,6 +218,12 @@ export interface DocumentFolder {
   allowed_departments?: string[] | null;
   /** User ids granted access on a `dynamic` folder. */
   allowed_users?: string[] | null;
+  /**
+   * When set, this folder is a subfolder of the named parent. Subfolders
+   * inherit all permissions from their root (main) folder and do not carry
+   * their own access rules.
+   */
+  parent_folder_id?: string | null;
   created_at: string;
   updated_at?: string | null;
   status?: DocumentStatus;

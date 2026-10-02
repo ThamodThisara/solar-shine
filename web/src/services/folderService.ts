@@ -29,7 +29,12 @@ export async function fetchFolders(): Promise<DocumentFolder[]> {
       Query.orderDesc('created_at'),
       Query.limit(FOLDER_FETCH_LIMIT),
     ]);
-    return response.documents as unknown as DocumentFolder[];
+    // Filter out subfolders client-side. This is safe whether or not the
+    // parent_folder_id attribute exists yet in Appwrite — new subfolders will
+    // have it set; existing root folders will have it absent/null, which is
+    // falsy in both cases.
+    const all = response.documents as unknown as DocumentFolder[];
+    return all.filter((f) => !f.parent_folder_id);
   } catch (error) {
     console.error('Error fetching folders:', error);
     throw error;
@@ -55,6 +60,12 @@ export interface FolderInput {
   allowedDepartments?: string[];
   /** Users granted access. Ignored unless `folderType` is `dynamic`. */
   allowedUsers?: string[];
+  /**
+   * When set, the new folder is created as a child of this parent. The
+   * subfolder inherits the parent's permissions and the `folderType`,
+   * `allowedDepartments`, and `allowedUsers` fields are ignored.
+   */
+  parentFolderId?: string;
 }
 
 /**
@@ -79,6 +90,7 @@ export async function createFolder(input: FolderInput, ownerId: string): Promise
       folder_type: input.folderType,
       owner_id: ownerId,
       ...sharingFields(input),
+      parent_folder_id: input.parentFolderId ?? null,
       created_at: now,
       updated_at: now,
       status: 'Active',
@@ -86,6 +98,44 @@ export async function createFolder(input: FolderInput, ownerId: string): Promise
     return doc as unknown as DocumentFolder;
   } catch (error) {
     console.error('Error creating folder:', error);
+    throw error;
+  }
+}
+
+/**
+ * Creates a subfolder under `parentFolder`. The subfolder automatically
+ * inherits the parent's `folder_type`, `owner_id`, `allowed_departments`,
+ * and `allowed_users` — callers must not supply separate permission fields.
+ */
+export async function createSubfolder(
+  name: string,
+  description: string | undefined,
+  parentFolder: DocumentFolder,
+): Promise<DocumentFolder> {
+  return createFolder(
+    {
+      name,
+      description,
+      folderType: parentFolder.folder_type,
+      allowedDepartments: parentFolder.allowed_departments ?? [],
+      allowedUsers: parentFolder.allowed_users ?? [],
+      parentFolderId: parentFolder.$id,
+    },
+    parentFolder.owner_id,
+  );
+}
+
+/** All direct children of a given parent folder, newest first. */
+export async function fetchSubfolders(parentFolderId: string): Promise<DocumentFolder[]> {
+  try {
+    const response = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENT_FOLDERS, [
+      Query.equal('parent_folder_id', parentFolderId),
+      Query.orderDesc('created_at'),
+      Query.limit(FOLDER_FETCH_LIMIT),
+    ]);
+    return response.documents as unknown as DocumentFolder[];
+  } catch (error) {
+    console.error('Error fetching subfolders:', error);
     throw error;
   }
 }
@@ -118,8 +168,9 @@ async function deleteFolderScopedRows(collectionId: string, folderId: string): P
 }
 
 /**
- * Deletes a folder along with everything filed inside it — records, stored
- * files, and the pins and deletion requests pointing at it.
+ * Deletes a MAIN (root) folder along with every document, pin, and delete
+ * request filed inside it. Use `deleteSubfolder` for subfolders — it
+ * enforces the non-empty guard before proceeding.
  */
 export async function deleteFolder(folderId: string): Promise<boolean> {
   try {
@@ -137,6 +188,43 @@ export async function deleteFolder(folderId: string): Promise<boolean> {
     console.error('Error deleting folder:', error);
     throw error;
   }
+}
+
+/**
+ * Safely deletes a subfolder. Throws with a user-facing message when the
+ * subfolder is not empty (contains documents or nested subfolders), so the
+ * caller can surface the message directly to the user without further
+ * inspection. Only empty subfolders may be removed.
+ */
+export async function deleteSubfolder(subfolderId: string): Promise<boolean> {
+  // Check for documents in this subfolder.
+  const docsResponse = await databases.listDocuments(DATABASE_ID, COLLECTIONS.FOLDER_DOCUMENTS, [
+    Query.equal('folder_id', subfolderId),
+    Query.limit(1),
+  ]);
+  if (docsResponse.total > 0) {
+    throw new Error(
+      'Unable to delete this folder. This folder contains documents or subfolders. ' +
+      'Please remove all contents before deleting the folder.',
+    );
+  }
+
+  // Check for nested subfolders inside this subfolder.
+  const childResponse = await databases.listDocuments(DATABASE_ID, COLLECTIONS.DOCUMENT_FOLDERS, [
+    Query.equal('parent_folder_id', subfolderId),
+    Query.limit(1),
+  ]);
+  if (childResponse.total > 0) {
+    throw new Error(
+      'Unable to delete this folder. This folder contains documents or subfolders. ' +
+      'Please remove all contents before deleting the folder.',
+    );
+  }
+
+  // Folder is empty — remove pins and the record itself.
+  await deleteFolderScopedRows(COLLECTIONS.FOLDER_PINS, subfolderId);
+  await databases.deleteDocument(DATABASE_ID, COLLECTIONS.DOCUMENT_FOLDERS, subfolderId);
+  return true;
 }
 
 export interface FolderDocumentListResult {
