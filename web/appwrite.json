@@ -5,7 +5,7 @@
       "$id": "team-management",
       "name": "Team Management",
       "runtime": "node-22",
-      "execute": ["users"],
+      "execute": ["any", "users"],
       "events": [],
       "scopes": ["teams.read", "teams.write", "users.read", "users.write", "sessions.write"],
       "timeout": 15,
