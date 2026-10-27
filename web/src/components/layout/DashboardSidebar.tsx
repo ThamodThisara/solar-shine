@@ -27,7 +27,10 @@ import {
   FolderOpen,
   ClipboardList,
   FileText,
-  ShieldAlert
+  ShieldAlert,
+  Target,
+  FileSpreadsheet,
+  Boxes
 } from 'lucide-react';
 
 interface DashboardSidebarProps {
@@ -63,6 +66,15 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     }
     if (hasPermission('appointments:view')) {
       workspaceItems.push({ id: 'appointments', label: 'Appointments', icon: Calendar });
+    }
+    if (hasPermission('leads:view')) {
+      workspaceItems.push({ id: 'leads', label: 'Leads', icon: Target });
+    }
+    if (hasPermission('quotations:view')) {
+      workspaceItems.push({ id: 'quotations', label: 'Quotations', icon: FileSpreadsheet });
+    }
+    if (hasPermission('inventory:view')) {
+      workspaceItems.push({ id: 'inventory', label: 'Inventory', icon: Boxes });
     }
     if (hasPermission('clients:view')) {
       workspaceItems.push({ id: 'clients', label: 'Client Management', icon: Users });

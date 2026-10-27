@@ -7,7 +7,7 @@
       "runtime": "node-22",
       "execute": ["any", "users"],
       "events": [],
-      "scopes": ["teams.read", "teams.write", "users.read", "users.write", "sessions.write"],
+      "scopes": ["teams.read", "teams.write", "users.read", "users.write", "sessions.write", "databases.read", "collections.read", "documents.read", "documents.write", "rows.read", "rows.write"],
       "timeout": 15,
       "entrypoint": "src/main.js",
       "commands": "npm install",
@@ -878,14 +878,16 @@
         { "key": "contract_value", "type": "double", "required": true, "array": false },
         { "key": "start_date", "type": "datetime", "required": true, "array": false },
         { "key": "end_date", "type": "datetime", "required": true, "array": false },
-        { "key": "current_stage", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false }
+        { "key": "current_stage", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false },
+        { "key": "quotation_id", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null }
       ],
       "indexes": [
         { "key": "idx_status", "type": "key", "attributes": ["status"], "orders": ["ASC"] },
         { "key": "idx_name_search", "type": "fulltext", "attributes": ["name"], "orders": ["ASC"] },
         { "key": "idx_project_code_unique", "type": "unique", "attributes": ["project_code"], "orders": ["ASC"] },
         { "key": "idx_client_id", "type": "key", "attributes": ["clientId"], "orders": ["ASC"] },
-        { "key": "idx_site_id", "type": "key", "attributes": ["siteId"], "orders": ["ASC"] }
+        { "key": "idx_site_id", "type": "key", "attributes": ["siteId"], "orders": ["ASC"] },
+        { "key": "idx_quotation_id_unique", "type": "unique", "attributes": ["quotation_id"], "orders": ["ASC"] }
       ]
     },
     {
@@ -2210,6 +2212,177 @@
       "indexes": [
         { "key": "idx_client_id", "type": "key", "attributes": ["clientId"], "orders": ["ASC"] },
         { "key": "idx_site_code", "type": "unique", "attributes": ["siteCode"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "leads",
+      "$permissions": ["read(\"users\")"],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Leads",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "lead_code", "type": "string", "required": true, "array": false, "size": 20, "encrypt": false },
+        { "key": "name", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "phone", "type": "string", "required": false, "array": false, "size": 50, "encrypt": false, "default": null },
+        { "key": "email", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false, "default": null },
+        { "key": "company", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false, "default": null },
+        { "key": "address", "type": "string", "required": false, "array": false, "size": 1000, "encrypt": false, "default": null },
+        { "key": "source", "type": "string", "required": false, "array": false, "size": 30, "encrypt": false, "default": "other" },
+        { "key": "service_interest", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false, "default": null },
+        { "key": "message", "type": "string", "required": false, "array": false, "size": 5000, "encrypt": false, "default": null },
+        { "key": "status", "type": "string", "required": false, "array": false, "size": 30, "encrypt": false, "default": "new" },
+        { "key": "assigned_to", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null },
+        { "key": "assigned_to_name", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false, "default": null },
+        { "key": "estimated_system_size", "type": "double", "required": false, "array": false, "min": 0 },
+        { "key": "estimated_value", "type": "double", "required": false, "array": false, "min": 0 },
+        { "key": "notes", "type": "string", "required": false, "array": false, "size": 5000, "encrypt": false, "default": null },
+        { "key": "next_follow_up", "type": "datetime", "required": false, "array": false },
+        { "key": "lost_reason", "type": "string", "required": false, "array": false, "size": 1000, "encrypt": false, "default": null },
+        { "key": "converted_client_id", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null },
+        { "key": "converted_at", "type": "datetime", "required": false, "array": false },
+        { "key": "created_by", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null },
+        { "key": "created_by_name", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false, "default": null }
+      ],
+      "indexes": [
+        { "key": "idx_lead_code_unique", "type": "unique", "attributes": ["lead_code"], "orders": ["ASC"] },
+        { "key": "idx_status", "type": "key", "attributes": ["status"], "orders": ["ASC"] },
+        { "key": "idx_assigned_to", "type": "key", "attributes": ["assigned_to"], "orders": ["ASC"] },
+        { "key": "idx_email", "type": "key", "attributes": ["email"], "orders": ["ASC"] },
+        { "key": "idx_name_search", "type": "fulltext", "attributes": ["name"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "products",
+      "$permissions": ["read(\"users\")"],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Products",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "sku", "type": "string", "required": true, "array": false, "size": 50, "encrypt": false },
+        { "key": "name", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "category", "type": "string", "required": false, "array": false, "size": 100, "encrypt": false, "default": null },
+        { "key": "brand", "type": "string", "required": false, "array": false, "size": 100, "encrypt": false, "default": null },
+        { "key": "model", "type": "string", "required": false, "array": false, "size": 100, "encrypt": false, "default": null },
+        { "key": "unit", "type": "string", "required": false, "array": false, "size": 20, "encrypt": false, "default": "pcs" },
+        { "key": "unit_price", "type": "double", "required": false, "array": false, "min": 0, "default": 0 },
+        { "key": "cost_price", "type": "double", "required": false, "array": false, "min": 0 },
+        { "key": "current_stock", "type": "integer", "required": false, "array": false, "min": 0, "default": 0 },
+        { "key": "reorder_level", "type": "integer", "required": false, "array": false, "min": 0 },
+        { "key": "description", "type": "string", "required": false, "array": false, "size": 2000, "encrypt": false, "default": null },
+        { "key": "is_active", "type": "boolean", "required": false, "array": false, "default": true }
+      ],
+      "indexes": [
+        { "key": "idx_sku_unique", "type": "unique", "attributes": ["sku"], "orders": ["ASC"] },
+        { "key": "idx_category", "type": "key", "attributes": ["category"], "orders": ["ASC"] },
+        { "key": "idx_is_active", "type": "key", "attributes": ["is_active"], "orders": ["ASC"] },
+        { "key": "idx_name_search", "type": "fulltext", "attributes": ["name"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "quotations",
+      "$permissions": ["read(\"users\")"],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Quotations",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "quotation_code", "type": "string", "required": true, "array": false, "size": 30, "encrypt": false },
+        { "key": "lead_id", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null },
+        { "key": "client_id", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null },
+        { "key": "client_name", "type": "string", "required": true, "array": false, "size": 255, "encrypt": false },
+        { "key": "client_email", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false, "default": null },
+        { "key": "client_phone", "type": "string", "required": false, "array": false, "size": 50, "encrypt": false, "default": null },
+        { "key": "client_address", "type": "string", "required": false, "array": false, "size": 1000, "encrypt": false, "default": null },
+        { "key": "status", "type": "string", "required": false, "array": false, "size": 30, "encrypt": false, "default": "draft" },
+        { "key": "valid_until", "type": "datetime", "required": false, "array": false },
+        { "key": "tax_rate", "type": "double", "required": false, "array": false, "min": 0, "max": 100, "default": 0 },
+        { "key": "subtotal", "type": "double", "required": false, "array": false, "min": 0, "default": 0 },
+        { "key": "discount_total", "type": "double", "required": false, "array": false, "min": 0, "default": 0 },
+        { "key": "tax_total", "type": "double", "required": false, "array": false, "min": 0, "default": 0 },
+        { "key": "grand_total", "type": "double", "required": false, "array": false, "min": 0, "default": 0 },
+        { "key": "notes", "type": "string", "required": false, "array": false, "size": 5000, "encrypt": false, "default": null },
+        { "key": "terms", "type": "string", "required": false, "array": false, "size": 5000, "encrypt": false, "default": null },
+        { "key": "created_by", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null },
+        { "key": "created_by_name", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false, "default": null },
+        { "key": "approved_by", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null },
+        { "key": "approved_at", "type": "datetime", "required": false, "array": false },
+        { "key": "rejection_reason", "type": "string", "required": false, "array": false, "size": 1000, "encrypt": false, "default": null },
+        { "key": "sent_at", "type": "datetime", "required": false, "array": false },
+        { "key": "review_token_hash", "type": "string", "required": false, "array": false, "size": 128, "encrypt": false, "default": null },
+        { "key": "review_token_expires_at", "type": "datetime", "required": false, "array": false },
+        { "key": "customer_response", "type": "string", "required": false, "array": false, "size": 20, "encrypt": false, "default": null },
+        { "key": "customer_response_at", "type": "datetime", "required": false, "array": false },
+        { "key": "customer_comment", "type": "string", "required": false, "array": false, "size": 2000, "encrypt": false, "default": null },
+        { "key": "converted_project_id", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null },
+        { "key": "pdf_file_id", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null }
+      ],
+      "indexes": [
+        { "key": "idx_quotation_code_unique", "type": "unique", "attributes": ["quotation_code"], "orders": ["ASC"] },
+        { "key": "idx_status", "type": "key", "attributes": ["status"], "orders": ["ASC"] },
+        { "key": "idx_lead_id", "type": "key", "attributes": ["lead_id"], "orders": ["ASC"] },
+        { "key": "idx_client_id", "type": "key", "attributes": ["client_id"], "orders": ["ASC"] },
+        { "key": "idx_review_token_hash", "type": "key", "attributes": ["review_token_hash"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "quotation_items",
+      "$permissions": ["read(\"users\")"],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Quotation Items",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "quotation_id", "type": "string", "required": true, "array": false, "size": 36, "encrypt": false },
+        { "key": "product_id", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null },
+        { "key": "description", "type": "string", "required": true, "array": false, "size": 1000, "encrypt": false },
+        { "key": "quantity", "type": "double", "required": true, "array": false, "min": 0 },
+        { "key": "unit", "type": "string", "required": false, "array": false, "size": 20, "encrypt": false, "default": null },
+        { "key": "unit_price", "type": "double", "required": true, "array": false, "min": 0 },
+        { "key": "discount", "type": "double", "required": false, "array": false, "min": 0, "default": 0 },
+        { "key": "line_total", "type": "double", "required": true, "array": false, "min": 0 },
+        { "key": "sort_order", "type": "integer", "required": false, "array": false, "min": 0, "default": 0 }
+      ],
+      "indexes": [
+        { "key": "idx_quotation_id", "type": "key", "attributes": ["quotation_id"], "orders": ["ASC"] },
+        { "key": "idx_product_id", "type": "key", "attributes": ["product_id"], "orders": ["ASC"] }
+      ]
+    },
+    {
+      "$id": "quotation_responses",
+      "$permissions": [],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Quotation Responses",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "response", "type": "string", "required": true, "array": false, "size": 20, "encrypt": false },
+        { "key": "comment", "type": "string", "required": false, "array": false, "size": 2000, "encrypt": false, "default": null }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "stock_movements",
+      "$permissions": ["read(\"users\")"],
+      "databaseId": "6873ba790033a7d5cfdb",
+      "name": "Stock Movements",
+      "enabled": true,
+      "documentSecurity": false,
+      "attributes": [
+        { "key": "product_id", "type": "string", "required": true, "array": false, "size": 36, "encrypt": false },
+        { "key": "movement_type", "type": "string", "required": true, "array": false, "size": 20, "encrypt": false },
+        { "key": "quantity", "type": "integer", "required": true, "array": false },
+        { "key": "balance_after", "type": "integer", "required": false, "array": false, "min": 0 },
+        { "key": "reference_type", "type": "string", "required": false, "array": false, "size": 30, "encrypt": false, "default": null },
+        { "key": "reference_id", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null },
+        { "key": "notes", "type": "string", "required": false, "array": false, "size": 1000, "encrypt": false, "default": null },
+        { "key": "performed_by", "type": "string", "required": false, "array": false, "size": 36, "encrypt": false, "default": null },
+        { "key": "performed_by_name", "type": "string", "required": false, "array": false, "size": 255, "encrypt": false, "default": null }
+      ],
+      "indexes": [
+        { "key": "idx_product_id", "type": "key", "attributes": ["product_id"], "orders": ["ASC"] },
+        { "key": "idx_reference", "type": "key", "attributes": ["reference_type", "reference_id"], "orders": ["ASC", "ASC"] }
       ]
     }
   ],

@@ -40,6 +40,36 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     ]
   },
   {
+    id: 'leads',
+    title: 'Lead Management',
+    permissions: [
+      { key: 'leads:view', label: 'View Leads', description: 'Access the lead pipeline, including website enquiries' },
+      { key: 'leads:create', label: 'Create Lead', description: 'Register new leads manually' },
+      { key: 'leads:edit', label: 'Edit Lead', description: 'Update lead details, status, follow-ups, and assignment' },
+      { key: 'leads:convert', label: 'Convert Lead', description: 'Convert a qualified lead into a registered client' }
+    ]
+  },
+  {
+    id: 'quotations',
+    title: 'Quotations',
+    permissions: [
+      { key: 'quotations:view', label: 'View Quotations', description: 'Browse quotations and download their PDFs' },
+      { key: 'quotations:create', label: 'Create Quotation', description: 'Draft new quotations for leads and clients' },
+      { key: 'quotations:edit', label: 'Edit Quotation', description: 'Edit, submit for approval, and delete draft quotations' },
+      { key: 'quotations:approve', label: 'Approve Quotation', description: 'Approve or reject quotations awaiting approval' },
+      { key: 'quotations:send', label: 'Send Quotation', description: 'Send approved quotations to customers for review' },
+      { key: 'quotations:convert', label: 'Convert Quotation', description: 'Turn an accepted quotation into a project' }
+    ]
+  },
+  {
+    id: 'inventory',
+    title: 'Inventory',
+    permissions: [
+      { key: 'inventory:view', label: 'View Inventory', description: 'Browse the product catalog, stock levels, and stock history' },
+      { key: 'inventory:manage', label: 'Manage Inventory', description: 'Add and edit products and record stock received, consumed, or adjusted' }
+    ]
+  },
+  {
     id: 'projects',
     title: 'Project Execution',
     permissions: [
@@ -132,6 +162,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
   project_engineer: [
     'dashboard:view',
     'appointments:view',
+    'inventory:view',
     'sites:view',
     'client-sites:view',
     'projects:view',
@@ -141,6 +172,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
   planning_engineer: [
     'dashboard:view',
     'appointments:view',
+    'inventory:view',
     'sites:view',
     'client-sites:view',
     'projects:view',
@@ -150,6 +182,16 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
   sales_manager: [
     'dashboard:view',
     'appointments:view',
+    'leads:view',
+    'leads:create',
+    'leads:edit',
+    'leads:convert',
+    'quotations:view',
+    'quotations:create',
+    'quotations:edit',
+    'quotations:send',
+    'quotations:convert',
+    'inventory:view',
     'clients:view',
     'clients:create',
     'clients:edit',
@@ -174,17 +216,24 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
   finance_manager: [
     'dashboard:view',
     'appointments:view',
+    'quotations:view',
+    'quotations:approve',
+    'inventory:view',
     'projects:view',
     ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   marketing_manager: [
     'dashboard:view',
     'appointments:view',
+    'leads:view',
+    'leads:create',
     ...DEFAULT_DOCUMENT_PERMISSIONS
   ],
   engineering_manager: [
     'dashboard:view',
     'appointments:view',
+    'inventory:view',
+    'inventory:manage',
     'sites:view',
     'sites:create',
     'sites:edit',

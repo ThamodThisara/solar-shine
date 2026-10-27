@@ -347,6 +347,54 @@ export interface SiteVisitUpdate {
   created_at: string;
 }
 
+/** Pipeline stage of a sales lead. "won" is only reached by converting to a client. */
+export type LeadStatus = "new" | "contacted" | "qualified" | "proposal" | "won" | "lost";
+
+/** Where a lead came from. Website leads are captured by the public contact form. */
+export type LeadSource =
+  | "website"
+  | "referral"
+  | "phone"
+  | "walk_in"
+  | "social_media"
+  | "event"
+  | "other";
+
+/**
+ * A sales lead. Read directly from the `leads` collection; every write goes
+ * through the team-management function (the collection is read-only to users).
+ */
+export interface Lead {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  /** Server-generated sequential code, e.g. LD-2026-0001. */
+  lead_code: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  company: string | null;
+  address: string | null;
+  source: LeadSource;
+  service_interest: string | null;
+  message: string | null;
+  status: LeadStatus;
+  /** User $id of the staff member following up, or null when unassigned. */
+  assigned_to: string | null;
+  assigned_to_name: string | null;
+  /** Estimated system size in kW. */
+  estimated_system_size: number | null;
+  estimated_value: number | null;
+  notes: string | null;
+  next_follow_up: string | null;
+  lost_reason: string | null;
+  /** Client $id this lead was converted into. */
+  converted_client_id: string | null;
+  converted_at: string | null;
+  created_by: string | null;
+  created_by_name: string | null;
+}
+
 export interface Testimonial {
   $id: string;
   text: string;
@@ -441,4 +489,97 @@ export interface Notification {
   content: string;
   read: boolean;
   link: string;
+}
+
+/** A catalog product. Read directly; every write goes through the team-management function. */
+export interface Product {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  sku: string;
+  name: string;
+  category: string | null;
+  brand: string | null;
+  model: string | null;
+  unit: string | null;
+  unit_price: number | null;
+  cost_price: number | null;
+  /** Changes only through stock entries, never by editing the product. */
+  current_stock: number;
+  reorder_level: number | null;
+  description: string | null;
+  is_active: boolean;
+}
+
+export type StockMovementType = "opening" | "receive" | "consume" | "adjust";
+
+/** One ledger row. `quantity` is signed: negative when stock leaves. */
+export interface StockMovement {
+  $id: string;
+  $createdAt: string;
+  product_id: string;
+  movement_type: StockMovementType;
+  quantity: number;
+  reference_type: string | null;
+  reference_id: string | null;
+  notes: string | null;
+  performed_by: string | null;
+  performed_by_name: string | null;
+}
+
+export type QuotationStatus =
+  | "draft"
+  | "pending_approval"
+  | "approved"
+  | "rejected"
+  | "sent"
+  | "accepted"
+  | "declined"
+  | "converted";
+
+export interface QuotationItem {
+  $id: string;
+  quotation_id: string;
+  product_id: string | null;
+  description: string;
+  quantity: number;
+  unit: string | null;
+  unit_price: number;
+  /** Line discount as a currency amount. */
+  discount: number | null;
+  line_total: number;
+  sort_order: number | null;
+}
+
+export interface Quotation {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  /** Server-generated sequential code, e.g. QT-2026-0001. */
+  quotation_code: string;
+  lead_id: string | null;
+  client_id: string | null;
+  client_name: string;
+  client_email: string | null;
+  client_phone: string | null;
+  client_address: string | null;
+  status: QuotationStatus;
+  valid_until: string | null;
+  tax_rate: number | null;
+  subtotal: number;
+  discount_total: number;
+  tax_total: number;
+  grand_total: number;
+  notes: string | null;
+  terms: string | null;
+  created_by: string | null;
+  created_by_name: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejection_reason: string | null;
+  sent_at: string | null;
+  customer_response: "accepted" | "declined" | null;
+  customer_response_at: string | null;
+  customer_comment: string | null;
+  converted_project_id: string | null;
 }

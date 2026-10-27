@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { motion } from 'framer-motion';
@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchGlobalSettings } from '@/services/settingsService';
 import { fetchCompanyInfo } from '@/services/companyService';
+import { submitWebsiteLead } from '@/services/leadService';
 import { GlobalSettings, CompanyInfo } from '@/types/payload-types';
 
 // EmailJS Service Implementation
@@ -224,6 +225,8 @@ const formSchema = z.object({
 
 const Contact = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Spam honeypot: hidden from people, but naive bots fill every input.
+  const honeypotRef = useRef<HTMLInputElement>(null);
   const [emailServiceReady, setEmailServiceReady] = useState(false);
   const [submitStatus, setSubmitStatus] = useState({
     type: null,
@@ -282,6 +285,29 @@ const Contact = () => {
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     setSubmitStatus({ type: null, message: '' });
+
+    // Primary path: record the enquiry as a lead in the CRM (staff are notified
+    // server-side). If that fails, fall back to the email flow below so the
+    // enquiry is never lost.
+    try {
+      await submitWebsiteLead({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        service_interest: data.service,
+        message: data.message,
+        website: honeypotRef.current?.value ?? '',
+      });
+      setSubmitStatus({
+        type: 'success',
+        message: 'Thank you! Your enquiry has been received. Our team will get back to you within 24 hours.'
+      });
+      form.reset();
+      setIsSubmitting(false);
+      return;
+    } catch (error) {
+      console.warn('Lead capture failed, falling back to email:', error);
+    }
 
     try {
       // Map form data to service interface
@@ -405,6 +431,15 @@ const Contact = () => {
 
                   <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                      <input
+                        ref={honeypotRef}
+                        type="text"
+                        name="website"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        aria-hidden="true"
+                        className="absolute -left-[9999px] h-0 w-0 opacity-0"
+                      />
                       <div className="grid md:grid-cols-2 gap-6">
                         <FormField
                           control={form.control}
