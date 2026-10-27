@@ -1,9 +1,22 @@
-import { Client, Teams, Users, Account, Databases, ID, Query } from 'node-appwrite';
+import { Client, Teams, Users, Account, Databases, TablesDB, ID, Query } from 'node-appwrite';
 import nodemailer from 'nodemailer';
 import https from 'https';
 import http from 'http';
+import { computeNextSequentialCode } from './lib/codes.js';
+import { loadCallerPermissions } from './lib/rbac.js';
+import { handleLeadRoute, handlePublicLead } from './routes/leads.js';
+import { handleProductRoute } from './routes/products.js';
+import { handleQuotationRoute, handlePublicQuotationRoute } from './routes/quotations.js';
+
+/** Authenticated route modules, each owning one path prefix and checking its own permission keys. */
+const PERMISSION_ROUTES = [
+  ['/leads/', handleLeadRoute],
+  ['/products/', handleProductRoute],
+  ['/quotations/', handleQuotationRoute],
+];
 
 const PROJECTS_COLLECTION_ID = 'projects';
+const DATABASE_ID = process.env.VITE_APPWRITE_DATABASE_ID || '6873ba790033a7d5cfdb';
 
 /**
  * Fallback role for teams created before `prefs.role` was stored, inferred from
@@ -42,32 +55,17 @@ const ROLE_HOME_PATH = {
  * Computes the next sequential project code for a given prefix in the CURRENT
  * (server-clock) year, in the form `PREFIX-YYYY-0001`. The year is derived from
  * the function host clock so it can't be skewed by a client's device clock.
- *
- * Because sequences are zero-padded to 4 digits, lexicographic ordering matches
- * numeric ordering, so `orderDesc` + `limit(1)` yields the highest existing code.
  */
 async function computeNextProjectCode(dbs, databaseId, prefixCode) {
-  const year = new Date().getFullYear();
-  const base = `${prefixCode}-${year}-`;
+  const base = `${prefixCode}-${new Date().getFullYear()}-`;
+  return computeNextSequentialCode(dbs, databaseId, PROJECTS_COLLECTION_ID, 'project_code', base);
+}
 
-  const existing = await dbs.listDocuments(databaseId, PROJECTS_COLLECTION_ID, [
-    Query.startsWith('project_code', base),
-    Query.orderDesc('project_code'),
-    Query.limit(1),
-  ]);
-
-  let seq = 1;
-  if (existing.documents.length > 0) {
-    const last = existing.documents[0].project_code || '';
-    const parsed = parseInt(last.slice(base.length), 10);
-    if (!Number.isNaN(parsed)) seq = parsed + 1;
-  }
-
-  if (seq > 9999) {
-    throw new Error(`Sequence limit reached for ${prefixCode}-${year} (max 9999).`);
-  }
-
-  return `${base}${String(seq).padStart(4, '0')}`;
+/** Turns a route handler's thrown error into a JSON response. */
+function sendRouteError(res, e, error) {
+  const status = e.status ?? (e.code >= 400 && e.code < 500 ? e.code : 500);
+  if (status >= 500) error(e.message);
+  return res.json({ error: e.message }, status);
 }
 
 export default async ({ req, res, log, error }) => {
@@ -183,6 +181,36 @@ export default async ({ req, res, log, error }) => {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
+  // Public route: website contact form → lead capture. Unauthenticated by
+  // design (site visitors have no session); validation lives in the handler.
+  if (req.method === 'POST' && req.path === '/public/leads') {
+    let body = {};
+    try { body = req.bodyRaw ? JSON.parse(req.bodyRaw) : {}; } catch { body = {}; }
+    try {
+      const result = await handlePublicLead({ body, dbs: new Databases(client), databaseId: DATABASE_ID, log, error });
+      return res.json(result.body, result.status);
+    } catch (e) {
+      return sendRouteError(res, e, error);
+    }
+  }
+
+  // Public routes: the customer quotation review page. The unguessable review
+  // token in the path is the credential; there is no session.
+  if (req.path.startsWith('/public/quotations/')) {
+    let body = {};
+    try { body = req.bodyRaw ? JSON.parse(req.bodyRaw) : {}; } catch { body = {}; }
+    try {
+      const result = await handlePublicQuotationRoute({
+        method: req.method, path: req.path, body,
+        tdb: new TablesDB(client), databaseId: DATABASE_ID, log, error,
+      });
+      if (result) return res.json(result.body, result.status);
+      return res.json({ error: 'Not found' }, 404);
+    } catch (e) {
+      return sendRouteError(res, e, error);
+    }
+  }
+
   const callerUserId = req.headers['x-appwrite-user-id'];
   if (!callerUserId) {
     return res.json({ error: 'Unauthorized' }, 401);
@@ -222,6 +250,34 @@ export default async ({ req, res, log, error }) => {
     callerPrefs = await users.getPrefs(callerUserId);
   } catch (e) {
     return res.json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Module routes (leads, products, quotations) authorize per permission key
+  // from the roles collection rather than being admin-only.
+  const moduleRoute = PERMISSION_ROUTES.find(([prefix]) => path.startsWith(prefix));
+  if (moduleRoute) {
+    try {
+      const dbs = new Databases(client);
+      const can = await loadCallerPermissions(dbs, DATABASE_ID, callerPrefs.role);
+      let caller;
+      const result = await moduleRoute[1]({
+        method,
+        path,
+        body: parseBody(),
+        dbs,
+        tdb: new TablesDB(client),
+        users,
+        databaseId: DATABASE_ID,
+        can,
+        log,
+        error,
+        getCaller: async () => (caller ??= await users.get(callerUserId)),
+      });
+      if (result) return res.json(result.body, result.status);
+      return res.json({ error: 'Not found' }, 404);
+    } catch (e) {
+      return sendRouteError(res, e, error);
+    }
   }
 
   const isBypassAdminRoute =

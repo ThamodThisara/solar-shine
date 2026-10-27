@@ -4,7 +4,11 @@
   "type": "module",
   "main": "src/main.js",
   "dependencies": {
+    "jspdf": "^4.2.1",
     "node-appwrite": "^26.2.0",
     "nodemailer": "^6.9.13"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
   }
 }

@@ -10,6 +10,9 @@ import SiteVisitsSection from '@/components/admin/SiteVisitsSection';
 import DocumentCenterSection from '@/components/admin/DocumentCenterSection';
 import UserManagementSection from '@/components/admin/UserManagementSection';
 import { ClientsSection } from '@/components/admin/ClientsSection';
+import LeadsSection from '@/components/admin/LeadsSection';
+import QuotationsSection from '@/components/admin/QuotationsSection';
+import InventorySection from '@/components/admin/InventorySection';
 import { RolePermissionManagementSection } from '@/components/admin/RolePermissionManagementSection';
 
 const DashboardPage: React.FC = () => {
@@ -59,6 +62,12 @@ const DashboardPage: React.FC = () => {
         return hasPermission('dashboard:view');
       case 'appointments':
         return hasPermission('appointments:view');
+      case 'leads':
+        return hasPermission('leads:view');
+      case 'quotations':
+        return hasPermission('quotations:view');
+      case 'inventory':
+        return hasPermission('inventory:view');
       case 'clients':
         return hasPermission('clients:view');
       case 'project-execution':
@@ -101,6 +110,9 @@ const DashboardPage: React.FC = () => {
       const fallbackTabs = [
         { id: 'dashboard', flag: 'dashboard:view' },
         { id: 'appointments', flag: 'appointments:view' },
+        { id: 'leads', flag: 'leads:view' },
+        { id: 'quotations', flag: 'quotations:view' },
+        { id: 'inventory', flag: 'inventory:view' },
         { id: 'clients', flag: 'clients:view' },
         { id: 'project-execution', flag: 'projects:view' },
         { id: 'site-visits', flag: 'sites:view' },
@@ -153,6 +165,12 @@ const DashboardPage: React.FC = () => {
         return <UserManagementSection />;
       case 'role-management':
         return <RolePermissionManagementSection />;
+      case 'leads':
+        return <LeadsSection />;
+      case 'quotations':
+        return <QuotationsSection />;
+      case 'inventory':
+        return <InventorySection />;
       case 'clients':
         return <ClientsSection />;
       case 'home-content':

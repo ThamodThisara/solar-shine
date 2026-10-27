@@ -18,6 +18,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import ProjectSummary from "./pages/ProjectSummary";
+import QuotationReview from "./pages/QuotationReview";
 import DashboardPage from "./pages/DashboardPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/quotation/review/:token" element={<QuotationReview />} />
             <Route
               path="/dashboard"
               element={

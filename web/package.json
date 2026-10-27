@@ -16,6 +16,7 @@
     "seed-roles": "tsx src/scripts/seedRoles.ts",
     "setup-cli": "echo 'Install Appwrite CLI: npm install -g appwrite-cli' && echo 'Then run: appwrite login && appwrite init project'",
     "push-collections": "appwrite push collections",
+    "validate-appwrite": "node scripts/validate-appwrite-transactions.mjs",
     "gen-favicons": "node scripts/generate-favicons.mjs",
     "dev:runner": "node --watch run-local.js"
   },
